@@ -2,9 +2,9 @@ import pandas as pd
 import numpy as np
 
 class EyeTrackingProcessor:
-    def __init__(self, chunk_size, min_duration, target_size):
-        self.chunk_size = chunk_size
-        self.min_duration = min_duration
+    def __init__(self, chunk_duration, time_offset_chunk, target_size):
+        self.chunk_duration = chunk_duration
+        self.time_offset_chunk = time_offset_chunk
         self.target_size = target_size
 
     def read_tsv(self, path: str) -> pd.DataFrame:
@@ -54,22 +54,41 @@ class EyeTrackingProcessor:
                     task_data["Task_execution"] = i
                     sub_dataset.append(task_data)
             full_dataset.append(pd.concat(sub_dataset))
-        return pd.concat(full_dataset)
+        return pd.concat(full_dataset).reset_index() #Reset index is important otherwise we can have several times the same index and it messed up the chunking
 
     def get_chunks(self, df: pd.DataFrame) -> pd.DataFrame:
-        df["chunk_id"] = np.nan
+        chunked_data = []  # Store individual chunk DataFrames
 
         for (participant, task, period), group in df.groupby(["Participant name", "Task_id", "Task_execution"]):
-            start_time = group["Recording timestamp"].iloc[0]
-            chunk_ids = (group["Recording timestamp"] - start_time) // self.chunk_size
-            if (group["Recording timestamp"].iloc[-1] - start_time) % self.chunk_size < self.min_duration:
-                chunk_ids[chunk_ids == chunk_ids.max()] = np.nan
-            df.loc[group.index, "chunk_id"] = chunk_ids
-
+            start_time = group["Recording timestamp"].min()
+            end_time = group["Recording timestamp"].max()
+            chunk_start_times = np.arange(start_time, end_time - self.chunk_duration + 1, self.time_offset_chunk)
+            
+            chunk_id = 0
+            for chunk_start in chunk_start_times:
+                chunk_end = chunk_start + self.chunk_duration
+                mask = (group["Recording timestamp"] >= chunk_start) & (group["Recording timestamp"] < chunk_end)
+                
+                #Copying as a single timestamp is in several chunks
+                chunk_subset = chunk_subset = group.loc[mask].copy()
+                chunk_subset["chunk_id"] = chunk_id
+                chunked_data.append(chunk_subset) 
+                chunk_id += 1
+        
+        df = pd.concat(chunked_data).reset_index(drop=True)
         df["chunk_id"] = df["chunk_id"].astype("Int64")
         return df
+        #     start_time = group["Recording timestamp"].iloc[0]
+        #     chunk_ids = (group["Recording timestamp"] - start_time) // self.chunk_size
 
-    def resample_chunks(self, df: pd.DataFrame, interpolate_col: list[str], chunk_col="chunk_id") -> pd.DataFrame:
+        #     if (group["Recording timestamp"].iloc[-1] - start_time) % self.chunk_size < self.min_duration:
+        #         chunk_ids[chunk_ids == chunk_ids.max()] = np.nan
+        #     df.loc[group.index, "chunk_id"] = chunk_ids
+
+        # df["chunk_id"] = df["chunk_id"].astype("Int64")
+        # return df
+
+    def resample_chunks(self, df: pd.DataFrame, interpolate_col: list[str], chunk_col="chunk_id", drop_na_chunks=True) -> pd.DataFrame:
         resampled_dfs = []
 
         for chunk_id, sub_df in df.groupby(chunk_col):
@@ -83,13 +102,16 @@ class EyeTrackingProcessor:
                     resampled_sub_df[col] = np.interp(new_indices, original_indices, sub_df[col])
             
             if resampled_sub_df.isna().all().any():
-                print(f"Processing participant {sub_df['Participant name'].iloc[0]}, task {sub_df['Task_id'].iloc[0]}, execution {sub_df['Task_execution'].iloc[0]}, chunk {chunk_id}")
+                print(f"Only Nans for participant {sub_df['Participant name'].iloc[0]}, task {sub_df['Task_id'].iloc[0]}, execution {sub_df['Task_execution'].iloc[0]}, chunk {chunk_id}")
                 print(resampled_sub_df.columns[resampled_sub_df.isna().all()].tolist(), end="\n\n")
+                continue
 
             resampled_sub_df[chunk_col] = chunk_id
             resampled_dfs.append(resampled_sub_df)
-
-        return pd.concat(resampled_dfs).reset_index(drop=True)
+        if len(resampled_dfs) > 0:
+            return pd.concat(resampled_dfs).reset_index(drop=True)
+        else:
+            return pd.DataFrame()
 
     def process_and_resample_all(self, df: pd.DataFrame, interpolate_col: list[str], chunk_col="chunk_id") -> pd.DataFrame:
         all_resampled_dfs = []
@@ -105,3 +127,18 @@ class EyeTrackingProcessor:
                 all_resampled_dfs.append(resampled_subset)
 
         return pd.concat(all_resampled_dfs).reset_index(drop=True)
+    
+    def outside_screen_placeholder(self, df: pd.DataFrame, x_lim: list[int], y_lim: list[int], placeholder_value = -9999):
+        
+        mask_gaze_x = (df['Gaze point X'] < x_lim[0]) | (df['Gaze point X'] > x_lim[1])
+        mask_gaze_y = (df['Gaze point Y'] < y_lim[0]) | (df['Gaze point Y'] > y_lim[1])
+        df.loc[mask_gaze_x | mask_gaze_y, ['Gaze point X', 'Gaze point Y']] = placeholder_value
+        
+        mask_mouse_x = (df['Mouse position X'] < x_lim[0]) | (df['Mouse position X'] > x_lim[1])
+        mask_mouse_y = (df['Mouse position Y'] < y_lim[0]) | (df['Mouse position Y'] > y_lim[1])
+        df.loc[mask_mouse_x | mask_mouse_y, ['Mouse position X', 'Mouse position Y']] = placeholder_value
+
+        return df
+
+        
+            
