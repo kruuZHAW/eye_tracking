@@ -21,4 +21,5 @@ ENV/
 *.csv
 *.tsv
 *.mp4
+*.gz
 
