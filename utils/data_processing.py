@@ -275,5 +275,4 @@ class EyeTrackingProcessor:
             all_resampled_dfs.append(padded_task)
 
         return pd.concat(all_resampled_dfs, ignore_index=True).reset_index(drop=True)
-        # return all_resampled_dfs
             
