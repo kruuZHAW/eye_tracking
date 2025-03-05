@@ -235,44 +235,98 @@ class EyeTrackingProcessor:
         
         return resampled_df.reset_index().rename(columns={'index': 'Recording timestamp'})
     
-    def fixed_time_steps_resample(self, df: pd.DataFrame, interpolate_col: list[str], timestep: int=0.001, pad_value= np.nan) -> list[pd.DataFrame]:
-        """Resample all tasks to fixed time steps and pad with placeholder values to match the longest task
+    # def fixed_time_steps_resample(self, df: pd.DataFrame, interpolate_col: list[str], timestep: int=0.001, pad_value= np.nan) -> list[pd.DataFrame]:
+    #     """Resample all tasks to fixed time steps and pad with placeholder values to match the longest task
+
+    #     Args:
+    #         df (pd.DataFrame): dataframe built by the get_features method
+    #         interpolate_col (list[str]): features to interpolate
+    #         timestep (int, optional): resampling time step in seconds: Defaults to 0.001.
+
+    #     Returns:
+    #         pd.DataFrame: all tasks resampled to fixed time increments
+    #     """
+        
+    #     all_resampled_dfs = []
+    #     unique_combinations = df[['Participant name', 'Task_id', 'Task_execution']].drop_duplicates()
+    #     max_len = 0 #initialize max length tracker
+
+    #     resampled_tasks = []
+    #     for _, row in unique_combinations.iterrows():
+    #         subset = df.query(f"`Participant name` == {row['Participant name']} and Task_id == {row['Task_id']} and Task_execution == {row['Task_execution']}")
+    #         if len(subset) > 0:
+    #             resampled_task = self.resample_task(subset, interpolate_col, timestep)
+    #             resampled_task['Participant name'] = row['Participant name']
+    #             resampled_task['Task_id'] = row['Task_id']
+    #             resampled_task['Task_execution'] = row['Task_execution']
+    #             resampled_tasks.append(resampled_task)
+    #             max_len = max(max_len, len(resampled_task))
+        
+    #     for task_df in resampled_tasks:
+    #         current_len = len(task_df)
+    #         if current_len < max_len:
+    #             padding_df = pd.DataFrame({col: pad_value for col in task_df.columns}, index=range(current_len, max_len))
+    #             padded_task = pd.concat([task_df, padding_df], ignore_index=True)
+    #             padded_task['Participant name'] = task_df['Participant name'].iloc[0]
+    #             padded_task['Task_id'] = task_df['Task_id'].iloc[0]
+    #             padded_task['Task_execution'] = task_df['Task_execution'].iloc[0]
+    #         else:
+    #             padded_task = task_df
+    #         all_resampled_dfs.append(padded_task)
+
+    #     return pd.concat(all_resampled_dfs, ignore_index=True).reset_index(drop=True)
+
+    def fixed_time_steps_resample(self, df: pd.DataFrame, interpolate_col: list[str], timestep: float = 0.001) -> list[pd.DataFrame]:
+        """Resample all tasks to fixed time steps.
 
         Args:
-            df (pd.DataFrame): dataframe built by the get_features method
-            interpolate_col (list[str]): features to interpolate
-            timestep (int, optional): resampling time step in seconds: Defaults to 0.001.
+            df (pd.DataFrame): Dataframe built by the get_features method.
+            interpolate_col (list[str]): Features to interpolate.
+            timestep (float, optional): Resampling time step in seconds. Defaults to 0.001.
 
         Returns:
-            pd.DataFrame: all tasks resampled to fixed time increments
+            list[pd.DataFrame]: List of resampled task DataFrames.
         """
-        
-        all_resampled_dfs = []
-        unique_combinations = df[['Participant name', 'Task_id', 'Task_execution']].drop_duplicates()
-        max_len = 0 #initialize max length tracker
-
         resampled_tasks = []
+        unique_combinations = df[['Participant name', 'Task_id', 'Task_execution']].drop_duplicates()
+
         for _, row in unique_combinations.iterrows():
             subset = df.query(f"`Participant name` == {row['Participant name']} and Task_id == {row['Task_id']} and Task_execution == {row['Task_execution']}")
-            if len(subset) > 0:
+            if not subset.empty:
                 resampled_task = self.resample_task(subset, interpolate_col, timestep)
                 resampled_task['Participant name'] = row['Participant name']
                 resampled_task['Task_id'] = row['Task_id']
                 resampled_task['Task_execution'] = row['Task_execution']
                 resampled_tasks.append(resampled_task)
-                max_len = max(max_len, len(resampled_task))
-        
-        for task_df in resampled_tasks:
-            current_len = len(task_df)
-            if current_len < max_len:
-                padding_df = pd.DataFrame({col: pad_value for col in task_df.columns}, index=range(current_len, max_len))
-                padded_task = pd.concat([task_df, padding_df], ignore_index=True)
-                padded_task['Participant name'] = task_df['Participant name'].iloc[0]
-                padded_task['Task_id'] = task_df['Task_id'].iloc[0]
-                padded_task['Task_execution'] = task_df['Task_execution'].iloc[0]
-            else:
-                padded_task = task_df
-            all_resampled_dfs.append(padded_task)
 
-        return pd.concat(all_resampled_dfs, ignore_index=True).reset_index(drop=True)
+        return pd.concat(resampled_tasks, ignore_index=True).reset_index(drop=True)
+
+    #TODO: Match this function with fixed_time_steps_resample output
+    # def pad_tasks(self, resampled_tasks: pd.DataFrame, pad_value=np.nan) -> pd.DataFrame:
+    #     """Pad resampled tasks to match the longest task length.
+
+    #     Args:
+    #         resampled_tasks (pd.DataFrame): DataFrames of resampled task.
+    #         pad_value (optional): Value to use for padding. Defaults to np.nan.
+
+    #     Returns:
+    #         pd.DataFrame: Padded DataFrame with all tasks having the same length.
+    #     """
+    #     max_len = max(len(task) for task in resampled_tasks) if resampled_tasks else 0
+    #     all_padded_dfs = []
+
+    #     for task_df in resampled_tasks:
+    #         current_len = len(task_df)
+    #         if current_len < max_len:
+    #             padding_df = pd.DataFrame({col: pad_value for col in task_df.columns}, index=range(current_len, max_len))
+    #             padded_task = pd.concat([task_df, padding_df], ignore_index=True)
+    #             padded_task['Participant name'] = task_df['Participant name'].iloc[0]
+    #             padded_task['Task_id'] = task_df['Task_id'].iloc[0]
+    #             padded_task['Task_execution'] = task_df['Task_execution'].iloc[0]
+    #         else:
+    #             padded_task = task_df
+    #         all_padded_dfs.append(padded_task)
+
+    #     return pd.concat(all_padded_dfs, ignore_index=True).reset_index(drop=True)
+
             
