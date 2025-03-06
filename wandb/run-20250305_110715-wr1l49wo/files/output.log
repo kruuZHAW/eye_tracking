@@ -1,0 +1,64 @@
+
+  | Name      | Type             | Params | Mode
+-------------------------------------------------------
+0 | lstm      | LSTM             | 51.5 K | train
+1 | fc        | Linear           | 390    | train
+2 | criterion | CrossEntropyLoss | 0      | train
+-------------------------------------------------------
+51.8 K    Trainable params
+0         Non-trainable params
+51.8 K    Total params
+0.207     Total estimated model params size (MB)
+3         Modules in train mode
+0         Modules in eval mode
+SLURM auto-requeueing enabled. Setting signal handlers.
+Epoch 9: 100%|██████████| 10/10 [00:06<00:00,  1.56it/s, v_num=49wo, train_loss_step=1.700, val_loss=1.690, train_loss_epoch=1.630]
+/home/kruu/.conda/envs/aware/lib/python3.12/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:425: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=51` in the `DataLoader` to improve performance.
+/home/kruu/.conda/envs/aware/lib/python3.12/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:425: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=51` in the `DataLoader` to improve performance.
+Epoch 13: 100%|██████████| 10/10 [00:11<00:00,  0.84it/s, v_num=49wo, train_loss_step=1.800, val_loss=1.780, train_loss_epoch=1.780]
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+/home/kruu/.conda/envs/aware/lib/python3.12/site-packages/pytorch_lightning/loggers/wandb.py:397: There is a wandb run already in progress and newly created instances of `WandbLogger` will reuse this run. If this is not desired, call `wandb.finish()` before instantiating `WandbLogger`.
+/home/kruu/.conda/envs/aware/lib/python3.12/site-packages/pytorch_lightning/callbacks/model_checkpoint.py:654: Checkpoint directory ./GazeMouse_Classification/wr1l49wo/checkpoints exists and is not empty.
+
+  | Name      | Type             | Params | Mode
+-------------------------------------------------------
+0 | lstm      | LSTM             | 118 K  | train
+1 | fc        | Linear           | 390    | train
+2 | criterion | CrossEntropyLoss | 0      | train
+-------------------------------------------------------
+118 K     Trainable params
+0         Non-trainable params
+118 K     Total params
+0.474     Total estimated model params size (MB)
+3         Modules in train mode
+0         Modules in eval mode
+SLURM auto-requeueing enabled. Setting signal handlers.
+/home/kruu/.conda/envs/aware/lib/python3.12/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:425: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=51` in the `DataLoader` to improve performance.
+/home/kruu/.conda/envs/aware/lib/python3.12/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:425: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=51` in the `DataLoader` to improve performance.
+Epoch 9:  30%|███       | 3/10 [00:03<00:08,  0.85it/s, v_num=49wo, train_loss_step=1.580, val_loss=1.660, train_loss_epoch=1.570] 
+GPU available: False, used: False
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+/home/kruu/.conda/envs/aware/lib/python3.12/site-packages/pytorch_lightning/loggers/wandb.py:397: There is a wandb run already in progress and newly created instances of `WandbLogger` will reuse this run. If this is not desired, call `wandb.finish()` before instantiating `WandbLogger`.
+/home/kruu/.conda/envs/aware/lib/python3.12/site-packages/pytorch_lightning/callbacks/model_checkpoint.py:654: Checkpoint directory ./GazeMouse_Classification/wr1l49wo/checkpoints exists and is not empty.
+
+  | Name      | Type             | Params | Mode
+-------------------------------------------------------
+0 | lstm      | LSTM             | 118 K  | train
+1 | fc        | Linear           | 390    | train
+2 | criterion | CrossEntropyLoss | 0      | train
+-------------------------------------------------------
+118 K     Trainable params
+0         Non-trainable params
+118 K     Total params
+0.474     Total estimated model params size (MB)
+3         Modules in train mode
+0         Modules in eval mode
+SLURM auto-requeueing enabled. Setting signal handlers.
+/home/kruu/.conda/envs/aware/lib/python3.12/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:425: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=51` in the `DataLoader` to improve performance.
+/home/kruu/.conda/envs/aware/lib/python3.12/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:425: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=51` in the `DataLoader` to improve performance.
+                                                                      
+
+Detected KeyboardInterrupt, attempting graceful shutdown ...

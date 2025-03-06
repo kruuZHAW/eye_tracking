@@ -1,0 +1,16 @@
+
+  | Name      | Type             | Params | Mode
+-------------------------------------------------------
+0 | lstm      | LSTM             | 135 K  | train
+1 | fc        | Linear           | 390    | train
+2 | criterion | CrossEntropyLoss | 0      | train
+-------------------------------------------------------
+136 K     Trainable params
+0         Non-trainable params
+136 K     Total params
+0.544     Total estimated model params size (MB)
+3         Modules in train mode
+0         Modules in eval mode
+SLURM auto-requeueing enabled. Setting signal handlers.
+Sanity Checking DataLoader 0:   0%|          | 0/2 [00:00<?, ?it/s]
+/home/kruu/.conda/envs/aware/lib/python3.12/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:425: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=51` in the `DataLoader` to improve performance.

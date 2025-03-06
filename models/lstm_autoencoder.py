@@ -2,53 +2,11 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import pytorch_lightning as pl
-from torch.utils.data import Dataset, DataLoader
-from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence, pad_packed_sequence
+from torch.utils.data import DataLoader
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 import pandas as pd
 
-# ------------------------- DATA PREPROCESSING -------------------------
-class GazeMouseDataset(Dataset):
-    def __init__(self, dataset, features):
-        #Build sample_id
-        dataset["sample_id"] = dataset.groupby(["Participant name", "Task_id", "Task_execution"]).ngroup()
-        dataset["sample_id"] = dataset["sample_id"].astype(str)
-
-        # Compute relative timestamps per sequence
-        dataset['Relative timestamp'] = dataset.groupby('sample_id')['Recording timestamp'].transform(lambda x: x - x.min())
-
-        # Normalize features
-        dataset[features] = (dataset[features] - dataset[features].mean()) / dataset[features].std()
-
-        # Group data by sample_id
-        grouped = dataset.groupby('sample_id')
-
-        # Store sequences & lengths
-        self.sequences, self.seq_lengths, self.task_ids = [], [], []
-
-        for _, group in grouped:
-            group = group.sort_values('Recording timestamp')  # Ensure time order
-            seq_tensor = torch.tensor(group[features].values, dtype=torch.float32)
-            self.sequences.append(seq_tensor)
-            self.seq_lengths.append(len(seq_tensor))
-            self.task_ids.append(group["Task_id"].iloc[0])  # Store associated task_id
-
-        # Pad sequences for batching
-        self.padded_sequences = pad_sequence(self.sequences, batch_first=True, padding_value=0)
-        self.seq_lengths = torch.tensor(self.seq_lengths, dtype=torch.int64)
-
-    def __len__(self):
-        return len(self.sequences)
-
-    def __getitem__(self, idx):
-        return {
-            "sequence": self.padded_sequences[idx],
-            "seq_length": self.seq_lengths[idx],
-            "task_id": self.task_ids[idx]  # Include task_id
-        }
-        
-    def get_task_id(self, idx):
-        """Returns the task_id corresponding to a given sequence index."""
-        return self.task_ids[idx]
+from utils.dataset import GazeMouseDataset
     
 # ------------------------- LSTM AUTOENCODER MODEL -------------------------
 class LSTMAutoencoder(pl.LightningModule):

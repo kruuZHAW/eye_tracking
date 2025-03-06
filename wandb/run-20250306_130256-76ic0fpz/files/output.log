@@ -1,0 +1,1 @@
+/home/kruu/.conda/envs/aware/lib/python3.12/site-packages/pytorch_lightning/core/optimizer.py:378: Found unsupported keys in the optimizer configuration: {'gradient_clip_val'}
