@@ -22,4 +22,8 @@ ENV/
 *.tsv
 *.mp4
 *.gz
+*.parquet
+
+# Model logs
+lightning_logs/
 

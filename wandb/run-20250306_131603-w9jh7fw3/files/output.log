@@ -13,7 +13,10 @@
 3         Modules in train mode
 0         Modules in eval mode
 SLURM auto-requeueing enabled. Setting signal handlers.
-Epoch 24:  55%|█████▍    | 6/11 [00:11<00:09,  0.54it/s, v_num=7fw3, train_loss_step=1.420, val_loss=1.810, train_loss_epoch=1.520] 
+Epoch 99: 100%|██████████| 11/11 [00:20<00:00,  0.53it/s, v_num=7fw3, train_loss_step=1.440, val_loss=1.850, train_loss_epoch=1.460]
 /home/kruu/.conda/envs/aware/lib/python3.12/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:425: The 'val_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=51` in the `DataLoader` to improve performance.
 /home/kruu/.conda/envs/aware/lib/python3.12/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:425: The 'train_dataloader' does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` to `num_workers=51` in the `DataLoader` to improve performance.
-                                                                      
+EXECUTABLE/home/kruu/.conda/envs/aware/bin/pythonEXECUTABLE           
+`Trainer.fit` stopped: `max_epochs=100` reached.
+[]
+EXECUTABLE/home/kruu/.conda/envs/aware/bin/pythonEXECUTABLE

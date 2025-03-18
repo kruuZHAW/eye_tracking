@@ -5,3 +5,29 @@
 {"time":"2025-03-06T13:16:03.585045321+01:00","level":"INFO","msg":"handler: started","stream_id":"w9jh7fw3"}
 {"time":"2025-03-06T13:16:03.58505465+01:00","level":"INFO","msg":"sender: started","stream_id":"w9jh7fw3"}
 {"time":"2025-03-06T13:16:04.029793014+01:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-03-06T13:56:46.965304549+01:00","level":"INFO","msg":"Pausing system monitor"}
+{"time":"2025-03-06T18:52:49.336521745+01:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/graphql\": context deadline exceeded"}
+{"time":"2025-03-06T21:37:49.407351712+01:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/graphql\": net/http: request canceled (Client.Timeout exceeded while awaiting headers)"}
+{"time":"2025-03-06T21:51:49.414199588+01:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/graphql\": context deadline exceeded"}
+{"time":"2025-03-06T21:59:42.65167787+01:00","level":"INFO","msg":"api: retrying HTTP error","status":500,"url":"https://api.wandb.ai/files/zhaw_zav/GazeMouse_Classification/w9jh7fw3/file_stream","body":"{\"error\":\"context deadline exceeded\"}"}
+{"time":"2025-03-07T10:50:49.75425626+01:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/graphql\": context deadline exceeded"}
+{"time":"2025-03-07T10:51:21.920258527+01:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/graphql\": context deadline exceeded"}
+{"time":"2025-03-07T10:51:56.254950414+01:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/graphql\": net/http: request canceled (Client.Timeout exceeded while awaiting headers)"}
+{"time":"2025-03-07T10:52:34.326671098+01:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/graphql\": net/http: request canceled (Client.Timeout exceeded while awaiting headers)"}
+{"time":"2025-03-07T10:53:21.948999906+01:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/graphql\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"}
+{"time":"2025-03-07T19:26:04.989660419+01:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/graphql\": net/http: request canceled (Client.Timeout exceeded while awaiting headers)"}
+{"time":"2025-03-09T11:29:35.962219074+01:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/graphql\": net/http: request canceled (Client.Timeout exceeded while awaiting headers)"}
+{"time":"2025-03-09T16:49:21.10205835+01:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/graphql\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"}
+{"time":"2025-03-10T07:25:51.473490297+01:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/graphql\": net/http: request canceled (Client.Timeout exceeded while awaiting headers)"}
+{"time":"2025-03-10T19:18:19.062344396+01:00","level":"INFO","msg":"api: retrying HTTP error","status":500,"url":"https://api.wandb.ai/files/zhaw_zav/GazeMouse_Classification/w9jh7fw3/file_stream","body":"{\"error\":\"context deadline exceeded\"}"}
+{"time":"2025-03-10T19:18:36.752837179+01:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/graphql\": context deadline exceeded"}
+{"time":"2025-03-11T12:49:13.272350253+01:00","level":"INFO","msg":"Resuming system monitor"}
+{"time":"2025-03-11T12:49:13.31238983+01:00","level":"INFO","msg":"Pausing system monitor"}
+{"time":"2025-03-11T12:49:13.312413422+01:00","level":"INFO","msg":"Resuming system monitor"}
+{"time":"2025-03-11T12:49:13.312417826+01:00","level":"INFO","msg":"Pausing system monitor"}
+{"time":"2025-03-11T12:49:13.553116707+01:00","level":"INFO","msg":"Resuming system monitor"}
+{"time":"2025-03-11T12:49:13.555933351+01:00","level":"INFO","msg":"Pausing system monitor"}
+{"time":"2025-03-11T12:49:13.71784425+01:00","level":"INFO","msg":"Resuming system monitor"}
+{"time":"2025-03-11T12:49:13.724087204+01:00","level":"INFO","msg":"Pausing system monitor"}
+{"time":"2025-03-11T12:49:16.361270142+01:00","level":"INFO","msg":"Resuming system monitor"}
+{"time":"2025-03-11T12:49:16.362496788+01:00","level":"INFO","msg":"Pausing system monitor"}

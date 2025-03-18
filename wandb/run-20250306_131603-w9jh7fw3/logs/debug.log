@@ -23,3 +23,20 @@ config: {'_wandb': {}}
 2025-03-06 13:16:04,172 INFO    MainThread:3194157 [wandb_run.py:_redirect():2292] Wrapping output streams.
 2025-03-06 13:16:04,172 INFO    MainThread:3194157 [wandb_run.py:_redirect():2317] Redirects installed.
 2025-03-06 13:16:04,178 INFO    MainThread:3194157 [wandb_init.py:init():1037] run started, returning control to user process
+2025-03-06 13:56:46,964 INFO    MainThread:3194157 [jupyter.py:save_ipynb():386] not saving jupyter notebook
+2025-03-06 13:56:46,965 INFO    MainThread:3194157 [wandb_init.py:_pause_backend():564] pausing backend
+2025-03-11 12:49:13,271 INFO    MainThread:3194157 [wandb_init.py:_resume_backend():569] resuming backend
+2025-03-11 12:49:13,278 INFO    MainThread:3194157 [jupyter.py:save_ipynb():386] not saving jupyter notebook
+2025-03-11 12:49:13,278 INFO    MainThread:3194157 [wandb_init.py:_pause_backend():564] pausing backend
+2025-03-11 12:49:13,285 INFO    MainThread:3194157 [wandb_init.py:_resume_backend():569] resuming backend
+2025-03-11 12:49:13,287 INFO    MainThread:3194157 [jupyter.py:save_ipynb():386] not saving jupyter notebook
+2025-03-11 12:49:13,287 INFO    MainThread:3194157 [wandb_init.py:_pause_backend():564] pausing backend
+2025-03-11 12:49:13,552 INFO    MainThread:3194157 [wandb_init.py:_resume_backend():569] resuming backend
+2025-03-11 12:49:13,555 INFO    MainThread:3194157 [jupyter.py:save_ipynb():386] not saving jupyter notebook
+2025-03-11 12:49:13,555 INFO    MainThread:3194157 [wandb_init.py:_pause_backend():564] pausing backend
+2025-03-11 12:49:13,717 INFO    MainThread:3194157 [wandb_init.py:_resume_backend():569] resuming backend
+2025-03-11 12:49:13,723 INFO    MainThread:3194157 [jupyter.py:save_ipynb():386] not saving jupyter notebook
+2025-03-11 12:49:13,723 INFO    MainThread:3194157 [wandb_init.py:_pause_backend():564] pausing backend
+2025-03-11 12:49:16,360 INFO    MainThread:3194157 [wandb_init.py:_resume_backend():569] resuming backend
+2025-03-11 12:49:16,362 INFO    MainThread:3194157 [jupyter.py:save_ipynb():386] not saving jupyter notebook
+2025-03-11 12:49:16,362 INFO    MainThread:3194157 [wandb_init.py:_pause_backend():564] pausing backend
