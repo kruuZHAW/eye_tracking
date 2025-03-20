@@ -155,16 +155,47 @@ class EyeTrackingProcessor:
                 df.loc[(df[col] < limits[0]) | (df[col] > limits[1]), col] = placeholder_value
         return df
 
+    # def pad_tasks(self, df: pd.DataFrame, pad_value=np.nan) -> pd.DataFrame:
+    #     """Pad tasks to match the longest task length."""
+    #     max_len = df.groupby(["Participant name", "Task_id", "Task_execution"]).size().max()
+    #     padded_data = df.groupby(["Participant name", "Task_id", "Task_execution"]).apply(
+    #         lambda group: group.reindex(range(max_len), fill_value=pad_value)
+    #     ).reset_index(drop=True)
+    #     return padded_data
+    
     def pad_tasks(self, df: pd.DataFrame, pad_value=np.nan) -> pd.DataFrame:
-        """Pad tasks to match the longest task length."""
+        """Pad tasks to match the longest task length while keeping metadata."""
         max_len = df.groupby(["Participant name", "Task_id", "Task_execution"]).size().max()
-        padded_data = df.groupby(["Participant name", "Task_id", "Task_execution"]).apply(
-            lambda group: group.reindex(range(max_len), fill_value=pad_value)
-        ).reset_index(drop=True)
+        
+        padded_dfs = []
+        for (participant, task, execution), group in df.groupby(["Participant name", "Task_id", "Task_execution"]):
+            current_len = len(group)
+            pad_needed = max_len - current_len  # How many rows to add
+            
+            if pad_needed > 0:
+                # Create a DataFrame for the padding
+                pad_df = pd.DataFrame({
+                    "Participant name": [participant] * pad_needed,
+                    "Task_id": [task] * pad_needed,
+                    "Task_execution": [execution] * pad_needed,
+                })
+                
+                # Fill all other feature columns with `pad_value`
+                for col in df.columns:
+                    if col not in ["Participant name", "Task_id", "Task_execution"]:
+                        pad_df[col] = pad_value
+                
+                # Concatenate original and padded data
+                group = pd.concat([group, pad_df], ignore_index=True)
+            
+            padded_dfs.append(group)
+        
+        # Combine all padded groups
+        padded_data = pd.concat(padded_dfs, ignore_index=True)
+        
         return padded_data
-
-
-
+    
+    
 
 class GazeMetricsProcessor:
     """
@@ -275,4 +306,165 @@ class GazeMetricsProcessor:
             "Avg Gaze Acceleration (px/s²)": avg_acceleration,
             "Blink Rate (blinks/s)": blink_rate,
             "Gaze Dispersion (area)": gaze_dispersion
+        }
+
+class MouseMetricsProcessor:
+    """
+    A class for computing mouse movement-related metrics, including velocity, acceleration,
+    movement frequency, idle times, click counts, path patterns, total distance, stops, 
+    average speed, and movement bursts.
+    """
+
+    def __init__(self, df):
+        """Initialize with a DataFrame containing a single task execution."""
+        self.df = df.sort_values(by="Recording timestamp").reset_index(drop=True)
+
+    # ------------------------- VELOCITY & ACCELERATION COMPUTATION -------------------------
+    
+    def compute_velocity_acceleration(self):
+        """Compute mouse velocity and acceleration."""
+        dx = self.df["Mouse position X"].diff().fillna(0)
+        dy = self.df["Mouse position Y"].diff().fillna(0)
+        displacement = np.sqrt(dx**2 + dy**2)
+        time_diff = self.df["Recording timestamp"].diff().fillna(0) / 1e6  # Convert to seconds
+
+        velocity = displacement / time_diff.replace(0, np.nan)
+        acceleration = velocity.diff().fillna(0) / time_diff.replace(0, np.nan)
+
+        avg_velocity = velocity.mean()
+        avg_acceleration = acceleration.mean()
+
+        return avg_velocity, avg_acceleration
+
+    # ------------------------- FREQUENCY OF MOVEMENTS & IDLE TIMES -------------------------
+
+    def compute_movement_frequency_idle_time(self, idle_threshold=0.5):
+        """
+        Compute movement frequency (how often the mouse moves) and idle times (when the mouse doesn't move).
+
+        Args:
+            idle_threshold (float): Time in seconds considered as idle if no movement happens.
+
+        Returns:
+            movement_frequency (movements per second), idle_time (total idle duration in seconds)
+        """
+        time_diff = self.df["Recording timestamp"].diff().fillna(0) / 1e6  # Convert to seconds
+        movement_mask = (self.df["Mouse position X"].diff().abs() > 0) | (self.df["Mouse position Y"].diff().abs() > 0)
+
+        movement_frequency = movement_mask.sum() / time_diff.sum()
+        
+         # Identify idle periods (where mouse does not move for at least idle_threshold seconds)
+        idle_periods = time_diff[~movement_mask]  # Time differences where no movement happened
+        total_idle_time = idle_periods[idle_periods >= idle_threshold].sum()  # Sum only idle periods longer than the threshold
+
+
+        return movement_frequency, total_idle_time
+
+    # ------------------------- CLICK / KEYBOARD COUNT COMPUTATION -------------------------
+
+    def compute_click_count(self):
+        """Compute the number of mouse clicks (if Event data is available)."""
+        if "Event" in self.df.columns:
+            if "MouseEvent" in self.df["Event"].value_counts():
+                return self.df["Event"].value_counts()["MouseEvent"].item()
+        return 0  # Default if click data isn't present
+    
+    def compute_keyboard_count(self):
+        """Compute the number of keyboard clicks (if Event data is available)."""
+        if "Event" in self.df.columns:
+            if "KeyboardEvent" in self.df["Event"].value_counts():
+                return self.df["Event"].value_counts()["KeyboardEvent"].item()
+        return 0  # Default if keyboard data isn't present
+
+    # ------------------------- PATH PATTERNS & DIRECTION CHANGES -------------------------
+
+    def compute_path_patterns(self, angle_threshold:float=30):
+        """
+        Compute path complexity: number of direction changes in mouse movement.
+        Args:
+            angle_threshold (float): Threshold angle considered for significant direction changes
+
+        Returns:
+            direction_changes (int): Count of significant changes in movement direction.
+        """
+        dx = self.df["Mouse position X"].diff().fillna(0)
+        dy = self.df["Mouse position Y"].diff().fillna(0)
+        angles = np.arctan2(dy, dx)
+        direction_changes = np.sum(np.abs(np.diff(angles)) > np.radians(angle_threshold))  # Count significant direction changes
+
+        return direction_changes
+
+    # ------------------------- TOTAL DISTANCE TRAVELED & NUMBER OF STOPS -------------------------
+
+    def compute_total_distance_and_stops(self, stop_threshold=5):
+        """
+        Compute the total distance traveled by the mouse and the number of times the mouse stops.
+
+        Args:
+            stop_threshold (int): Speed (px/s) below which the movement is considered a stop.
+
+        Returns:
+            total_distance (float): Total distance traveled by the mouse.
+            num_stops (int): Number of times mouse movement speed drops below threshold.
+        """
+        dx = self.df["Mouse position X"].diff().fillna(0)
+        dy = self.df["Mouse position Y"].diff().fillna(0)
+        displacement = np.sqrt(dx**2 + dy**2)
+        time_diff = self.df["Recording timestamp"].diff().fillna(0) / 1e6  # Convert to seconds
+        velocity = displacement / time_diff.replace(0, np.nan)
+
+        total_distance = displacement.sum()
+        num_stops = (velocity < stop_threshold).sum()
+
+        return total_distance, num_stops
+
+    # ------------------------- BURSTS OF MOVEMENT VS STILLNESS -------------------------
+
+    def compute_movement_bursts(self, burst_threshold=50, stillness_threshold=5):
+        """
+        Identify periods of bursts (rapid movements) vs stillness (very slow movement).
+
+        Args:
+            burst_threshold (int): Speed above which a movement is considered a burst.
+            stillness_threshold (int): Speed below which movement is considered stillness.
+
+        Returns:
+            movement_bursts (int): Count of burst movement periods.
+            stillness_periods (int): Count of stillness periods.
+        """
+        dx = self.df["Mouse position X"].diff().fillna(0)
+        dy = self.df["Mouse position Y"].diff().fillna(0)
+        displacement = np.sqrt(dx**2 + dy**2)
+        time_diff = self.df["Recording timestamp"].diff().fillna(0) / 1e6  # Convert to seconds
+        velocity = displacement / time_diff.replace(0, np.nan)
+
+        movement_bursts = (velocity > burst_threshold).sum()
+        stillness_periods = (velocity < stillness_threshold).sum()
+
+        return movement_bursts, stillness_periods
+
+    # ------------------------- COMPUTE ALL METRICS PER TASK -------------------------
+
+    def compute_all_metrics(self):
+        """Compute all mouse-related metrics per task execution."""
+        avg_velocity, avg_acceleration = self.compute_velocity_acceleration()
+        movement_freq, idle_time = self.compute_movement_frequency_idle_time()
+        click_count = self.compute_click_count()
+        keyboard_count = self.compute_keyboard_count()
+        direction_changes = self.compute_path_patterns()
+        total_distance, num_stops = self.compute_total_distance_and_stops()
+        movement_bursts, stillness_periods = self.compute_movement_bursts()
+
+        return {
+            "Avg Mouse Velocity (px/s)": avg_velocity,
+            "Avg Mouse Acceleration (px/s²)": avg_acceleration,
+            "Movement Frequency (movements/s)": movement_freq,
+            "Total Idle Time (s)": idle_time,
+            "Click Count": click_count,
+            "Keyboard Count": keyboard_count,
+            "Path Direction Changes": direction_changes,
+            "Total Distance Traveled (px)": total_distance,
+            "Number of Stops": num_stops,
+            "Movement Bursts": movement_bursts,
+            "Stillness Periods": stillness_periods
         }
