@@ -152,7 +152,8 @@ if __name__ == "__main__":
   best_score = grid_search.best_score_
 
   # Save the best model
-  joblib.dump(best_model, "logs/best_xgboost_features_model.pkl")
+  joblib.dump(best_model, "logs/xgboost_features/best_model.pkl")
+  joblib.dump(grid_search, "logs/xgboost_features/full_grid_search.pkl")
 
   # Display results
   print(f"\nBest Parameters: {best_params}")

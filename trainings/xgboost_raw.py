@@ -8,6 +8,7 @@ from utils.data_processing import EyeTrackingProcessor
 
 import xgboost as xgb
 import joblib  # For saving/loading models
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import GroupKFold, GridSearchCV
 from sklearn.metrics import accuracy_score
 
@@ -58,10 +59,62 @@ if __name__ == "__main__":
     dataset_time_resampled = processor.pad_tasks(dataset_time_resampled) # Padding with nans to mach longest task
     dataset_time_resampled["id"] = dataset_time_resampled["Participant name"].astype(str) + "_" + dataset_time_resampled["Task_id"].astype(str) + "_" + dataset_time_resampled["Task_execution"].astype(str)
     
-    #TODO: Scale with MinMax scaler
-    #TODO: Carefully handling missing values/outside screen (see word)
-    #TODO: GridSearchCV based on participant with GroupKFold
+    #TODO: Carefully handling missing values/outside screen (currently no processing)
     
+    # Flatten dataset
     X = np.vstack(dataset_time_resampled.groupby(["id"]).apply(flatten_group))
-    y = dataset_time_resampled.groupby(["id"])["Task_id"].min().values
+    y = dataset_time_resampled.groupby(["id"])["Task_id"].min().values - 1
     groups = dataset_time_resampled.groupby(["id"])["Participant name"].min().values
+    
+    # Scaling for comparison
+    scaler = MinMaxScaler()
+    X_scaled = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
+    
+    # Define parameter grid
+    param_grid = {
+    "n_estimators": [100, 200],
+    "max_depth": [4, 6],
+    "learning_rate": [0.05, 0.1],
+    "subsample": [0.8, 1.0],
+    "colsample_bytree": [0.8, 1.0],
+    "gamma": [0, 0.1]
+}
+    
+    # Model setup and CV
+    xgb_model = xgb.XGBClassifier(
+    objective="multi:softmax",
+    eval_metric="mlogloss",
+    random_state=42
+)
+    
+    # Initialize GridSearchCV with Group K-Fold
+    group_kfold = GroupKFold(n_splits=5)
+    grid_search = GridSearchCV(
+    estimator=xgb_model,
+    param_grid=param_grid,
+    cv=group_kfold,
+    scoring="accuracy",
+    n_jobs=-1,
+    verbose=2
+)
+    
+     # Perform grid search
+    grid_search.fit(X, y, groups=groups)
+
+    # Retrieve best model and accuracy
+    best_model = grid_search.best_estimator_
+    best_params = grid_search.best_params_
+    best_score = grid_search.best_score_
+
+    # Save the best model
+    joblib.dump(best_model, "logs/xgboost_raw/best_model.pkl")
+    joblib.dump(grid_search, "logs/xgboost_raw/full_grid_search.pkl")
+
+    # Display results
+    print(f"\nBest Parameters: {best_params}")
+    print(f"Best Cross-Validation Accuracy: {best_score:.4f}")
+    
+    
+    
+    
+    

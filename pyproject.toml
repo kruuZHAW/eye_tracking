@@ -13,6 +13,7 @@ scikit-learn = "^1.6.1"
 matplotlib = "^3.10.0"
 ace-tools = "^0.0"
 scipy = "^1.15.1"
+xgboost = "^3.0.0"
 
 
 [build-system]

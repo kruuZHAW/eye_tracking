@@ -26,4 +26,5 @@ ENV/
 
 # Model logs
 lightning_logs/
+*.out
 
