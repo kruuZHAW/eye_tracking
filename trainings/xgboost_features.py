@@ -152,6 +152,7 @@ if __name__ == "__main__":
   best_score = grid_search.best_score_
 
   # Save the best model
+  os.makedirs("logs/xgboost_features", exist_ok=True)
   joblib.dump(best_model, "logs/xgboost_features/best_model.pkl")
   joblib.dump(grid_search, "logs/xgboost_features/full_grid_search.pkl")
 

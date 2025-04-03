@@ -1,8 +1,0 @@
-{"time":"2025-03-05T11:29:32.946647112+01:00","level":"INFO","msg":"stream: starting","core version":"0.19.7.dev1","symlink path":"wandb/run-20250305_112932-h51rsf80/logs/debug-core.log"}
-{"time":"2025-03-05T11:29:33.056681215+01:00","level":"INFO","msg":"created new stream","id":"h51rsf80"}
-{"time":"2025-03-05T11:29:33.0567187+01:00","level":"INFO","msg":"stream: started","id":"h51rsf80"}
-{"time":"2025-03-05T11:29:33.056733273+01:00","level":"INFO","msg":"writer: Do: started","stream_id":"h51rsf80"}
-{"time":"2025-03-05T11:29:33.056745548+01:00","level":"INFO","msg":"handler: started","stream_id":"h51rsf80"}
-{"time":"2025-03-05T11:29:33.056769698+01:00","level":"INFO","msg":"sender: started","stream_id":"h51rsf80"}
-{"time":"2025-03-05T11:29:33.540557569+01:00","level":"INFO","msg":"Starting system monitor"}
-{"time":"2025-03-05T11:35:49.711197035+01:00","level":"INFO","msg":"Pausing system monitor"}

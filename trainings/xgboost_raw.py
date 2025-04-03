@@ -68,16 +68,16 @@ if __name__ == "__main__":
     
     # Scaling for comparison
     scaler = MinMaxScaler()
-    X_scaled = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
+    X_scaled = scaler.fit_transform(X)
     
     # Define parameter grid
     param_grid = {
     "n_estimators": [100, 200],
-    "max_depth": [4, 6],
-    "learning_rate": [0.05, 0.1],
+    "max_depth": [4, 6, 8],
+    "learning_rate": [0.01, 0.05, 0.1, 0.3],
     "subsample": [0.8, 1.0],
     "colsample_bytree": [0.8, 1.0],
-    "gamma": [0, 0.1]
+    "gamma": [0, 0.1, 0.3]
 }
     
     # Model setup and CV
@@ -99,7 +99,7 @@ if __name__ == "__main__":
 )
     
      # Perform grid search
-    grid_search.fit(X, y, groups=groups)
+    grid_search.fit(X_scaled, y, groups=groups)
 
     # Retrieve best model and accuracy
     best_model = grid_search.best_estimator_
@@ -107,6 +107,7 @@ if __name__ == "__main__":
     best_score = grid_search.best_score_
 
     # Save the best model
+    os.makedirs("logs/xgboost_raw", exist_ok=True)
     joblib.dump(best_model, "logs/xgboost_raw/best_model.pkl")
     joblib.dump(grid_search, "logs/xgboost_raw/full_grid_search.pkl")
 

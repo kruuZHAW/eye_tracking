@@ -1,26 +1,35 @@
+import numpy as np
+
 import torch
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
 
 
 class GazeMouseDataset(Dataset):
-    def __init__(self, dataset, features):
-        #Build sample_id
-        dataset["sample_id"] = dataset.groupby(["Participant name", "Task_id", "Task_execution"]).ngroup()
-        dataset["sample_id"] = dataset["sample_id"].astype(str)
+    def __init__(self, dataset, features, mean=None, std=None):
+        
+        #Build sample id
+        if "id" not in dataset.columns:
+            dataset["id"] = dataset["Participant name"].astype(str) + "_" + dataset["Task_id"].astype(str) + "_" + dataset["Task_execution"].astype(str)
 
         # Compute relative timestamps per sequence
-        dataset['Relative timestamp'] = dataset.groupby('sample_id')['Recording timestamp'].transform(lambda x: x - x.min())
+        dataset['Relative timestamp'] = dataset.groupby('id')['Recording timestamp'].transform(lambda x: x - x.min())
 
-        # Normalize features
-        dataset[features] = (dataset[features] - dataset[features].mean()) / dataset[features].std()
+        # Normalize features using provided mean/std or compute from dataset
+        if mean is None or std is None:
+            self.mean = dataset[features].mean()
+            self.std = dataset[features].std()
+        else:
+            self.mean = mean
+            self.std = std
+        
+        dataset[features] = (dataset[features] - self.mean) / self.std
 
         # Group data by sample_id
-        grouped = dataset.groupby('sample_id')
+        grouped = dataset.groupby('id')
 
         # Store sequences & lengths
         self.sequences, self.seq_lengths, self.task_ids = [], [], []
-
         for _, group in grouped:
             group = group.sort_values('Recording timestamp')  # Ensure time order
             seq_tensor = torch.tensor(group[features].values, dtype=torch.float32)

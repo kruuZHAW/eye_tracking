@@ -1,13 +1,17 @@
+import pandas as pd
+import wandb
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.optim.lr_scheduler import CyclicLR
-import pytorch_lightning as pl
 from torch.utils.data import DataLoader, random_split
 from torch.nn.utils.rnn import pack_padded_sequence
+from torch.optim.lr_scheduler import CyclicLR
 from torchmetrics.classification import Accuracy
-import pandas as pd
-import wandb
+
+from sklearn.model_selection import train_test_split
+
+import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
@@ -93,22 +97,46 @@ class LSTMClassifier(pl.LightningModule):
             "lr_scheduler": {"scheduler": scheduler, "monitor": "val_loss"},
             "gradient_clip_val": 1.0  # Clip gradients to prevent explosion
         }
+        
+# ------------------------- SPLIT BY PARTICIPANT -------------------------
+
+def split_by_participant(dataset, val_split=0.2, test_split=0.1, random_state=42):
+    participants = dataset["Participant name"].unique()
+    
+    # Split into train and temp (val + test)
+    train_participants, temp_participants = train_test_split(
+        participants, test_size=(val_split + test_split), random_state=random_state
+    )
+    
+    # Further split temp into val and test
+    relative_val_split = val_split / (val_split + test_split)
+    val_participants, test_participants = train_test_split(
+        temp_participants, test_size=(1 - relative_val_split), random_state=random_state
+    )
+    
+    # Filter dataset
+    train_df = dataset[dataset["Participant name"].isin(train_participants)].copy()
+    val_df = dataset[dataset["Participant name"].isin(val_participants)].copy()
+    test_df = dataset[dataset["Participant name"].isin(test_participants)].copy()
+
+    return train_df, val_df, test_df
 
 # ------------------------- TRAINING FUNCTION -------------------------
-def train_classifier(dataset, 
+def train_classifier(train_df,
+                     val_df, 
                      features, 
                      batch_size=32, 
                      hidden_dim=64, 
                      num_layers=2, 
                      learning_rate=0.001, 
                      num_epochs=20,
-                     val_split = 0.2,
                      use_wandb = True):
     """
     Trains the LSTM classifier on the gaze/mouse movement dataset.
 
     Args:
-        dataset(pd.DataFrame): Processed gaze dataset.
+        train_df (pd.DataFrame): Training set.
+        val_df (pd.DataFrame): Validation set.
         features (list): List of input feature column names.
         batch_size (int): Batch size for training.
         hidden_dim (int): Number of hidden units in LSTM.
@@ -124,19 +152,15 @@ def train_classifier(dataset,
     """
 
     # Create dataset & dataloader
-    gazeMouseDataset = GazeMouseDataset(dataset, features)
-    
-    total_size = len(gazeMouseDataset)
-    val_size = int(total_size * val_split)
-    train_size = total_size - val_size
-    train_set, val_set = random_split(gazeMouseDataset, [train_size, val_size])
+    train_set = GazeMouseDataset(train_df, features)
+    mean, std = train_set.mean, train_set.std
+    val_set = GazeMouseDataset(val_df, features, mean, std)
 
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
-    # Determine number of classes (unique task IDs)
-    num_classes = len(torch.unique(gazeMouseDataset.task_ids))
-
+    
     # Define model
+    num_classes = len(torch.unique(train_set.task_ids))
     input_dim = len(features)
     model = LSTMClassifier(input_dim, hidden_dim, num_classes, num_layers, learning_rate)
     
@@ -160,24 +184,26 @@ def train_classifier(dataset,
 
     # Train model
     trainer.fit(model, train_loader, val_loader)
+    return model, mean, std
 
-    return model
-
-def evaluate_model(model, dataset, features, batch_size=32):
+def evaluate_model(model, test_df, features, mean, std, batch_size=32):
     """
     Loads a trained model from a checkpoint and evaluates it on a test dataset.
 
     Args:
         model (LSTMClassifier): Loaded trained model.
-        dataset (pd.DataFrame): Processed gaze dataset
+        test_df (pd.DataFrame): test dataset
         features (List[str]): List of features
+        mean (float): Mean used to normalize the training set
+        std (float): std used to normalize the training set
         batch_size (int): Batch size for evaluation.
 
     Returns:
         dict: Dictionary containing evaluation metrics (accuracy, loss) and outputs
     """
     
-    test_dataset = GazeMouseDataset(dataset, features)
+    test_dataset = GazeMouseDataset(test_df, features, mean, std)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     # Create DataLoader
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
