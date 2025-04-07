@@ -1,0 +1,24 @@
+#!/bin/bash
+#SBATCH --job-name=run_lstm_training
+#SBATCH --time=24:00:00
+#SBATCH --cpus-per-task=20
+#SBATCH --nodes=1
+#SBATCH --gres=gpu:1
+#SBATCH --account=zav
+#SBATCH --partition=p_gpu_high_end
+#SBATCH --mem=200G  # Requesting more memory
+#SBATCH --output=/cluster/home/kruu/log/lstm_training_%j.out
+#SBATCH --error=/cluster/home/kruu/log/lstm_training_%j.err
+
+# virtualenv name
+env_name="aware"
+
+# load modules
+echo "Loading venv"
+module load python/3.11.9
+VENV=$env_name module load uv/0.4.30
+
+echo "Copying datasets in /scratch"
+cp -r ~/store/eye_tracking /scratch
+
+# uv run python 00_lstm_training.py

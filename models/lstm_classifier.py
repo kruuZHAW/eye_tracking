@@ -1,5 +1,8 @@
 import pandas as pd
+import numpy as np
 import wandb
+
+import onnxruntime as ort
 
 import torch
 import torch.nn as nn
@@ -26,26 +29,45 @@ class LSTMClassifier(pl.LightningModule):
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
         self.learning_rate = learning_rate
+        
+        # CNN: 1D conv to extract local patterns from feature sequences
+        self.conv1 = nn.Conv1d(in_channels=input_dim, out_channels=64, kernel_size=3, padding=1)
+        self.relu = nn.ReLU()
+        self.conv2 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=3, padding=1)
+        self.dropout_cnn = nn.Dropout(0.3)
 
         # LSTM for sequence processing
-        self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, bidirectional=False)
+        self.lstm = nn.LSTM(128, hidden_dim, num_layers, batch_first=True, dropout=0.3, bidirectional=True)
+        self.dropout = nn.Dropout(0.2)
 
         # Fully connected layer for classification
-        self.fc = nn.Linear(hidden_dim, num_classes)
+        self.fc = nn.Linear(hidden_dim*2, num_classes)
 
         # Loss function (CrossEntropy for classification)
         # Automatically appliey Softmax internally
         self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, x, seq_lengths):
-        # Pack padded sequence for LSTM efficiency
-        packed_input = pack_padded_sequence(x, seq_lengths.cpu(), batch_first=True, enforce_sorted=False)
-
-        # Forward pass through LSTM
-        _, (hidden, _) = self.lstm(packed_input)
+        
+        # x: [batch, seq_len, input_dim] → permute for CNN
+        x = x.permute(0, 2, 1)  # [batch, input_dim, seq_len]
+        x = self.relu(self.conv1(x))        # [batch, 64, seq_len]
+        x = self.relu(self.conv2(x))        # [batch, 128, seq_len]
+        x = self.dropout_cnn(x)
+        x = x.permute(0, 2, 1)  # [batch, seq_len, 128]: that way we can use pack_padded_sequence for different lengths handling
+        
+        if getattr(self, "exporting_to_onnx", False):
+            # ONNX export path — no packing
+            lstm_out, (hidden, _) = self.lstm(x)
+        else:
+            # Normal path — pack for efficiency
+            packed_input = pack_padded_sequence(x, seq_lengths.cpu(), batch_first=True, enforce_sorted=False)
+            _, (hidden, _) = self.lstm(packed_input)
 
         # Use the last hidden state
-        last_hidden = hidden[-1]
+        forward_last = hidden[-2]  # Forward hidden from last LSTM layer
+        backward_last = hidden[-1]  # Backward hidden from last LSTM layer
+        last_hidden = torch.cat([forward_last, backward_last], dim=1)
 
         # Pass through classification layer
         logits = self.fc(last_hidden)
@@ -169,6 +191,14 @@ def train_classifier(train_df,
         wandb_logger = WandbLogger(project="GazeMouse_Classification", log_model="all")
     else:
         wandb_logger = None
+        
+    #Checkpoint callback
+    checkpoint_callback = ModelCheckpoint(
+        monitor="val_loss",
+        mode="min",
+        save_top_k=1,
+        filename="best_lstm_classifier"
+    )
 
     # Define trainer
     trainer = pl.Trainer(
@@ -178,68 +208,87 @@ def train_classifier(train_df,
         logger=wandb_logger,
         callbacks=[
             # EarlyStopping(monitor="val_loss", patience=5, mode="min"),  # Stop if val_loss doesn't improve for 5 epochs
-            ModelCheckpoint(monitor="val_loss", mode="min", save_top_k=1, filename="best_lstm_classifier")
-        ]
+            checkpoint_callback
+        ],
+        gradient_clip_val=1.0,
     )
 
     # Train model
     trainer.fit(model, train_loader, val_loader)
-    return model, mean, std
+    return model, mean, std, checkpoint_callback.best_model_path
 
-def evaluate_model(model, test_df, features, mean, std, batch_size=32):
-    """
-    Loads a trained model from a checkpoint and evaluates it on a test dataset.
+# ------------------------- EVALUATION FUNCTION -------------------------
 
-    Args:
-        model (LSTMClassifier): Loaded trained model.
-        test_df (pd.DataFrame): test dataset
-        features (List[str]): List of features
-        mean (float): Mean used to normalize the training set
-        std (float): std used to normalize the training set
-        batch_size (int): Batch size for evaluation.
-
-    Returns:
-        dict: Dictionary containing evaluation metrics (accuracy, loss) and outputs
-    """
-    
-    test_dataset = GazeMouseDataset(test_df, features, mean, std)
+def evaluate_onnx_model(onnx_path, test_df, features, mean, std, batch_size=32):
+    # Prepare the dataset
+    test_dataset = GazeMouseDataset(test_df, features, mean=mean, std=std)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-    # Create DataLoader
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    # Load ONNX model
+    ort_session = ort.InferenceSession(onnx_path)
 
-    # Define accuracy metric
-    accuracy_metric = Accuracy(task="multiclass", num_classes=model.fc.out_features).to(model.device)
+    # Accuracy tracker
+    accuracy_metric = Accuracy(task="multiclass", num_classes=len(torch.unique(test_dataset.task_ids)))
 
     total_loss = 0
     num_batches = 0
     all_preds = []
     all_labels = []
 
-    with torch.no_grad():  # No gradients needed for evaluation
-        for batch in test_loader:
-            x, seq_lengths, task_ids = batch["sequence"].to(model.device), batch["seq_length"].to(model.device), batch["task_id"].to(model.device)
+    for batch in test_loader:
+        x = batch["sequence"].numpy().astype(np.float32)  # [B, T, F]
+        labels = batch["task_id"]  # [B]
 
-            # Forward pass
-            logits = model.forward(x, seq_lengths)
+        # Run ONNX inference
+        ort_inputs = {
+            "sequence": x,
+        }
+        ort_outs = ort_session.run(["logits"], ort_inputs)
+        logits = torch.tensor(ort_outs[0])  # Convert to torch for metric compatibility
 
-            # Compute loss
-            loss = model.criterion(logits, task_ids)
-            total_loss += loss.item()
-            num_batches += 1
+        preds = torch.argmax(logits, dim=1)
 
-            # Get predicted labels
-            preds = torch.argmax(logits, dim=1)
-            all_preds.extend(preds.cpu().numpy())
-            all_labels.extend(task_ids.cpu().numpy())
+        # Compute loss manually if needed (optional)
+        loss = torch.nn.functional.cross_entropy(logits, labels)
 
-            # Update accuracy metric
-            accuracy_metric.update(preds, task_ids)
+        total_loss += loss.item()
+        num_batches += 1
+        all_preds.extend(preds.cpu().numpy())
+        all_labels.extend(labels.cpu().numpy())
+        accuracy_metric.update(preds, labels)
 
-    # Compute final metrics
     avg_loss = total_loss / num_batches
     accuracy = accuracy_metric.compute().item()
 
-    print(f"✅ Evaluation Complete: Loss = {avg_loss:.4f}, Accuracy = {accuracy:.4f}")
-
+    print(f"🧠 ONNX Evaluation: Loss = {avg_loss:.4f}, Accuracy = {accuracy:.4f}")
     return {"labels": all_labels, "predictions": all_preds, "loss": avg_loss, "accuracy": accuracy}
+
+# ------------------------- EXPORT TO ONNX -------------------------
+
+def export_to_onnx(ckpt_path, export_path, input_dim, hidden_dim, num_classes, num_layers, sequence_len = 1000):
+    
+    model = LSTMClassifier(input_dim, hidden_dim, num_classes, num_layers)
+    model.load_state_dict(torch.load(ckpt_path)["state_dict"])
+    model.eval()
+    
+    # Trigger ONNX export mode
+    model.exporting_to_onnx = True
+
+    # Create dummy input: [batch_size, sequence_len, input_dim]
+    dummy_input = torch.randn(1, sequence_len, input_dim)
+    dummy_lengths = torch.tensor([sequence_len], dtype=torch.int64)
+
+    # Export the model
+    torch.onnx.export(
+        model,
+        (dummy_input, dummy_lengths),             
+        export_path,                              
+        input_names=["sequence"],
+        output_names=["logits"],
+        dynamic_axes={
+            "sequence": {0: "batch_size", 1: "sequence_len"},
+            "logits": {0: "batch_size"}
+        },
+        opset_version=16,
+    )
+    print(f"✅ Model exported to {export_path}")
