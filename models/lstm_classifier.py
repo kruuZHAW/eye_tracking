@@ -19,6 +19,8 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
+from models.tnc_block import TCN
+
 from utils.dataset import GazeMouseDataset
 
 # ------------------------- LSTM CLASSIFIER MODEL -------------------------
@@ -38,7 +40,7 @@ class FocalLoss(nn.Module):
         self.reduction = reduction
 
     def forward(self, logits, targets):
-        ce_loss = F.cross_entropy(logits, targets, reduction='none')  # [B]
+        ce_loss = F.cross_entropy(logits, targets, reduction='none', label_smoothing=0.1)  # [B] / Soft targets help reduce overconfidence:
         pt = torch.exp(-ce_loss)  # [B]
         focal_loss = self.alpha * (1 - pt) ** self.gamma * ce_loss  # [B]
         if self.reduction == 'mean':
@@ -62,10 +64,13 @@ class LSTMClassifier(pl.LightningModule):
         self.learning_rate = learning_rate
         
         # CNN: 1D conv to extract local patterns from feature sequences
-        self.conv1 = nn.Conv1d(in_channels=input_dim, out_channels=64, kernel_size=3, padding=1)
-        self.relu = nn.ReLU()
-        self.conv2 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=3, padding=1)
-        self.dropout_cnn = nn.Dropout(0.3)
+        # self.conv1 = nn.Conv1d(in_channels=input_dim, out_channels=64, kernel_size=3, padding=1)
+        # self.relu = nn.ReLU()
+        # self.conv2 = nn.Conv1d(in_channels=64, out_channels=128, kernel_size=3, padding=1)
+        # self.dropout_cnn = nn.Dropout(0.3)
+        
+        # TCN feature extractor
+        self.tcn = TCN(input_dim, [64, 128], kernel_size=3, dropout=0.3)
 
         # LSTM for sequence processing
         self.lstm = nn.LSTM(128, hidden_dim, num_layers, batch_first=True, dropout=0.3, bidirectional=True)
@@ -83,9 +88,10 @@ class LSTMClassifier(pl.LightningModule):
         
         # x: [batch, seq_len, input_dim] → permute for CNN
         x = x.permute(0, 2, 1)  # [batch, input_dim, seq_len]
-        x = self.relu(self.conv1(x))        # [batch, 64, seq_len]
-        x = self.relu(self.conv2(x))        # [batch, 128, seq_len]
-        x = self.dropout_cnn(x)
+        # x = self.relu(self.conv1(x))        # [batch, 64, seq_len]
+        # x = self.relu(self.conv2(x))        # [batch, 128, seq_len]
+        # x = self.dropout_cnn(x)
+        x = self.tcn(x)
         x = x.permute(0, 2, 1)  # [batch, seq_len, 128]: that way we can use pack_padded_sequence for different lengths handling
         
         if getattr(self, "exporting_to_onnx", False):
@@ -190,6 +196,7 @@ def train_classifier(train_df,
                      num_layers=2, 
                      learning_rate=0.001, 
                      num_epochs=20,
+                     data_augment = True,
                      use_wandb = True):
     """
     Trains the LSTM classifier on the gaze/mouse movement dataset.
@@ -212,9 +219,9 @@ def train_classifier(train_df,
     """
 
     # Create dataset & dataloader
-    train_set = GazeMouseDataset(train_df, features)
+    train_set = GazeMouseDataset(train_df, features, augment=data_augment)
     mean, std = train_set.mean, train_set.std
-    val_set = GazeMouseDataset(val_df, features, mean, std)
+    val_set = GazeMouseDataset(val_df, features, augment=False, mean = mean, std = std)
 
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
@@ -302,7 +309,7 @@ def export_to_onnx(ckpt_path, export_path, input_dim, hidden_dim, num_classes, n
 
 def evaluate_onnx_model(onnx_path, test_df, features, mean, std, batch_size=32):
     # Prepare the dataset
-    test_dataset = GazeMouseDataset(test_df, features, mean=mean, std=std)
+    test_dataset = GazeMouseDataset(test_df, features, augment=False, mean=mean, std=std)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     # Load ONNX model
@@ -370,7 +377,7 @@ def evaluate_pytorch_model(
     # Untrigger ONNX export mode
     model.exporting_to_onnx = False
 
-    dataset = GazeMouseDataset(df, features, mean=mean, std=std)
+    dataset = GazeMouseDataset(df, features, augment=False, mean=mean, std=std)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
     accuracy_metric = Accuracy(task="multiclass", num_classes=len(torch.unique(dataset.task_ids))).to(device)
