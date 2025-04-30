@@ -6,6 +6,7 @@ import onnxruntime as ort
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader, random_split
 from torch.nn.utils.rnn import pack_padded_sequence
@@ -20,12 +21,42 @@ from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
 from utils.dataset import GazeMouseDataset
 
+# ------------------------- LSTM CLASSIFIER MODEL -------------------------
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=1.0, gamma=2.0, reduction='mean'):
+        """
+        Focal Loss for classification.
+
+        Args:
+            alpha (float): Weighting factor for the class imbalance.
+            gamma (float): Focusing parameter to reduce relative loss for well-classified examples.
+            reduction (str): 'mean' or 'sum'
+        """
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+
+    def forward(self, logits, targets):
+        ce_loss = F.cross_entropy(logits, targets, reduction='none')  # [B]
+        pt = torch.exp(-ce_loss)  # [B]
+        focal_loss = self.alpha * (1 - pt) ** self.gamma * ce_loss  # [B]
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        else:
+            return focal_loss
+
 
 # ------------------------- LSTM CLASSIFIER MODEL -------------------------
 class LSTMClassifier(pl.LightningModule):
     def __init__(self, input_dim, hidden_dim, num_classes, num_layers=1, learning_rate=0.001):
         super(LSTMClassifier, self).__init__()
-
+        self.save_hyperparameters()
+        self.train_accuracy = Accuracy(task="multiclass", num_classes=num_classes)
+        self.val_accuracy = Accuracy(task="multiclass", num_classes=num_classes)
+        
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
         self.learning_rate = learning_rate
@@ -45,7 +76,8 @@ class LSTMClassifier(pl.LightningModule):
 
         # Loss function (CrossEntropy for classification)
         # Automatically appliey Softmax internally
-        self.criterion = nn.CrossEntropyLoss()
+        # self.criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+        self.criterion = FocalLoss(alpha=1.0, gamma=2.0)
 
     def forward(self, x, seq_lengths):
         
@@ -80,9 +112,12 @@ class LSTMClassifier(pl.LightningModule):
 
         # Compute loss
         loss = self.criterion(logits, task_ids)
+        preds = torch.argmax(logits, dim=1)
+        self.train_accuracy.update(preds, task_ids)
 
         # Logging
         self.log("train_loss", loss, prog_bar=True, on_epoch=True, logger=True)
+        self.log("train_acc", self.train_accuracy, prog_bar=True, on_epoch=True, logger=True)
 
         return loss
     
@@ -92,14 +127,17 @@ class LSTMClassifier(pl.LightningModule):
 
         # Compute loss
         loss = self.criterion(logits, task_ids)
+        preds = torch.argmax(logits, dim=1)
+        self.val_accuracy.update(preds, task_ids)
 
         # Log validation loss
         self.log("val_loss", loss, prog_bar=True, on_epoch=True, logger=True)
+        self.log("val_acc", self.val_accuracy, prog_bar=True, on_epoch=True, logger=True)
 
         return loss
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
+        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=1e-4)
         
         # Define Cyclical Learning Rate scheduler
         # scheduler = CyclicLR(
@@ -116,7 +154,7 @@ class LSTMClassifier(pl.LightningModule):
         return {
             "optimizer": optimizer, 
             # "lr_scheduler": {"scheduler": scheduler, "interval": "step"},  # Adjusts learning rate at each step
-            "lr_scheduler": {"scheduler": scheduler, "monitor": "val_loss"},
+            "lr_scheduler": {"scheduler": scheduler, "monitor": "val_acc"},
             "gradient_clip_val": 1.0  # Clip gradients to prevent explosion
         }
         
@@ -194,10 +232,19 @@ def train_classifier(train_df,
         
     #Checkpoint callback
     checkpoint_callback = ModelCheckpoint(
-        monitor="val_loss",
-        mode="min",
+        monitor="val_acc",
+        mode="max",
         save_top_k=1,
-        filename="best_lstm_classifier"
+        filename="epoch{epoch:02d}-val_acc{val_acc:.2f}",
+        auto_insert_metric_name=False
+    )
+    
+    checkpoint_callback_last = ModelCheckpoint(
+        save_top_k=1,
+        monitor=None,
+        filename="last-epoch{epoch:02d}",
+        every_n_epochs=1,
+        save_last=True
     )
 
     # Define trainer
@@ -208,7 +255,8 @@ def train_classifier(train_df,
         logger=wandb_logger,
         callbacks=[
             # EarlyStopping(monitor="val_loss", patience=5, mode="min"),  # Stop if val_loss doesn't improve for 5 epochs
-            checkpoint_callback
+            checkpoint_callback,
+            checkpoint_callback_last,
         ],
         gradient_clip_val=1.0,
     )
@@ -217,55 +265,12 @@ def train_classifier(train_df,
     trainer.fit(model, train_loader, val_loader)
     return model, mean, std, checkpoint_callback.best_model_path
 
-# ------------------------- EVALUATION FUNCTION -------------------------
-
-def evaluate_onnx_model(onnx_path, test_df, features, mean, std, batch_size=32):
-    # Prepare the dataset
-    test_dataset = GazeMouseDataset(test_df, features, mean=mean, std=std)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-    # Load ONNX model
-    ort_session = ort.InferenceSession(onnx_path)
-
-    # Accuracy tracker
-    accuracy_metric = Accuracy(task="multiclass", num_classes=len(torch.unique(test_dataset.task_ids)))
-
-    total_loss = 0
-    num_batches = 0
-    all_preds = []
-    all_labels = []
-
-    for batch in test_loader:
-        x = batch["sequence"].numpy().astype(np.float32)  # [B, T, F]
-        labels = batch["task_id"]  # [B]
-
-        # Run ONNX inference
-        ort_inputs = {
-            "sequence": x,
-        }
-        ort_outs = ort_session.run(["logits"], ort_inputs)
-        logits = torch.tensor(ort_outs[0])  # Convert to torch for metric compatibility
-
-        preds = torch.argmax(logits, dim=1)
-
-        # Compute loss manually if needed (optional)
-        loss = torch.nn.functional.cross_entropy(logits, labels)
-
-        total_loss += loss.item()
-        num_batches += 1
-        all_preds.extend(preds.cpu().numpy())
-        all_labels.extend(labels.cpu().numpy())
-        accuracy_metric.update(preds, labels)
-
-    avg_loss = total_loss / num_batches
-    accuracy = accuracy_metric.compute().item()
-
-    print(f"🧠 ONNX Evaluation: Loss = {avg_loss:.4f}, Accuracy = {accuracy:.4f}")
-    return {"labels": all_labels, "predictions": all_preds, "loss": avg_loss, "accuracy": accuracy}
-
 # ------------------------- EXPORT TO ONNX -------------------------
 
 def export_to_onnx(ckpt_path, export_path, input_dim, hidden_dim, num_classes, num_layers, sequence_len = 1000):
+    """
+    WARNING: CANNOT EXPORT PACK_PADDED_SEQUENCES IN ONNIX 
+    """
     
     model = LSTMClassifier(input_dim, hidden_dim, num_classes, num_layers)
     model.load_state_dict(torch.load(ckpt_path)["state_dict"])
@@ -292,3 +297,121 @@ def export_to_onnx(ckpt_path, export_path, input_dim, hidden_dim, num_classes, n
         opset_version=16,
     )
     print(f"✅ Model exported to {export_path}")
+
+# ------------------------- EVALUATION FUNCTION -------------------------
+
+def evaluate_onnx_model(onnx_path, test_df, features, mean, std, batch_size=32):
+    # Prepare the dataset
+    test_dataset = GazeMouseDataset(test_df, features, mean=mean, std=std)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    # Load ONNX model
+    ort_session = ort.InferenceSession(onnx_path)
+
+    # Accuracy tracker
+    accuracy_metric = Accuracy(task="multiclass", num_classes=len(torch.unique(test_dataset.task_ids)))
+
+    total_loss = 0
+    num_batches = 0
+    all_preds = []
+    all_labels = []
+    all_confidences = []
+    all_correct_flags = []
+
+    for batch in test_loader:
+        x = batch["sequence"].numpy().astype(np.float32)  # [B, T, F]
+        labels = batch["task_id"]  # [B]
+
+        # Run ONNX inference
+        ort_inputs = {
+            "sequence": x,
+        }
+        ort_outs = ort_session.run(["logits"], ort_inputs)
+        logits = torch.tensor(ort_outs[0])  # Convert to torch for metric compatibility
+        probs = torch.softmax(logits, dim=1)
+        top_probs, preds = torch.max(probs, dim=1)
+
+        # Compute loss manually if needed (optional)
+        loss = torch.nn.functional.cross_entropy(logits, labels)
+
+        total_loss += loss.item()
+        num_batches += 1
+        all_preds.extend(preds.cpu().numpy())
+        all_labels.extend(labels.cpu().numpy())
+        all_confidences.extend(top_probs.cpu().numpy())
+        all_correct_flags.extend((preds == labels).cpu().numpy())
+        accuracy_metric.update(preds, labels)
+
+    avg_loss = total_loss / num_batches
+    accuracy = accuracy_metric.compute().item()
+
+    print(f"🧠 ONNX Evaluation: Loss = {avg_loss:.4f}, Accuracy = {accuracy:.4f}")
+    return {
+        "labels": all_labels, 
+        "predictions": all_preds, 
+        "probs" : all_confidences, 
+        "correct_flags": all_correct_flags,
+        "loss": avg_loss, 
+        "accuracy": accuracy
+    }
+    
+def evaluate_pytorch_model(
+    model,
+    df,
+    features,
+    mean,
+    std,
+    batch_size=32,
+):
+    model.eval()
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = model.to(device)
+    
+    # Untrigger ONNX export mode
+    model.exporting_to_onnx = False
+
+    dataset = GazeMouseDataset(df, features, mean=mean, std=std)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+
+    accuracy_metric = Accuracy(task="multiclass", num_classes=len(torch.unique(dataset.task_ids))).to(device)
+
+    all_preds, all_labels, all_confidences, all_correct_flags = [], [], [], []
+    total_loss = 0
+    num_batches = 0
+
+    with torch.no_grad():
+        for batch in loader:
+            x = batch["sequence"].to(model.device)
+            lengths = batch["seq_length"].to(model.device)
+            labels = batch["task_id"].to(model.device)
+
+            logits = model(x, lengths)
+            probs = torch.softmax(logits, dim=1)
+            top_probs, preds = torch.max(probs, dim=1)
+
+            loss = torch.nn.functional.cross_entropy(logits, labels)
+
+            total_loss += loss.item()
+            num_batches += 1
+            accuracy_metric.update(preds, labels)
+
+            all_preds.extend(preds.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+            all_confidences.extend(top_probs.cpu().numpy())
+            all_correct_flags.extend((preds == labels).cpu().numpy())
+
+    avg_loss = total_loss / num_batches
+    accuracy = accuracy_metric.compute().item()
+
+    print(f"🧠 PyTorch Evaluation: Loss = {avg_loss:.4f}, Accuracy = {accuracy:.4f}")
+
+    return {
+        "labels": all_labels, 
+        "predictions": all_preds, 
+        "probs" : all_confidences, 
+        "correct_flags": all_correct_flags,
+        "loss": avg_loss, 
+        "accuracy": accuracy
+    }
+
+
