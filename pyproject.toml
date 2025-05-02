@@ -15,6 +15,7 @@ dependencies = [
     "scipy>=1.15.2",
     "torch>=2.6.0",
     "torchmetrics>=1.7.0",
+    "torchvision>=0.21.0",
     "wandb>=0.19.9",
     "xgboost>=3.0.0",
 ]

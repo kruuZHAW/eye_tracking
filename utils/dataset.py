@@ -1,3 +1,5 @@
+# TODO: Modify to accomodate JCAFNet inputs
+
 import numpy as np
 import random
 
@@ -7,8 +9,11 @@ from torch.nn.utils.rnn import pad_sequence
 
 
 class GazeMouseDataset(Dataset):
-    def __init__(self, dataset, features, augment = False, mean=None, std=None):
+    def __init__(self, dataset, features, mode = "lstm", augment = False, mean=None, std=None):
         
+        # Batch of different shape depending on the network
+        assert mode in ("lstm", "jcafnet")
+        self.mode = mode
         self.augment = augment
         self.features = features
         
@@ -57,16 +62,32 @@ class GazeMouseDataset(Dataset):
         return len(self.sequences)
 
     def __getitem__(self, idx):
-        seq = self.padded_sequences[idx]
+        seq, task_id = self.samples[idx]
+        seq_len = len(seq)
 
         if self.augment:
             seq = self._augment_sequence(seq, self.seq_lengths[idx])
+        
+        if self.mode == "lstm":
+            return {
+                "sequence": pad_sequence([seq], batch_first=True)[0],
+                "seq_length": torch.tensor(seq_len, dtype=torch.int64),
+                "task_id": torch.tensor(task_id, dtype=torch.int64),
+            }
 
-        return {
-            "sequence": seq,
-            "seq_length": self.seq_lengths[idx],
-            "task_id": self.task_ids[idx]
-        }
+        # elif self.mode == "jcafnet":
+
+        #     # Resize to [C, H, W] expected by CNNs
+        #     def to_cnn_input(x):
+        #         return x.T.unsqueeze(0)  # [1, F, T] (1 channel, height=features, width=timesteps)
+
+        #     return {
+        #         "gaze": to_cnn_input(gaze),
+        #         "mouse": to_cnn_input(mouse),
+        #         "joint": to_cnn_input(joint),
+        #         "label": torch.tensor(task_id, dtype=torch.int64)
+        #     }
+
         
     def get_task_id(self, idx):
         """Returns the task_id corresponding to a given sequence index."""
