@@ -12,7 +12,7 @@ from models.jcafnet import JCAFNet
 
 from sklearn.model_selection import train_test_split
 
-from utils.dataset import GazeMouseDataset
+from utils.dataset import GazeMouseDatasetLSTM, GazeMouseDatasetJCAFNet
 from torch.utils.data import DataLoader, random_split
 
 import onnxruntime as ort
@@ -50,13 +50,13 @@ def train_classifier(model,
                      data_augment = True,
                      use_wandb = True):
     """
-    Trains the deep learning classifier on the gaze/mouse movement dataset.
+    Trains the deep learning classifier (LSTMClassifier or JCAFNet).
 
     Args:
         model: Model to train
         train_df (pd.DataFrame): Training set.
         val_df (pd.DataFrame): Validation set.
-        features (list): List of input feature column names.
+        features (list): List of input feature column names (for LSTM) or Dict of input features (for JCAFNet)
         batch_size (int): Batch size for training.
         hidden_dim (int): Number of hidden units in LSTM.
         num_layers (int): Number of LSTM layers.
@@ -67,29 +67,49 @@ def train_classifier(model,
         use_wandb (bool): Whether to log training in Weights & Biases.
 
     Returns:
-        model (LSTMClassifier): Trained PyTorch Lightning model.
+        model (LSTMClassifier or JCAFNet): Trained PyTorch Lightning model.
     """
     
-        # Determine dataset mode from model class
+    # Determine dataset mode from model class
     if isinstance(model, LSTMClassifier):
-        dataset_mode = "lstm"
+        if not isinstance(features, list):
+            raise ValueError("For LSTMClassifier, 'features' must be a flat list.")
+        feature_list = features
+        train_set = GazeMouseDatasetLSTM(train_df, feature_list, augment=data_augment)
+        mean, std = train_set.mean, train_set.std
+        val_set = GazeMouseDatasetLSTM(val_df, features, augment=False, mean = mean, std = std)
+        
     elif isinstance(model, JCAFNet):
-        dataset_mode = "jcafnet"
+        if not isinstance(features, dict) or not all(k in features for k in ["gaze", "mouse", "joint"]):
+            raise ValueError("For JCAFNet, 'features' must be a dict with keys: 'gaze', 'mouse', 'joint'")
+        feature_list = features["gaze"] + features["mouse"] + features["joint"]
+        train_set = GazeMouseDatasetJCAFNet(
+            dataset=train_df,
+            gaze_features=features["gaze"],
+            mouse_features=features["mouse"],
+            joint_features=features["joint"],
+            augment=False, 
+            mean = None, 
+            std = None,
+        )
+        mean, std = train_set.mean, train_set.std
+        val_set = GazeMouseDatasetJCAFNet(
+            dataset=val_df,
+            gaze_features=features["gaze"],
+            mouse_features=features["mouse"],
+            joint_features=features["joint"],
+            augment=False, 
+            mean = mean, 
+            std = std,
+        )
+        
     else:
         raise ValueError(f"Unsupported model type: {type(model)}")
 
-    # Create dataset & dataloader
-    train_set = GazeMouseDataset(train_df, features, mode=dataset_mode, augment=data_augment)
-    mean, std = train_set.mean, train_set.std
-    val_set = GazeMouseDataset(val_df, features, mode=dataset_mode, augment=False, mean = mean, std = std)
+    # Create dataloader
 
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
-    
-    # Define model
-    # num_classes = len(torch.unique(train_set.task_ids))
-    # input_dim = len(features)
-    # model = LSTMClassifier(input_dim, hidden_dim, num_classes, num_layers, learning_rate)
     
     # Initialize WandB logger
     if use_wandb:

@@ -7,13 +7,11 @@ import torch
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
 
-
-class GazeMouseDataset(Dataset):
-    def __init__(self, dataset, features, mode = "lstm", augment = False, mean=None, std=None):
+# -------------------- LSTM DATASET --------------------
+class GazeMouseDatasetLSTM(Dataset):
+    def __init__(self, dataset, features, augment = False, mean=None, std=None):
         
         # Batch of different shape depending on the network
-        assert mode in ("lstm", "jcafnet")
-        self.mode = mode
         self.augment = augment
         self.features = features
         
@@ -54,9 +52,9 @@ class GazeMouseDataset(Dataset):
             self.ids.append(sample_id)
 
         # Pad sequences for batching
-        self.padded_sequences = pad_sequence(self.sequences, batch_first=True, padding_value=0)
-        self.seq_lengths = torch.tensor(self.seq_lengths, dtype=torch.int64)
-        self.task_ids = torch.tensor(self.task_ids, dtype = torch.int64)
+        # self.padded_sequences = pad_sequence(self.sequences, batch_first=True, padding_value=0)
+        # self.seq_lengths = torch.tensor(self.seq_lengths, dtype=torch.int64)
+        # self.task_ids = torch.tensor(self.task_ids, dtype = torch.int64)
 
     def __len__(self):
         return len(self.sequences)
@@ -68,26 +66,11 @@ class GazeMouseDataset(Dataset):
         if self.augment:
             seq = self._augment_sequence(seq, self.seq_lengths[idx])
         
-        if self.mode == "lstm":
-            return {
-                "sequence": pad_sequence([seq], batch_first=True)[0],
-                "seq_length": torch.tensor(seq_len, dtype=torch.int64),
-                "task_id": torch.tensor(task_id, dtype=torch.int64),
-            }
-
-        # elif self.mode == "jcafnet":
-
-        #     # Resize to [C, H, W] expected by CNNs
-        #     def to_cnn_input(x):
-        #         return x.T.unsqueeze(0)  # [1, F, T] (1 channel, height=features, width=timesteps)
-
-        #     return {
-        #         "gaze": to_cnn_input(gaze),
-        #         "mouse": to_cnn_input(mouse),
-        #         "joint": to_cnn_input(joint),
-        #         "label": torch.tensor(task_id, dtype=torch.int64)
-        #     }
-
+        return {
+            "sequence": pad_sequence([seq], batch_first=True)[0],
+            "seq_length": torch.tensor(seq_len, dtype=torch.int64),
+            "task_id": torch.tensor(task_id, dtype=torch.int64),
+        }
         
     def get_task_id(self, idx):
         """Returns the task_id corresponding to a given sequence index."""
@@ -114,3 +97,76 @@ class GazeMouseDataset(Dataset):
         # Replace unpadded part with augmented version
         x[:true_len] = jittered + noise
         return x
+
+# -------------------- JCAFNET DATASET --------------------
+class GazeMouseDatasetJCAFNet(Dataset):
+    def __init__(self, dataset, gaze_features, mouse_features, joint_features, augment=False, mean=None, std=None):
+        self.augment = augment
+        self.gaze_features = gaze_features
+        self.mouse_features = mouse_features
+        self.joint_features = joint_features
+        self.features = gaze_features + mouse_features + joint_features 
+
+        # Build sample ID
+        if "id" not in dataset.columns:
+            dataset["id"] = (
+                dataset["Participant name"].astype(str) 
+                + "_" 
+                + dataset["Task_id"].astype(str) 
+                + "_" 
+                + dataset["Task_execution"].astype(str)
+            )
+
+        # Normalize
+        if mean is None or std is None:
+            self.mean = dataset[self.features].mean()
+            self.std = dataset[self.features].std()
+        else:
+            self.mean = mean
+            self.std = std
+
+        dataset[self.features] = (dataset[self.features] - self.mean) / self.std
+
+        # Group data by sample_id
+        grouped = dataset.groupby("id")
+        
+        self.samples = [] # Tuple grouping id, gaze features, mouse features and joint features
+        for sample_id, group in grouped:
+            group = group.sort_values("Recording timestamp")
+            gaze_sequence = torch.tensor(group[self.gaze_features].values, dtype=torch.float32)
+            mouse_sequence = torch.tensor(group[self.mouse_features].values, dtype=torch.float32)
+            joint_sequence = torch.tensor(group[self.joint_features].values, dtype=torch.float32)
+            task_id = group["Task_id"].iloc[0].item() - 1
+            self.samples.append((gaze_sequence, mouse_sequence, joint_sequence, task_id))
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        gaze_sequence, mouse_sequence, joint_sequence, task_id = self.samples[idx]
+
+        if self.augment:
+            gaze_sequence = self._augment_sequence(gaze_sequence)
+            mouse_sequence = self._augment_sequence(mouse_sequence)
+            joint_sequence = self._augment_sequence(joint_sequence)
+
+        return {
+            "gaze": gaze_sequence.T, # [channels, time]
+            "mouse": mouse_sequence.T,
+            "joint": joint_sequence.T,
+            "label": torch.tensor(task_id, dtype=torch.int64),
+        }
+
+    def _augment_sequence(self, x):
+        """Apply augmentations only to the full sequence (no masking here)."""
+        x = x.clone()
+        noise = torch.randn_like(x) * 0.01
+        shift = random.randint(-5, 5)
+        jittered = torch.roll(x, shifts=shift, dims=0)
+
+        if random.random() < 0.1:
+            mask_len = random.randint(5, min(20, len(jittered)))
+            start = random.randint(0, max(0, len(jittered) - mask_len))
+            jittered[start:start + mask_len] = 0
+
+        return jittered + noise

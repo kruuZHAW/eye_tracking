@@ -1,8 +1,6 @@
 import pandas as pd
 import numpy as np
 
-# TODO: add the blink detector to the EyeTrackingProcessor class 
-
 class EyeTrackingProcessor:
     """
     A class for processing eye-tracking and mouse movement data from TSV files.
@@ -260,10 +258,10 @@ class GazeMetricsProcessor:
         velocity = displacement / time_diff.replace(0, np.nan)
         acceleration = velocity.diff().fillna(0) / time_diff.replace(0, np.nan)
 
-        avg_velocity = velocity.mean()
-        avg_acceleration = acceleration.mean()
+        # avg_velocity = velocity.mean()
+        # avg_acceleration = acceleration.mean()
 
-        return avg_velocity, avg_acceleration
+        return velocity, acceleration
 
     # ------------------------- BLINK RATE COMPUTATION -------------------------
 
@@ -291,7 +289,7 @@ class GazeMetricsProcessor:
         """Compute all gaze/mouse-related metrics per task execution."""
         fixation_count, total_fix_duration, avg_fix_duration = self.compute_fixation_statistics()
         saccade_count, avg_saccade_amp, avg_saccade_vel = self.compute_saccade_statistics()
-        avg_velocity, avg_acceleration = self.compute_velocity_acceleration()
+        velocity, acceleration = self.compute_velocity_acceleration()
         blink_rate = self.compute_blink_rate()
         gaze_dispersion = self.compute_gaze_dispersion()
 
@@ -302,8 +300,8 @@ class GazeMetricsProcessor:
             "Saccade Count": saccade_count,
             "Avg Saccade Amplitude (px)": avg_saccade_amp,
             "Avg Saccade Velocity (px/s)": avg_saccade_vel,
-            "Avg Gaze Velocity (px/s)": avg_velocity,
-            "Avg Gaze Acceleration (px/s²)": avg_acceleration,
+            "Avg Gaze Velocity (px/s)": velocity.mean(),
+            "Avg Gaze Acceleration (px/s²)": acceleration.mean(),
             "Blink Rate (blinks/s)": blink_rate,
             "Gaze Dispersion (area)": gaze_dispersion
         }
@@ -331,10 +329,10 @@ class MouseMetricsProcessor:
         velocity = displacement / time_diff.replace(0, np.nan)
         acceleration = velocity.diff().fillna(0) / time_diff.replace(0, np.nan)
 
-        avg_velocity = velocity.mean()
-        avg_acceleration = acceleration.mean()
+        # avg_velocity = velocity.mean()
+        # avg_acceleration = acceleration.mean()
 
-        return avg_velocity, avg_acceleration
+        return velocity, acceleration
 
     # ------------------------- FREQUENCY OF MOVEMENTS & IDLE TIMES -------------------------
 
@@ -447,7 +445,7 @@ class MouseMetricsProcessor:
 
     def compute_all_metrics(self):
         """Compute all mouse-related metrics per task execution."""
-        avg_velocity, avg_acceleration = self.compute_velocity_acceleration()
+        velocity, acceleration = self.compute_velocity_acceleration()
         movement_freq, idle_time = self.compute_movement_frequency_idle_time()
         click_count = self.compute_click_count()
         keyboard_count = self.compute_keyboard_count()
@@ -456,8 +454,8 @@ class MouseMetricsProcessor:
         movement_bursts, stillness_periods = self.compute_movement_bursts()
 
         return {
-            "Avg Mouse Velocity (px/s)": avg_velocity,
-            "Avg Mouse Acceleration (px/s²)": avg_acceleration,
+            "Avg Mouse Velocity (px/s)": velocity.mean(),
+            "Avg Mouse Acceleration (px/s²)": acceleration.mean(),
             "Movement Frequency (movements/s)": movement_freq,
             "Total Idle Time (s)": idle_time,
             "Click Count": click_count,
