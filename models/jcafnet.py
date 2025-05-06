@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from torchvision.models import resnet34
 import pytorch_lightning as pl
 from torchmetrics.classification import Accuracy
-
+from utils.losses import FocalLoss
 
 # -------------------- CROSS ATTENTION BLOCK --------------------
 class CrossAttentionBlock(nn.Module):
@@ -45,20 +45,19 @@ class JointFeatureCNN(nn.Module):
     def __init__(self, in_channels):
         super().__init__()
         self.encoder = nn.Sequential(
-            nn.Conv2d(in_channels, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
+            nn.Conv1d(in_channels, 64, kernel_size=5, padding=2),
+            nn.BatchNorm1d(64),
             nn.ReLU(),
-            nn.MaxPool2d(2),
-            nn.Conv2d(64, 128, kernel_size=3, padding=1),
-            nn.BatchNorm2d(128),
+            nn.MaxPool1d(kernel_size=2),
+            nn.Conv1d(64, 128, kernel_size=3, padding=1),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
-            nn.AdaptiveAvgPool2d((1, 1))
+            nn.AdaptiveAvgPool1d(1),  # [B, 128, 1]
         )
 
-    def forward(self, x):
-        x = self.encoder(x)  # [B, 128, 1, 1]
-        return x.view(x.size(0), -1)  # [B, 128]
-
+    def forward(self, x):  # x: [B, C, T]
+        x = self.encoder(x)
+        return x.squeeze(-1)  # [B, 128]
 
 # -------------------- JOINT CROSS ATTENTION FUSION NET --------------------
 class JCAFNet(pl.LightningModule):
@@ -75,12 +74,14 @@ class JCAFNet(pl.LightningModule):
         self.fc_fusion = nn.Sequential(
             nn.Linear(512 * 2 + 128, 512),
             nn.ReLU(),
-            nn.Dropout(0.3),
+            nn.Dropout(0.5),
             nn.Linear(512, num_classes)
         )
 
-        self.criterion = nn.CrossEntropyLoss()
-        self.accuracy = Accuracy(task="multiclass", num_classes=num_classes)
+        self.criterion = FocalLoss(alpha=1.0, gamma=2.0)
+        # self.criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+        self.train_accuracy = Accuracy(task="multiclass", num_classes=num_classes)
+        self.val_accuracy = Accuracy(task="multiclass", num_classes=num_classes)
         self.learning_rate = learning_rate
 
     def forward(self, gaze_input, mouse_input, joint_input):
@@ -101,22 +102,35 @@ class JCAFNet(pl.LightningModule):
         return logits
 
     def training_step(self, batch, batch_idx):
-        logits = self.forward(batch['gaze'], batch['mouse'], batch['joint'])
-        loss = self.criterion(logits, batch['label'])
-        acc = self.accuracy(logits.argmax(dim=1), batch['label'])
-        self.log("train_loss", loss, prog_bar=True)
-        self.log("train_acc", acc, prog_bar=True)
+        gaze, mouse, joint, task_ids = batch['gaze'], batch['mouse'], batch['joint'], batch["task_id"]
+        logits = self.forward(gaze, mouse, joint)
+        
+        loss = self.criterion(logits, task_ids)
+        preds = torch.argmax(logits, dim=1)
+        self.train_accuracy.update(preds, task_ids)
+        
+        self.log("train_loss", loss, prog_bar=True, on_epoch=True, logger=True)
+        self.log("train_acc", self.train_accuracy, prog_bar=True, on_epoch=True, logger=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        logits = self.forward(batch['gaze'], batch['mouse'], batch['joint'])
-        loss = self.criterion(logits, batch['label'])
-        acc = self.accuracy(logits.argmax(dim=1), batch['label'])
-        self.log("val_loss", loss, prog_bar=True)
-        self.log("val_acc", acc, prog_bar=True)
+        gaze, mouse, joint, task_ids = batch['gaze'], batch['mouse'], batch['joint'], batch["task_id"]
+        logits = self.forward(gaze, mouse, joint)
+        
+        loss = self.criterion(logits, task_ids)
+        preds = torch.argmax(logits, dim=1)
+        self.val_accuracy.update(preds, task_ids)
+        
+        self.log("val_loss", loss, prog_bar=True, on_epoch=True, logger=True)
+        self.log("val_acc", self.val_accuracy, prog_bar=True, on_epoch=True, logger=True)
         return loss
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", factor=0.5, patience=5)
-        return {"optimizer": optimizer, "lr_scheduler": {"scheduler": scheduler, "monitor": "val_acc"}}
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate, weight_decay=1e-4)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=5)
+        return {
+            "optimizer": optimizer, 
+            # "lr_scheduler": {"scheduler": scheduler, "interval": "step"},  # Adjusts learning rate at each step
+            "lr_scheduler": {"scheduler": scheduler, "monitor": "val_acc"},
+            "gradient_clip_val": 1.0  # Clip gradients to prevent explosion
+        }

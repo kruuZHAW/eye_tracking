@@ -37,19 +37,18 @@ class GazeMouseDatasetLSTM(Dataset):
             self.std = std
         
         dataset[features] = (dataset[features] - self.mean) / self.std
+        dataset[self.features] = dataset[self.features].fillna(0.0)
 
         # Group data by sample_id
         grouped = dataset.groupby('id')
 
         # Store sequences & lengths
-        self.sequences, self.seq_lengths, self.task_ids, self.ids = [], [], [], []
+        self.samples = []
         for sample_id, group in grouped:
             group = group.sort_values('Recording timestamp')  # Ensure time order
             seq_tensor = torch.tensor(group[features].values, dtype=torch.float32)
-            self.sequences.append(seq_tensor)
-            self.seq_lengths.append(len(seq_tensor))
-            self.task_ids.append(group["Task_id"].iloc[0].item() - 1)  # Store associated task_id / make task_id begins at 0
-            self.ids.append(sample_id)
+            task_id = group["Task_id"].iloc[0].item() - 1  # Store associated task_id / make task_id begins at 0
+            self.samples.append((seq_tensor, task_id))
 
         # Pad sequences for batching
         # self.padded_sequences = pad_sequence(self.sequences, batch_first=True, padding_value=0)
@@ -57,17 +56,17 @@ class GazeMouseDatasetLSTM(Dataset):
         # self.task_ids = torch.tensor(self.task_ids, dtype = torch.int64)
 
     def __len__(self):
-        return len(self.sequences)
+        return len(self.samples)
 
     def __getitem__(self, idx):
         seq, task_id = self.samples[idx]
         seq_len = len(seq)
 
         if self.augment:
-            seq = self._augment_sequence(seq, self.seq_lengths[idx])
+            seq = self._augment_sequence(seq, seq_len)
         
         return {
-            "sequence": pad_sequence([seq], batch_first=True)[0],
+            "sequence": pad_sequence([seq], batch_first=True)[0], # [seq_len, input_dim]
             "seq_length": torch.tensor(seq_len, dtype=torch.int64),
             "task_id": torch.tensor(task_id, dtype=torch.int64),
         }
@@ -124,8 +123,10 @@ class GazeMouseDatasetJCAFNet(Dataset):
         else:
             self.mean = mean
             self.std = std
-
-        dataset[self.features] = (dataset[self.features] - self.mean) / self.std
+            
+        #standardization
+        dataset[self.features] = (dataset[self.features] - self.mean) / self.std        
+        dataset[self.features] = dataset[self.features].fillna(0.0)
 
         # Group data by sample_id
         grouped = dataset.groupby("id")
@@ -144,6 +145,8 @@ class GazeMouseDatasetJCAFNet(Dataset):
 
     def __getitem__(self, idx):
         gaze_sequence, mouse_sequence, joint_sequence, task_id = self.samples[idx]
+        seq_len = len(gaze_sequence)
+            
 
         if self.augment:
             gaze_sequence = self._augment_sequence(gaze_sequence)
@@ -151,22 +154,23 @@ class GazeMouseDatasetJCAFNet(Dataset):
             joint_sequence = self._augment_sequence(joint_sequence)
 
         return {
-            "gaze": gaze_sequence.T, # [channels, time]
-            "mouse": mouse_sequence.T,
-            "joint": joint_sequence.T,
-            "label": torch.tensor(task_id, dtype=torch.int64),
+            "gaze": gaze_sequence.permute(1,0), # [channels, time]
+            "mouse": mouse_sequence.permute(1,0),
+            "joint": joint_sequence.permute(1,0),
+            "seq_length": torch.tensor(seq_len, dtype=torch.int64),
+            "task_id": torch.tensor(task_id, dtype=torch.int64),
         }
 
     def _augment_sequence(self, x):
-        """Apply augmentations only to the full sequence (no masking here)."""
         x = x.clone()
-        noise = torch.randn_like(x) * 0.01
-        shift = random.randint(-5, 5)
+        noise = torch.randn_like(x) * self.noise_std
+        shift = random.randint(-self.max_shift, self.max_shift)
         jittered = torch.roll(x, shifts=shift, dims=0)
 
-        if random.random() < 0.1:
-            mask_len = random.randint(5, min(20, len(jittered)))
-            start = random.randint(0, max(0, len(jittered) - mask_len))
+        valid_len = len(jittered)
+        if valid_len > 5 and random.random() < 0.1:
+            mask_len = random.randint(5, min(20, valid_len))
+            start = random.randint(0, valid_len - mask_len)
             jittered[start:start + mask_len] = 0
 
         return jittered + noise

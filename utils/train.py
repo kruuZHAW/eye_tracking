@@ -1,6 +1,8 @@
 import numpy as np
 
 import torch
+import torch.nn.functional as F
+from torch.nn.utils.rnn import pad_sequence
 from torchmetrics.classification import Accuracy
 
 import pytorch_lightning as pl
@@ -40,6 +42,29 @@ def split_by_participant(dataset, val_split=0.2, test_split=0.1, random_state=42
 
     return train_df, val_df, test_df
 
+# ------------------------- PADDING FOR JCAFNET -------------------------
+
+def collate_jcafnet(batch):
+    
+    def pad_and_stack(seqs):
+        # seqs: list of [C, T] tensors
+        # Goal: pad each along time dim to max T, then stack
+        max_len = max(seq.shape[1] for seq in seqs)
+        padded = [F.pad(seq, (0, max_len - seq.shape[1])) for seq in seqs]  # pad last dim
+        return torch.stack(padded)
+
+    gaze = pad_and_stack([b['gaze'] for b in batch]).unsqueeze(2) # [B, C, 1, T] (2D input for ResNet)
+    mouse = pad_and_stack([b['mouse'] for b in batch]).unsqueeze(2) 
+    joint = pad_and_stack([b['joint'] for b in batch]) # [B, C, T] (Conv1D for joint input)
+    task_id = torch.stack([b['task_id'] for b in batch])
+
+    return {
+        "gaze": gaze,     # [B, C, 1, T_max]
+        "mouse": mouse,
+        "joint": joint,
+        "task_id": task_id,
+    }
+
 # ------------------------- TRAINING FUNCTION -------------------------
 def train_classifier(model,
                      train_df,
@@ -78,6 +103,8 @@ def train_classifier(model,
         train_set = GazeMouseDatasetLSTM(train_df, feature_list, augment=data_augment)
         mean, std = train_set.mean, train_set.std
         val_set = GazeMouseDatasetLSTM(val_df, features, augment=False, mean = mean, std = std)
+        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
         
     elif isinstance(model, JCAFNet):
         if not isinstance(features, dict) or not all(k in features for k in ["gaze", "mouse", "joint"]):
@@ -102,14 +129,22 @@ def train_classifier(model,
             mean = mean, 
             std = std,
         )
+        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, collate_fn=collate_jcafnet)
+        val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False, collate_fn=collate_jcafnet)
         
     else:
         raise ValueError(f"Unsupported model type: {type(model)}")
 
-    # Create dataloader
-
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
+    # Debug DataLoader
+    # batch = next(iter(train_loader))
+    # print("gaze:", batch["gaze"].shape, batch["gaze"].min(), batch["gaze"].max())
+    # print("mouse:", batch["mouse"].shape)
+    # print("joint:", batch["joint"].shape)
+    # print("task_id:", batch["task_id"])
+    # print(f"Gaze nan and inf: {torch.isnan(batch["gaze"]).any()}, {torch.isinf(batch["gaze"]).any()}")
+    # print(f"Mouse nan and inf: {torch.isnan(batch["mouse"]).any()}, {torch.isinf(batch["mouse"]).any()}")
+    # print(f"Joint nan and inf: {torch.isnan(batch["joint"]).any()}, {torch.isinf(batch["joint"]).any()}")
+    # return
     
     # Initialize WandB logger
     if use_wandb:
@@ -169,7 +204,7 @@ def evaluate_pytorch_model(
     # Untrigger ONNX export mode
     model.exporting_to_onnx = False
 
-    dataset = GazeMouseDataset(df, features, augment=False, mean=mean, std=std)
+    dataset = GazeMouseDatasetLSTM(df, features, augment=False, mean=mean, std=std)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
     accuracy_metric = Accuracy(task="multiclass", num_classes=len(torch.unique(dataset.task_ids))).to(device)
