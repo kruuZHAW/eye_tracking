@@ -1,3 +1,8 @@
+import os
+from pathlib import Path
+from typing import Union
+from datetime import datetime
+
 import numpy as np
 
 import torch
@@ -70,6 +75,7 @@ def train_classifier(model,
                      train_df,
                      val_df, 
                      features, 
+                     checkpoint_base_dir: Union[str, Path],
                      batch_size=32, 
                      num_epochs=20,
                      data_augment = True,
@@ -146,22 +152,33 @@ def train_classifier(model,
     # print(f"Joint nan and inf: {torch.isnan(batch["joint"]).any()}, {torch.isinf(batch["joint"]).any()}")
     # return
     
+    checkpoint_dir = Path(checkpoint_base_dir)
+    
     # Initialize WandB logger
     if use_wandb:
-        wandb_logger = WandbLogger(project="GazeMouse_Classification", log_model="all")
+        wandb_logger = WandbLogger(project="GazeMouse_Classification", log_model="checkpoint")
+        wandb_run = wandb_logger.experiment  # this is the actual wandb.Run object
+        run_name = wandb_run.name or wandb_run.id  # fallback to ID if name not set
+        checkpoint_dir = checkpoint_dir / run_name
     else:
         wandb_logger = None
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        checkpoint_dir = checkpoint_dir / f"run_{timestamp}"
+        
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
         
     #Checkpoint callback
     checkpoint_callback = ModelCheckpoint(
         monitor="val_acc",
         mode="max",
         save_top_k=1,
+        dirpath=checkpoint_dir,
         filename="epoch{epoch:02d}-val_acc{val_acc:.2f}",
         auto_insert_metric_name=False
     )
     
     checkpoint_callback_last = ModelCheckpoint(
+        dirpath=checkpoint_dir,
         save_top_k=1,
         monitor=None,
         filename="last-epoch{epoch:02d}",
@@ -192,7 +209,8 @@ def train_classifier(model,
 def evaluate_pytorch_model(
     model,
     df,
-    features,
+    features, # For LSTM: list; For JCAFNet: dict with keys ["gaze", "mouse", "joint"]
+    num_classes,
     mean,
     std,
     batch_size=32,
@@ -201,13 +219,27 @@ def evaluate_pytorch_model(
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = model.to(device)
     
-    # Untrigger ONNX export mode
-    model.exporting_to_onnx = False
-
-    dataset = GazeMouseDatasetLSTM(df, features, augment=False, mean=mean, std=std)
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
-
-    accuracy_metric = Accuracy(task="multiclass", num_classes=len(torch.unique(dataset.task_ids))).to(device)
+    # --- Select dataset & input unpacking ---
+    if isinstance(model, LSTMClassifier):
+        dataset = GazeMouseDatasetLSTM(df, features, augment=False, mean=mean, std=std)
+        loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+        
+    elif isinstance(model, JCAFNet):
+        dataset = GazeMouseDatasetJCAFNet(
+            df,
+            gaze_features=features["gaze"],
+            mouse_features=features["mouse"],
+            joint_features=features["joint"],
+            augment=False,
+            mean=mean,
+            std=std
+        )
+        loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_jcafnet)
+    else:
+        raise ValueError(f"Unsupported model type: {type(model)}")
+        
+    # --- Evaluation loop ---
+    accuracy_metric = Accuracy(task="multiclass", num_classes=num_classes).to(device)
 
     all_preds, all_labels, all_confidences, all_correct_flags = [], [], [], []
     total_loss = 0
@@ -215,11 +247,18 @@ def evaluate_pytorch_model(
 
     with torch.no_grad():
         for batch in loader:
-            x = batch["sequence"].to(model.device)
-            lengths = batch["seq_length"].to(model.device)
-            labels = batch["task_id"].to(model.device)
+            if isinstance(model, LSTMClassifier):
+                x = batch["sequence"].to(device)
+                lengths = batch["seq_length"].to(device)
+                labels = batch["task_id"].to(device)
+                logits = model(x, lengths)
+            else:  # JCAFNet
+                gaze = batch["gaze"].to(device)
+                mouse = batch["mouse"].to(device)
+                joint = batch["joint"].to(device)
+                labels = batch["task_id"].to(device)
+                logits = model(gaze, mouse, joint)
 
-            logits = model(x, lengths)
             probs = torch.softmax(logits, dim=1)
             top_probs, preds = torch.max(probs, dim=1)
 
@@ -247,6 +286,8 @@ def evaluate_pytorch_model(
         "loss": avg_loss, 
         "accuracy": accuracy
     }
+
+###### DEPRECIATED ######
 
 # ------------------------- EXPORT TO ONNX -------------------------
 
