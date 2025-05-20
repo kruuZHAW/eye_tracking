@@ -41,11 +41,11 @@ module load intel-oneapi
 
 # activate environment
 # Note: You can activate any env that is installed in your home directory
-source activate aware
+# source activate aware
 
 echo "I am running on $SLURM_JOB_NODELIST"
 echo "I am running with job id $SLURM_JOB_ID"
 
 # run python script in the activated environment
 # -> make sure that the path matches your setup
-python ${APP_ROOT}/trainings/xgboost_features.py #--max-workers=$SLURM_CPUS_PER_TASK
+uv run ${APP_ROOT}/trainings/xgboost_training.py #--max-workers=$SLURM_CPUS_PER_TASK

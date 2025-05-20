@@ -3,8 +3,8 @@ import os
 import sys
 import json
 from pathlib import Path
-# sys.path.append('~/git_folder/eye_tracking/')
-sys.path.append(str(Path('~/git/eye_tracking/').expanduser()))
+sys.path.append(str(Path('~/git_folder/eye_tracking/').expanduser()))
+# sys.path.append(str(Path('~/git/eye_tracking/').expanduser()))
 
 import pandas as pd
 import numpy as np
@@ -32,10 +32,12 @@ warnings.simplefilter(action="ignore", category=UserWarning)
 if __name__ == "__main__":
     # ------------------------- 0. PARAMETERS -------------------------
     
-    data_path = "/scratch/eye_tracking/processed_enriched.parquet"
+    # data_path = "/scratch/eye_tracking"
+    data_path = "/store/kruu/eye_tracking/"
     meta_path = "logs/jcafnet_classifier/hardy-water-3/model_metadata.json"
     save_model_path = "logs/xgboost_classifier"
-    store_data_path = str(Path('~/store/eye_tracking').expanduser())
+    # store_data_path = str(Path('~/store/eye_tracking/splits').expanduser())
+    store_data_path = str(Path('/store/kruu/eye_tracking/splits').expanduser())
     
     # TSFresh processing columns
     columns_to_extract = ["Gaze point X", "Gaze point Y", "Mouse position X", "Mouse position Y"]
@@ -53,13 +55,28 @@ if __name__ == "__main__":
         "gamma": [0, 0.1, 0.3],              # Minimum loss reduction
     }
     
-    # ------------------------- 1. LOADING DATASET FROM JCAFNET -------------------------
+    # ------------------------- 1. LOADING DATASET -------------------------
     
-    if Path(data_path).exists():
-        print("Loading full enriched dataset...")
-        full_df = pd.read_parquet(data_path)
-    else:
-        raise FileNotFoundError(f"The full enriched dataset do not exist in the specified path {data_path}.")
+    # Loading enriched dataset built during JCAFNET training (WARNING, has been resampled !)
+    # if Path(data_path).exists():
+    #     print("Loading full enriched dataset...")
+    #     full_df = pd.read_parquet(data_path)
+    # else:
+    #     raise FileNotFoundError(f"The full enriched dataset do not exist in the specified path {data_path}.")
+    
+    # Loading data from scratch
+    tasks = ['Task 1', 'Task 2', 'Task 3', 'Task 4', 'Task 5', 'Task 6']
+    columns = ['Recording timestamp', 'Gaze point X', 'Gaze point Y', 'Mouse position X', 'Mouse position Y', 'Event', 'Participant name']
+    fill_columns = ["Mouse position X", "Mouse position Y", "Gaze point X", "Gaze point Y"]
+    files_list = os.listdir(data_path)
+    files_list = [os.path.join(data_path, file) for file in files_list if file.endswith(".tsv")]
+    
+    processor = EyeTrackingProcessor()
+    all_data = processor.load_data(files_list)
+    dataset = processor.get_features(all_data, tasks, columns)
+    full_df, blinks = processor.detect_blinks(dataset)
+    for col in fill_columns:
+        full_df[col] = full_df[col].ffill().bfill()
     
     if Path(meta_path).exists():
         print("Loading JCAFNet metadata for consistent train test split... ")
@@ -196,9 +213,9 @@ if __name__ == "__main__":
     test_df = agg_feat[agg_feat["id"].isin(test_ids)].copy()
     
     print("Saving XGboost train/test datasets")
-    train_df.to_parquet(os.path.join(store_data_path, "train_data_xgboost"))
-    test_df.to_parquet(os.path.join(store_data_path, "test_data_xgboost"))
-    val_df.to_parquet(os.path.join(store_data_path, "val_data_xgboost"))
+    train_df.to_parquet(os.path.join(store_data_path, "train_xgboost.parquet"))
+    test_df.to_parquet(os.path.join(store_data_path, "test_xgboost.parquet"))
+    val_df.to_parquet(os.path.join(store_data_path, "val_xgboost.parquet"))
 
     # CROSS VALIDATION SPLIT BASED ON PARTICIPANT ID
     # Define features and target
