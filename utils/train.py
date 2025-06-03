@@ -4,6 +4,7 @@ from typing import Union
 from datetime import datetime
 
 import numpy as np
+import pandas as pd
 
 import torch
 import torch.nn.functional as F
@@ -241,12 +242,12 @@ def evaluate_pytorch_model(
     # --- Evaluation loop ---
     accuracy_metric = Accuracy(task="multiclass", num_classes=num_classes).to(device)
 
-    all_preds, all_labels, all_confidences, all_correct_flags = [], [], [], []
+    all_ids, all_preds, all_labels, all_probs = [], [], [], []
     total_loss = 0
     num_batches = 0
 
     with torch.no_grad():
-        for batch in loader:
+        for batch_idx, batch in enumerate(loader):
             if isinstance(model, LSTMClassifier):
                 x = batch["sequence"].to(device)
                 lengths = batch["seq_length"].to(device)
@@ -258,9 +259,15 @@ def evaluate_pytorch_model(
                 joint = batch["joint"].to(device)
                 labels = batch["task_id"].to(device)
                 logits = model(gaze, mouse, joint)
+            
+            if isinstance(model, LSTMClassifier):
+                batch_size_actual = batch["sequence"].size(0)
+            else:
+                batch_size_actual = batch["gaze"].size(0)
 
+            ids = [dataset.get_sample_id(i) for i in range(batch_idx * batch_size, batch_idx * batch_size + batch_size_actual)]
             probs = torch.softmax(logits, dim=1)
-            top_probs, preds = torch.max(probs, dim=1)
+            preds = torch.argmax(probs, dim=1)
 
             loss = torch.nn.functional.cross_entropy(logits, labels)
 
@@ -270,22 +277,26 @@ def evaluate_pytorch_model(
 
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
-            all_confidences.extend(top_probs.cpu().numpy())
-            all_correct_flags.extend((preds == labels).cpu().numpy())
+            all_probs.append(probs.cpu())
+            all_ids.extend(ids)
 
     avg_loss = total_loss / num_batches
     accuracy = accuracy_metric.compute().item()
 
     print(f"🧠 PyTorch Evaluation: Loss = {avg_loss:.4f}, Accuracy = {accuracy:.4f}")
 
-    return {
-        "labels": all_labels, 
-        "predictions": all_preds, 
-        "probs" : all_confidences, 
-        "correct_flags": all_correct_flags,
-        "loss": avg_loss, 
-        "accuracy": accuracy
-    }
+    # --- Construct final DataFrame ---
+    probs_tensor = torch.cat(all_probs, dim=0).numpy()
+    result_df = pd.DataFrame({
+        "id": all_ids,
+        "true_label": all_labels,
+        "pred_label": all_preds,
+    })
+
+    for i in range(probs_tensor.shape[1]):
+        result_df[f"class_{i}_prob"] = probs_tensor[:, i]
+
+    return result_df
 
 ###### DEPRECIATED ######
 

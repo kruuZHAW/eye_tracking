@@ -24,6 +24,9 @@ ENV/
 *.gz
 *.parquet
 
+# Plots
+*.png
+
 # Model logs
 lightning_logs/
 *.out

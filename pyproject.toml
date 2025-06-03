@@ -9,15 +9,23 @@ dependencies = [
     "ipykernel>=6.29.5",
     "lightning>=2.5.1",
     "matplotlib>=3.10.1",
+    "matplotlib-venn>=1.1.2",
+    "notebook>=7.4.2",
     "onnx>=1.17.0",
     "onnxruntime>=1.21.0",
     "pandas>=2.2.3",
     "scikit-learn>=1.6.1",
     "scipy>=1.15.2",
+    "seaborn>=0.13.2",
     "torch>=2.6.0",
     "torchmetrics>=1.7.0",
     "torchvision>=0.21.0",
     "tsfresh>=0.21.0",
     "wandb>=0.19.9",
     "xgboost>=3.0.0",
+]
+
+[project.optional-dependencies]
+cluster = [
+    "cm-jupyter-eg-kernel-wlm>=4.0.1",
 ]

@@ -44,11 +44,13 @@ class GazeMouseDatasetLSTM(Dataset):
 
         # Store sequences & lengths
         self.samples = []
+        self.ids = []
         for sample_id, group in grouped:
             group = group.sort_values('Recording timestamp')  # Ensure time order
             seq_tensor = torch.tensor(group[features].values, dtype=torch.float32)
             task_id = group["Task_id"].iloc[0].item() - 1  # Store associated task_id / make task_id begins at 0
             self.samples.append((seq_tensor, task_id))
+            self.ids.append(sample_id)
 
         # Pad sequences for batching
         # self.padded_sequences = pad_sequence(self.sequences, batch_first=True, padding_value=0)
@@ -57,7 +59,7 @@ class GazeMouseDatasetLSTM(Dataset):
 
     def __len__(self):
         return len(self.samples)
-
+    
     def __getitem__(self, idx):
         seq, task_id = self.samples[idx]
         seq_len = len(seq)
@@ -70,6 +72,9 @@ class GazeMouseDatasetLSTM(Dataset):
             "seq_length": torch.tensor(seq_len, dtype=torch.int64),
             "task_id": torch.tensor(task_id, dtype=torch.int64),
         }
+    
+    def get_sample_id(self, idx):
+        return self.ids[idx]
         
     def get_task_id(self, idx):
         """Returns the task_id corresponding to a given sequence index."""
@@ -132,6 +137,7 @@ class GazeMouseDatasetJCAFNet(Dataset):
         grouped = dataset.groupby("id")
         
         self.samples = [] # Tuple grouping id, gaze features, mouse features and joint features
+        self.ids = []
         for sample_id, group in grouped:
             group = group.sort_values("Recording timestamp")
             gaze_sequence = torch.tensor(group[self.gaze_features].values, dtype=torch.float32)
@@ -139,6 +145,7 @@ class GazeMouseDatasetJCAFNet(Dataset):
             joint_sequence = torch.tensor(group[self.joint_features].values, dtype=torch.float32)
             task_id = group["Task_id"].iloc[0].item() - 1
             self.samples.append((gaze_sequence, mouse_sequence, joint_sequence, task_id))
+            self.ids.append(sample_id)
 
     def __len__(self):
         return len(self.samples)
@@ -160,6 +167,9 @@ class GazeMouseDatasetJCAFNet(Dataset):
             "seq_length": torch.tensor(seq_len, dtype=torch.int64),
             "task_id": torch.tensor(task_id, dtype=torch.int64),
         }
+    
+    def get_sample_id(self, idx):
+        return self.ids[idx]
 
     def _augment_sequence(self, x):
         x = x.clone()

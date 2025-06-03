@@ -1,9 +1,3 @@
-# TODO:
-#  - Implement Focal Loss (or put it in a separate py script)
-#  - Put the training / saving / evaluate functions in the utils folder
-#  - How are handled different seq lenths ?
-#  - Batch require gaze / mouse / joint (different from LSTM) -> modify dataloader
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

@@ -21,6 +21,9 @@ from torch.utils.data import DataLoader
 from utils.data_processing import EyeTrackingProcessor, GazeMetricsProcessor, MouseMetricsProcessor
 
 from tqdm import tqdm
+import joblib
+
+from sklearn.metrics import accuracy_score
 
 # ------------------------- LOADERS -------------------------
 
@@ -30,6 +33,8 @@ def load_xgboost_model(path):
 def load_jcafnet_model(ckpt_path, metadata_path):
     with open(metadata_path, "r") as f:
         metadata = json.load(f)
+    
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     model = JCAFNet(
         num_classes=metadata["num_classes"],
@@ -38,58 +43,104 @@ def load_jcafnet_model(ckpt_path, metadata_path):
         joint_dim=len(metadata["features"]["joint"]),
         learning_rate=0.001
     )
-    state_dict = torch.load(ckpt_path)["state_dict"]
+    state_dict = torch.load(ckpt_path, map_location=device)["state_dict"]
     model.load_state_dict(state_dict)
     model.eval()
     return model, metadata
 
+# ------------------------- XGBOOST PREDICTION -------------------------
+
+def predict_xgboost(test_df: pd.DataFrame,
+                             model_path: str,
+                             selected_features_path: str,
+                             label_column: str = "Task_id",
+                             label_offset: int = 1) -> pd.DataFrame:
+    """
+    Suppose that the TSfresh features on the test set were already extracted.
+    Returns:
+        pd.DataFrame with columns: id, true_label, pred_label, and class probabilities.
+    """
+
+    # Load model
+    model = joblib.load(model_path)
+    
+    # Keep only selected features
+    ids = test_df["id"].tolist()
+    y = test_df[label_column] - label_offset
+    drop_cols = ["Task_id", "Participant", "Task_execution", "id"]
+    X = test_df.drop(columns=drop_cols)
+
+    # Predict probabilities and class
+    probs = model.predict_proba(X)
+    preds = model.predict(X)
+    
+    acc = accuracy_score(y, preds)
+    print(f"XGBoost Accuracy: {acc:.4f}")
+
+    # Construct result DataFrame
+    result_df = pd.DataFrame({
+        "id": ids,
+        "true_label": y.values,
+        "pred_label": preds
+    })
+    
+    # Add probability columns
+    for i in range(probs.shape[1]):
+        result_df[f"class_{i}_prob"] = probs[:, i]
+
+    return result_df
+
 # ------------------------- INFERENCE -------------------------
 
-def run_ensemble_inference(xgb_model, jcafnet_model, metadata, test_df):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    jcafnet_model = jcafnet_model.to(device)
+def soft_voting_ensemble(
+    probs_model1: np.ndarray,
+    probs_model2: np.ndarray,
+    true_labels: np.ndarray,
+    weight_model1: float = 0.5,
+    weight_model2: float = 0.5,
+    ids: list = None
+) -> pd.DataFrame:
+    """
+    Perform soft voting ensemble using weighted average of probabilities.
 
-    # Prepare data for JCAFNet
-    mean = pd.Series(metadata["mean"])
-    std = pd.Series(metadata["std"])
-    features = metadata["features"]
+    Args:
+        probs_model1 (np.ndarray): Class probabilities from model 1. Shape (n_samples, n_classes).
+        probs_model2 (np.ndarray): Class probabilities from model 2. Shape (n_samples, n_classes).
+        true_labels (np.ndarray): Ground truth labels. Shape (n_samples,).
+        weight_model1 (float): Weight for model 1 predictions.
+        weight_model2 (float): Weight for model 2 predictions.
+        ids (list, optional): Sample IDs corresponding to predictions.
 
-    dataset_jcaf = GazeMouseDatasetJCAFNet(
-        test_df, 
-        gaze_features=features["gaze"], 
-        mouse_features=features["mouse"], 
-        joint_features=features["joint"], 
-        augment=False,
-        mean=mean,
-        std=std
-    )
-    loader = DataLoader(dataset_jcaf, batch_size=32, shuffle=False, collate_fn=collate_jcafnet)
+    Returns:
+        pd.DataFrame: Result dataframe with columns: id, true_label, pred_label, and class probabilities.
+    """
+    assert probs_model1.shape == probs_model2.shape, "Probability shapes must match"
+    assert np.isclose(weight_model1 + weight_model2, 1.0), "Weights must sum to 1"
 
-    # Prepare data for XGBoost
-    xgb_features_df = test_df.drop_duplicates("id")  # one row per sequence
-    xgb_ids = xgb_features_df["id"]
-    X_xgb = xgb_features_df[xgb_model.get_booster().feature_names]
+    # Weighted average of probabilities
+    ensemble_probs = weight_model1 * probs_model1 + weight_model2 * probs_model2
+    ensemble_preds = ensemble_probs.argmax(axis=1)
 
-    # Inference
-    all_preds, all_probs = [], []
-    xgb_probs = xgb_model.predict_proba(X_xgb)
+    # Build results
+    result = {
+        "true_label": true_labels,
+        "pred_label": ensemble_preds
+    }
+    for i in range(ensemble_probs.shape[1]):
+        result[f"class_{i}_prob"] = ensemble_probs[:, i]
 
-    with torch.no_grad():
-        for batch in loader:
-            gaze = batch["gaze"].to(device)
-            mouse = batch["mouse"].to(device)
-            joint = batch["joint"].to(device)
+    if ids is not None:
+        result["id"] = ids
 
-            logits = jcafnet_model(gaze, mouse, joint)
-            probs_jcaf = torch.softmax(logits, dim=1).cpu().numpy()
+    df_result = pd.DataFrame(result)
+    
+    # Move 'id' to front if it exists
+    if "id" in df_result.columns:
+        cols = ["id", "true_label", "pred_label"] + [c for c in df_result.columns if c.startswith("class_")]
+        df_result = df_result[cols]
 
-            batch_probs_xgb = xgb_probs[:len(probs_jcaf)]
-            xgb_probs = xgb_probs[len(probs_jcaf):]  # Remove used entries
+    # Print overall accuracy
+    acc = accuracy_score(true_labels, ensemble_preds)
+    print(f"Soft Voting Ensemble Accuracy: {acc:.4f}")
 
-            ensemble_probs = (probs_jcaf + batch_probs_xgb) / 2
-            preds = np.argmax(ensemble_probs, axis=1)
-
-            all_preds.extend(preds)
-            all_probs.extend(ensemble_probs)
-
-    return all_preds, np.array(all_probs), xgb_ids.tolist()
+    return df_result
