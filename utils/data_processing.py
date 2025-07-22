@@ -11,7 +11,6 @@ class EyeTrackingProcessor:
         self.timestamp_col = None
         
     # ------------------------- 0. HELPER METHODS -------------------------
-    
     def detect_timestamp_column(self, df: pd.DataFrame):
         """Detect and store the timestamp column."""
         if self.timestamp_col is None:
@@ -24,7 +23,7 @@ class EyeTrackingProcessor:
 
     # ------------------------- 1. DATA LOADING & VALIDATION -------------------------
     
-    def read_tsv(self, path: str) -> pd.DataFrame:
+    def read_tsv_old(self, path: str) -> pd.DataFrame:
         """Read a TSV file and validate task labeling."""
         df = pd.read_csv(path, sep='\t')
         
@@ -37,38 +36,81 @@ class EyeTrackingProcessor:
                 print(f"Warning: {task} in {path} has {task_counts.get(task, 0)} occurrences instead of 6.")
         
         return df
+    
+    def read_tsv(self, path: str) -> pd.DataFrame:
+        """Read a TSV file and convert task labeling."""
+        df = pd.read_csv(path, sep='\t')
+        
+        # Session is not a task
+        # Conflict detection is only start. Find a way to measure it. 
+        atco_tasks = [
+            event for event in df.Event.unique()
+            if (
+                isinstance(event, str)
+                and " - " in event
+                and (event.endswith("start") or event.endswith("end"))
+                and not event.startswith("Session -")
+                and not event.startswith("Conflict detection -")
+            )
+        ]
+        
+        # Mapping like Tasks were defined in ms_df
+        def map_events_to_tasks_inplace(df, event_column, task_events):
+            task_roots = sorted(set(event.split(" - ")[0] for event in task_events if " - " in event))
+            root_to_task = {root: f"Task {i+1}" for i, root in enumerate(task_roots)}
+
+            def map_event(event):
+                if isinstance(event, str) and " - " in event:
+                    root, suffix = event.split(" - ", maxsplit=1)
+                    task_label = root_to_task.get(root)
+                    if task_label:
+                        return task_label if suffix == "start" else f"{task_label} end"
+                return event
+            
+            df[event_column] = df[event_column].apply(map_event)
+            return root_to_task
+        
+        atco_tasks_map = map_events_to_tasks_inplace(df, "Event", atco_tasks)
+        
+        return df, atco_tasks_map
 
     def load_data(self, paths: list[str]) -> list[pd.DataFrame]:
-        """Load multiple TSV files into a list of DataFrames."""
-        return [self.read_tsv(path) for path in paths]
+        """Load multiple TSV files into a list of DataFrames, and map ATCO tasks"""
+        dfs = []
+        atco_tasks_maps = []
+        for path in paths:
+            df, atco_map = self.read_tsv(path)
+            dfs.append(df)
+            atco_tasks_maps.append(atco_map)
+        return dfs, atco_tasks_maps
 
     # ------------------------- 2. TASK IDENTIFICATION & FEATURE EXTRACTION -------------------------
 
-    def task_range_finder_old(self, df: pd.DataFrame) -> dict[str, list[tuple[int, int]]]:
-        """Find start and end times of tasks within a DataFrame and warn for unmatched starts."""
-        self.detect_timestamp_column(df)
-        event_df = df[df['Event'].str.contains('Task', na=False)].sort_values(by=self.timestamp_col)
-        task_ranges = {}
-        task_stack = {}
+    # def task_range_finder_old(self, df: pd.DataFrame) -> dict[str, list[tuple[int, int]]]:
+    #     """Find start and end times of tasks within a DataFrame and warn for unmatched starts."""
+    #     self.detect_timestamp_column(df)
+    #     event_df = df[df['Event'].str.contains('Task', na=False)].sort_values(by=self.timestamp_col)
+    #     task_ranges = {}
+    #     task_stack = {}
 
-        for _, row in event_df.iterrows():
-            event, timestamp = row["Event"], row[self.timestamp_col]
-            if "end" not in event:
-                task_stack[event] = timestamp
-            else:
-                task_type = event.replace(" end", "")
-                if task_type in task_stack:
-                    task_ranges.setdefault(task_type, []).append((task_stack.pop(task_type), timestamp))
-                else:
-                    print(f"⚠️ Warning: End event '{event}' at {timestamp} without matching start.")
+    #     for _, row in event_df.iterrows():
+    #         event, timestamp = row["Event"], row[self.timestamp_col]
+    #         if "end" not in event:
+    #             task_stack[event] = timestamp
+    #         else:
+    #             task_type = event.replace(" end", "")
+    #             if task_type in task_stack:
+    #                 task_ranges.setdefault(task_type, []).append((task_stack.pop(task_type), timestamp))
+    #             else:
+    #                 print(f"⚠️ Warning: End event '{event}' at {timestamp} without matching start.")
 
-        # After processing, check for unmatched starts
-        if task_stack:
-            print("⚠️ Warning: The following tasks have a start but no corresponding end:")
-            for task, start_time in task_stack.items():
-                print(f"   - {task} started at {start_time}")
+    #     # After processing, check for unmatched starts
+    #     if task_stack:
+    #         print("⚠️ Warning: The following tasks have a start but no corresponding end:")
+    #         for task, start_time in task_stack.items():
+    #             print(f"   - {task} started at {start_time}")
 
-        return task_ranges
+    #     return task_ranges
     
     def task_range_finder(self, df: pd.DataFrame) -> dict[str, list[tuple[int, int]]]:
         """Find start and end times of tasks within a DataFrame.
@@ -101,24 +143,6 @@ class EyeTrackingProcessor:
                 print(f"⚠️ Unmatched 'start' for {task_type} at {unmatched_start}")
 
         return task_ranges
-
-    # def get_features_old(self, dfs: list[pd.DataFrame], features: list[str]) -> pd.DataFrame:
-    #     """Extract features for tasks from multiple DataFrames."""
-        
-    #     full_dataset = []
-    #     for df in dfs:
-            
-    #         sub_dataset = []
-    #         task_ranges = self.task_range_finder(df) # Detection of timestamp column per df
-    #         for task, periods in task_ranges.items():
-    #             for i, (start, end) in enumerate(periods):
-    #                 task_data = df.loc[(df[self.timestamp_col] >= start) & (df[self.timestamp_col] <= end), features].copy()
-    #                 task_data["Task_id"] = int(task[-1])
-    #                 task_data["Task_execution"] = i
-    #                 sub_dataset.append(task_data)
-    #         if sub_dataset:
-    #             full_dataset.append(pd.concat(sub_dataset))
-    #     return pd.concat(full_dataset, ignore_index=True)
     
     def get_features(
         self,
@@ -160,32 +184,6 @@ class EyeTrackingProcessor:
         return task_chunks
     
     # ------------------------- 3. BLINK IDENTIFICATION -------------------------
-    # def detect_blinks_old(self, df: pd.DataFrame, blink_threshold: int= 1e5)-> pd.DataFrame:
-    #     df = df.sort_values(by=["Participant name", "Task_id", "Task_execution", self.timestamp_col]).reset_index(drop=True)
-
-    #     # Identify rows where gaze data is missing
-    #     df["Missing Gaze"] = df["Gaze point X"].isna() | df["Gaze point Y"].isna()
-    #     df["Time Diff"] = df["Recording timestamp"].diff()
-
-    #     # Identify blink start (when missing gaze starts) and blink end (when gaze reappears)
-    #     df["Blink Start"] = df["Missing Gaze"] & ~df["Missing Gaze"].shift(1, fill_value=False)
-    #     df["Blink End"] = ~df["Missing Gaze"] & df["Missing Gaze"].shift(1, fill_value=False)
-
-    #     # Assign blink IDs
-    #     df["Blink ID"] = df["Blink Start"].cumsum()
-
-    #     # Compute blink durations
-    #     blink_durations = df.groupby("Blink ID")["Time Diff"].sum().reset_index()
-    #     blinks_detected = blink_durations[blink_durations["Time Diff"] > blink_threshold]
-
-    #     # Create a binary blink mask column in the original dataframe
-    #     df["Blink"] = df["Blink ID"].isin(blinks_detected["Blink ID"]).astype(int)
-
-    #     # Drop unnecessary intermediate columns
-    #     df.drop(columns=["Missing Gaze", "Time Diff", "Blink Start", "Blink End", "Blink ID"], inplace=True)
-        
-    #     return df, blinks_detected
-    
     def detect_blinks(self, task_chunks: dict[str, pd.DataFrame], blink_threshold: int = 100):
         """
         Detect blinks in a dictionary of task-based DataFrame chunks.
@@ -253,59 +251,87 @@ class EyeTrackingProcessor:
         return updated_chunks, all_blinks
     
     # ------------------------- 4. DATA RESAMPLING -------------------------
+    
+    def resample_single_task_chunk(self, df: pd.DataFrame, interpolate_cols: list[str], mode: str, param) -> pd.DataFrame:
+        """
+        Resample a single task DataFrame chunk based on time, number of points, or custom timestamps.
 
-    def resample_task(self, df: pd.DataFrame, interpolate_cols: list[str], new_timestamps: np.ndarray) -> pd.DataFrame:
-        """Resample task data to a given set of timestamps."""
-        resampled_df = pd.DataFrame({'Recording timestamp': new_timestamps})
+        Parameters:
+        - df (pd.DataFrame): Input DataFrame representing a task segment.
+        - interpolate_cols (list[str]): Columns to interpolate (e.g., gaze or mouse positions).
+        - mode (str): Resampling mode. Options:
+            - "time": fixed time step in milliseconds (float).
+            - "points": fixed number of points (int).
+            - "custom": specific timestamps to interpolate to (np.ndarray).
+        - param (float | int | np.ndarray): Parameter for the selected mode.
 
+        Returns:
+        - pd.DataFrame: Resampled DataFrame with the same structure, interpolated columns, and metadata preserved.
+        """
+
+        df = df.sort_values(by=self.timestamp_col).reset_index(drop=True)
+
+        # Normalize timestamp units if necessary
+        time_diff = df[self.timestamp_col].diff().dropna().median()
+        if time_diff > 10000:
+            df[self.timestamp_col] = df[self.timestamp_col] / 1000  # Convert µs → ms
+
+        # Generate new timestamps
+        if mode == "time":
+            min_time, max_time = df[self.timestamp_col].min(), df[self.timestamp_col].max()
+            new_timestamps = np.arange(min_time, max_time, param)
+        elif mode == "points":
+            original_indices = np.linspace(0, 1, len(df))
+            new_indices = np.linspace(0, 1, param)
+            new_timestamps = np.interp(new_indices, original_indices, df[self.timestamp_col])
+        elif mode == "custom":
+            new_timestamps = param
+        else:
+            raise ValueError(f"Invalid resampling mode: {mode}")
+
+        # Interpolate columns
+        resampled_df = pd.DataFrame({self.timestamp_col: new_timestamps})
         for col in interpolate_cols:
             if col in df.columns:
-                resampled_df[col] = np.interp(new_timestamps, df['Recording timestamp'], df[col])
+                resampled_df[col] = np.interp(new_timestamps, df[self.timestamp_col], df[col])
+
+        # Add metadata
+        for meta_col in ["id", "Participant name", "Task_id", "Task_execution"]:
+            if meta_col in df.columns:
+                resampled_df[meta_col] = df[meta_col].iloc[0]
 
         return resampled_df
 
-    def resample_tasks_fixed_time(self, df: pd.DataFrame, interpolate_cols: list[str], timestep: float = 0.001) -> pd.DataFrame:
-        """Resample all tasks to a fixed time step."""
-        resampled_tasks = []
-        unique_tasks = df[['Participant name', 'Task_id', 'Task_execution']].drop_duplicates()
+    def resample_task_chunks(self, task_chunks: dict[str, pd.DataFrame], interpolate_cols: list[str], mode: str, param) -> dict[str, pd.DataFrame]:
+        """
+        Resample a dictionary of task chunks using a specified method.
 
-        for _, row in unique_tasks.iterrows():
-            subset = df[(df["Participant name"] == row["Participant name"]) &
-                        (df["Task_id"] == row["Task_id"]) & 
-                        (df["Task_execution"] == row["Task_execution"])]
+        Parameters:
+        - task_chunks (dict[str, pd.DataFrame]): Dictionary where each key is a task ID and each value is a task DataFrame.
+        - interpolate_cols (list[str]): List of columns to interpolate numerically.
+        - mode (str): Resampling strategy:
+            - "time": fixed step size (param in milliseconds).
+            - "points": fixed number of points.
+            - "custom": pass explicit timestamp array.
+        - param (float | int | np.ndarray): Parameter for the selected mode:
+            - timestep in ms (if mode == "time")
+            - number of points (if mode == "points")
+            - timestamp array (if mode == "custom")
 
-            if not subset.empty:
-                min_time, max_time = subset['Recording timestamp'].min(), subset['Recording timestamp'].max()
-                new_timestamps = np.arange(min_time, max_time, timestep * 1e6)
-                resampled = self.resample_task(subset, interpolate_cols, new_timestamps)
-                resampled["Participant name"], resampled["Task_id"], resampled["Task_execution"] = row
-                resampled_tasks.append(resampled)
+        Returns:
+        - dict[str, pd.DataFrame]: Dictionary of resampled task DataFrames, same structure as input.
+        """
+        resampled_chunks = {}
 
-        return pd.concat(resampled_tasks, ignore_index=True)
+        for task_id, df in task_chunks.items():
+            try:
+                resampled_df = self.resample_single_task_chunk(df, interpolate_cols, mode, param)
+                resampled_chunks[task_id] = resampled_df
+            except Exception as e:
+                print(f"⚠️ Could not resample {task_id}: {e}")
 
-    def resample_tasks_fixed_points(self, df: pd.DataFrame, interpolate_cols: list[str], num_points: int = 1000) -> pd.DataFrame:
-        """Resample tasks to a fixed number of points."""
-        resampled_tasks = []
-        unique_tasks = df[['Participant name', 'Task_id', 'Task_execution']].drop_duplicates()
+        return resampled_chunks
 
-        for _, row in unique_tasks.iterrows():
-            subset = df[(df["Participant name"] == row["Participant name"]) &
-                        (df["Task_id"] == row["Task_id"]) & 
-                        (df["Task_execution"] == row["Task_execution"])].sort_values("Recording timestamp")
-
-            if not subset.empty:
-                original_indices = np.linspace(0, 1, len(subset))
-                new_indices = np.linspace(0, 1, num_points)
-                resampled = pd.DataFrame({'Recording timestamp': np.interp(new_indices, original_indices, subset['Recording timestamp'])})
-
-                for col in interpolate_cols:
-                    if col in subset.columns:
-                        resampled[col] = np.interp(new_indices, original_indices, subset[col])
-
-                resampled["Participant name"], resampled["Task_id"], resampled["Task_execution"] = row
-                resampled_tasks.append(resampled)
-
-        return pd.concat(resampled_tasks, ignore_index=True)
 
     # ------------------------- 4. DATA CLEANING & PADDING -------------------------
 
