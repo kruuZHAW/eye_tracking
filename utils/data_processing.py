@@ -20,69 +20,127 @@ class EyeTrackingProcessor:
                     break
         if self.timestamp_col is None:
             raise ValueError("No suitable timestamp column found in DataFrame.")
+        
+    @staticmethod
+    def extract_atco_task_roots(paths: list[str]) -> list[str]:
+        """Collect all unique task roots across all files."""
+        all_roots = set()
+
+        for path in paths:
+            df = pd.read_csv(path, sep="\t")
+            for event in df["Event"].unique():
+                if (
+                    isinstance(event, str)
+                    and " - " in event
+                    and (event.endswith("start") or event.endswith("end"))
+                    and not event.startswith("Session -")
+                    and not event.startswith("Conflict detection -")
+                ):
+                    root = event.split(" - ")[0]
+                    all_roots.add(root)
+
+        return sorted(all_roots)
+    
+    @staticmethod
+    def build_global_task_map(task_roots: list[str]) -> dict[str, str]:
+        """Map each task root to a consistent Task N label."""
+        return {root: f"Task {i}" for i, root in enumerate(task_roots)}
+    
+    @staticmethod
+    def apply_global_task_mapping(df: pd.DataFrame, task_map: dict[str, str]) -> pd.DataFrame:
+        """Apply the global task map to the 'Event' column."""
+        def map_event(event):
+            if isinstance(event, str) and " - " in event:
+                root, suffix = event.split(" - ", maxsplit=1)
+                task_label = task_map.get(root)
+                if task_label:
+                    return task_label if suffix == "start" else f"{task_label} end"
+            return event
+
+        df["Event"] = df["Event"].apply(map_event)
+        return df
 
     # ------------------------- 1. DATA LOADING & VALIDATION -------------------------
     
-    def read_tsv_old(self, path: str) -> pd.DataFrame:
-        """Read a TSV file and validate task labeling."""
-        df = pd.read_csv(path, sep='\t')
+    # def read_tsv_old(self, path: str) -> pd.DataFrame:
+    #     """Read a TSV file and validate task labeling."""
+    #     df = pd.read_csv(path, sep='\t')
         
-        # Validate task counts
-        expected_tasks = [f"Task {i}" for i in range(1, 7)] + [f"Task {i} end" for i in range(1, 7)]
-        task_counts = df['Event'].value_counts()
+    #     # Validate task counts
+    #     expected_tasks = [f"Task {i}" for i in range(1, 7)] + [f"Task {i} end" for i in range(1, 7)]
+    #     task_counts = df['Event'].value_counts()
         
-        for task in expected_tasks:
-            if task_counts.get(task, 0) != 6:
-                print(f"Warning: {task} in {path} has {task_counts.get(task, 0)} occurrences instead of 6.")
+    #     for task in expected_tasks:
+    #         if task_counts.get(task, 0) != 6:
+    #             print(f"Warning: {task} in {path} has {task_counts.get(task, 0)} occurrences instead of 6.")
         
-        return df
+    #     return df
     
-    def read_tsv(self, path: str) -> pd.DataFrame:
-        """Read a TSV file and convert task labeling."""
-        df = pd.read_csv(path, sep='\t')
+    # def read_tsv(self, path: str) -> pd.DataFrame:
+    #     """Read a TSV file and convert task labeling."""
+    #     df = pd.read_csv(path, sep='\t')
         
-        # Session is not a task
-        # Conflict detection is only start. Find a way to measure it. 
-        atco_tasks = [
-            event for event in df.Event.unique()
-            if (
-                isinstance(event, str)
-                and " - " in event
-                and (event.endswith("start") or event.endswith("end"))
-                and not event.startswith("Session -")
-                and not event.startswith("Conflict detection -")
-            )
-        ]
+    #     # Session is not a task
+    #     # Conflict detection is only start. Find a way to measure it. 
+    #     atco_tasks = [
+    #         event for event in df.Event.unique()
+    #         if (
+    #             isinstance(event, str)
+    #             and " - " in event
+    #             and (event.endswith("start") or event.endswith("end"))
+    #             and not event.startswith("Session -")
+    #             and not event.startswith("Conflict detection -")
+    #         )
+    #     ]
         
-        # Mapping like Tasks were defined in ms_df
-        def map_events_to_tasks_inplace(df, event_column, task_events):
-            task_roots = sorted(set(event.split(" - ")[0] for event in task_events if " - " in event))
-            root_to_task = {root: f"Task {i+1}" for i, root in enumerate(task_roots)}
+    #     # Mapping like Tasks were defined in ms_df
+    #     def map_events_to_tasks_inplace(df, event_column, task_events):
+    #         task_roots = sorted(set(event.split(" - ")[0] for event in task_events if " - " in event))
+    #         root_to_task = {root: f"Task {i+1}" for i, root in enumerate(task_roots)}
 
-            def map_event(event):
-                if isinstance(event, str) and " - " in event:
-                    root, suffix = event.split(" - ", maxsplit=1)
-                    task_label = root_to_task.get(root)
-                    if task_label:
-                        return task_label if suffix == "start" else f"{task_label} end"
-                return event
+    #         def map_event(event):
+    #             if isinstance(event, str) and " - " in event:
+    #                 root, suffix = event.split(" - ", maxsplit=1)
+    #                 task_label = root_to_task.get(root)
+    #                 if task_label:
+    #                     return task_label if suffix == "start" else f"{task_label} end"
+    #             return event
             
-            df[event_column] = df[event_column].apply(map_event)
-            return root_to_task
+    #         df[event_column] = df[event_column].apply(map_event)
+    #         return root_to_task
         
-        atco_tasks_map = map_events_to_tasks_inplace(df, "Event", atco_tasks)
+    #     atco_tasks_map = map_events_to_tasks_inplace(df, "Event", atco_tasks)
         
-        return df, atco_tasks_map
+    #     return df, atco_tasks_map
 
-    def load_data(self, paths: list[str]) -> list[pd.DataFrame]:
-        """Load multiple TSV files into a list of DataFrames, and map ATCO tasks"""
+    # def load_data(self, paths: list[str]) -> list[pd.DataFrame]:
+    #     """Load multiple TSV files into a list of DataFrames, and map ATCO tasks"""
+    #     dfs = []
+    #     atco_tasks_maps = []
+    #     for i, path in enumerate(paths):
+    #         df, atco_map = self.read_tsv(path)
+    #         if "Participant name" not in df.columns:
+    #             df["Participant name"] = i
+    #         dfs.append(df)
+    #         atco_tasks_maps.append(atco_map)
+    #     return dfs, atco_tasks_maps
+    
+    
+    
+    def load_data(self, paths: list[str]) -> tuple[list[pd.DataFrame], dict[str, str]]:
+        """Load multiple TSV files with consistent ATCO task mapping."""
+        task_roots = self.extract_atco_task_roots(paths)
+        global_task_map = self.build_global_task_map(task_roots)
+
         dfs = []
-        atco_tasks_maps = []
-        for path in paths:
-            df, atco_map = self.read_tsv(path)
+        for i, path in enumerate(paths):
+            df = pd.read_csv(path, sep="\t")
+            df = self.apply_global_task_mapping(df, global_task_map)
+            if "Participant name" not in df.columns:
+                df["Participant name"] = i
             dfs.append(df)
-            atco_tasks_maps.append(atco_map)
-        return dfs, atco_tasks_maps
+
+        return dfs, global_task_map
 
     # ------------------------- 2. TASK IDENTIFICATION & FEATURE EXTRACTION -------------------------
 
