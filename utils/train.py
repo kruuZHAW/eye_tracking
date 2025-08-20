@@ -27,26 +27,55 @@ import onnxruntime as ort
 
 # ------------------------- SPLIT BY PARTICIPANT -------------------------
 
-def split_by_participant(dataset, val_split=0.2, test_split=0.1, random_state=42):
-    participants = dataset["Participant name"].unique()
-    
-    # Split into train and temp (val + test)
+def split_chunks_by_participant(
+    chunks: dict[str, pd.DataFrame],
+    val_split=0.2,
+    test_split=0.1,
+    random_state=42
+) -> tuple[dict[str, pd.DataFrame], dict[str, pd.DataFrame], dict[str, pd.DataFrame]]:
+    """
+    Split a dictionary of task chunks into train, val, and test sets by participant.
+
+    Parameters:
+        chunks: dict[str, pd.DataFrame] - key = ID, value = task dataframe
+        val_split: proportion of participants for validation set
+        test_split: proportion of participants for test set
+        random_state: reproducibility
+
+    Returns:
+        train_chunks, val_chunks, test_chunks as dictionaries
+    """
+
+    # Step 1: Map each chunk to its participant
+    id_to_participant = {
+        task_id: df["Participant name"].iloc[0] for task_id, df in chunks.items()
+    }
+    all_participants = list(set(id_to_participant.values()))
+
+    # Step 2: Split participants
     train_participants, temp_participants = train_test_split(
-        participants, test_size=(val_split + test_split), random_state=random_state
+        all_participants, test_size=(val_split + test_split), random_state=random_state
     )
-    
-    # Further split temp into val and test
     relative_val_split = val_split / (val_split + test_split)
     val_participants, test_participants = train_test_split(
         temp_participants, test_size=(1 - relative_val_split), random_state=random_state
     )
-    
-    # Filter dataset
-    train_df = dataset[dataset["Participant name"].isin(train_participants)].copy()
-    val_df = dataset[dataset["Participant name"].isin(val_participants)].copy()
-    test_df = dataset[dataset["Participant name"].isin(test_participants)].copy()
 
-    return train_df, val_df, test_df
+    # Step 3: Partition chunks by participant membership
+    train_chunks = {
+        task_id: df for task_id, df in chunks.items()
+        if id_to_participant[task_id] in train_participants
+    }
+    val_chunks = {
+        task_id: df for task_id, df in chunks.items()
+        if id_to_participant[task_id] in val_participants
+    }
+    test_chunks = {
+        task_id: df for task_id, df in chunks.items()
+        if id_to_participant[task_id] in test_participants
+    }
+
+    return train_chunks, val_chunks, test_chunks
 
 # ------------------------- PADDING FOR JCAFNET -------------------------
 

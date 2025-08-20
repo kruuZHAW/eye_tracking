@@ -438,9 +438,7 @@ class EyeTrackingProcessor:
         # Combine all padded groups
         padded_data = pd.concat(padded_dfs, ignore_index=True)
         
-        return padded_data
-    
-    
+        return padded_data   
 
 class GazeMetricsProcessor:
     """
