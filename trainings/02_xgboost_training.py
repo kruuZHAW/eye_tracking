@@ -126,11 +126,15 @@ if __name__ == "__main__":
     # Keeping the id split for train/test/val made during the training of the JCAFNET
     
     # Loading data from scratch
-    chunks_xgboost, blinks, atco_task_map = load_and_process(store_data_dir, 
-                                                             features, 
-                                                             interpolate_cols, 
-                                                             fill_columns, 
-                                                             time_resampling=False)
+    chunks_xgboost, blinks, atco_task_map = load_and_process(data_path=store_data_dir, 
+                                                             columns=features, 
+                                                             interpolate_cols=interpolate_cols, 
+                                                             fill_cols=fill_columns, 
+                                                             time_resampling=False,
+                                                             fixed_window_ms=12000, # Should be identical to jcafnet script
+                                                             window_step_ms=2000, # Should be identical to jcafnet script
+                                                             min_task_presence=0.5 # Should be identical to jcafnet script
+                                                             )
     
     # Manually filling because not handled by load_and_process if time_resampling = False
     for task_id, chunk in chunks_xgboost.items():

@@ -241,6 +241,115 @@ class EyeTrackingProcessor:
 
         return task_chunks
     
+    
+    def get_fixed_window_chunks(
+        self,
+        dfs: list[pd.DataFrame],
+        features: list[str],
+        window_ms: int = 3000,
+        step_ms: int | None = None,
+        min_presence: float = 0.5,
+    ) -> dict[str, pd.DataFrame]:
+        """
+        Slice each participant stream into fixed-length windows and assign a task label
+        based on maximum overlap with any Task occurrence (start/end pair).
+
+        - window_ms: window length in milliseconds (e.g., 3000 for 3s).
+        - step_ms: hop size in milliseconds. Default = window_ms (no overlap).
+        - min_presence: minimum fraction of the window that must be covered by the winning task
+        to be accepted (0.5 = majority). Windows below this are dropped.
+
+        Output format:
+        dict[id] -> DataFrame slice with columns `features` plus the metadata
+        ["Task_id", "Task_execution", "Participant name", "id"]
+        """
+        chunks: dict[str, pd.DataFrame] = {}
+        step_ms = step_ms or window_ms
+
+        for df in dfs:
+            # Participant id/name
+            participant = df["Participant name"].iloc[0] if "Participant name" in df.columns else 0
+
+            # Timestamp detection + normalization (ms)
+            self.detect_timestamp_column(df)
+            df_sorted = df.sort_values(by=self.timestamp_col).reset_index(drop=True)
+            median_diff = df_sorted[self.timestamp_col].diff().dropna().median()
+            if pd.notna(median_diff) and median_diff > 10000:
+                # µs -> ms
+                df_sorted[self.timestamp_col] = df_sorted[self.timestamp_col] / 1000.0
+
+            # Build task ranges (per original occurrences)
+            task_ranges = self.task_range_finder(df_sorted)  # {"Task N": [(start,end), ...]}
+            # Precompute a flat list with (task_name, occ_index, start, end) for quick overlap checks
+            flat_ranges: list[tuple[str, int, float, float]] = []
+            for task_name, periods in task_ranges.items():
+                for occ_idx, (st, en) in enumerate(periods):
+                    flat_ranges.append((task_name, occ_idx, float(st), float(en)))
+
+            if not flat_ranges:
+                # No tasks found -> skip this participant entirely
+                continue
+
+            # Time domain and window anchors
+            t_min = float(df_sorted[self.timestamp_col].min())
+            t_max = float(df_sorted[self.timestamp_col].max())
+            if not np.isfinite(t_min) or not np.isfinite(t_max) or t_max <= t_min:
+                continue
+
+            window_starts = np.arange(t_min, t_max - window_ms + 1e-9, step_ms)
+            # Per-task counters to keep ID uniqueness: participant_task_occurrence
+            # Occurrence here counts windows per Task_id (not original start/end index).
+            per_task_window_counter: dict[int, int] = {}
+
+            for w_start in window_starts:
+                w_end = w_start + window_ms
+
+                # Find the overlapping task occurrence with the largest overlap
+                best = None  # (overlap_ms, task_name, occ_idx)
+                for task_name, occ_idx, st, en in flat_ranges:
+                    overlap = max(0.0, min(w_end, en) - max(w_start, st))
+                    if overlap > 0.0:
+                        if (best is None) or (overlap > best[0]):
+                            best = (overlap, task_name, occ_idx)
+
+                if best is None:
+                    # No task overlaps this window -> skip (between tasks)
+                    continue
+
+                overlap_ms, best_task_name, best_occ_idx = best
+                if overlap_ms / window_ms < min_presence:
+                    # Not enough majority coverage -> skip
+                    continue
+
+                # Extract the window slice
+                mask = (df_sorted[self.timestamp_col] >= w_start) & (df_sorted[self.timestamp_col] < w_end)
+                window_df = df_sorted.loc[mask, features].copy()
+                if window_df.empty:
+                    # No samples landed in this window (edge case) -> skip
+                    continue
+
+                # Task metadata
+                task_id = int(best_task_name.split()[-1])  # "Task N" -> N
+
+                # Maintain window occurrence per task to build unique ids
+                window_occurrence = per_task_window_counter.get(task_id, 0)
+                per_task_window_counter[task_id] = window_occurrence + 1
+
+                # Attach metadata
+                window_df["Task_id"] = task_id
+                # IMPORTANT:
+                # - Keep Task_execution = original start/end occurrence index (stable semantics)
+                # - The ID uses the *window* occurrence counter to stay unique per window.
+                window_df["Task_execution"] = best_occ_idx
+                window_df["Participant name"] = participant
+                uid = f"{participant}_{task_id}_{window_occurrence}"
+                window_df["id"] = uid
+
+                chunks[uid] = window_df
+
+        return chunks
+
+    
     # ------------------------- 3. BLINK IDENTIFICATION -------------------------
     def detect_blinks(self, task_chunks: dict[str, pd.DataFrame], blink_threshold: int = 100):
         """

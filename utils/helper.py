@@ -8,31 +8,52 @@ import pandas as pd
 
 from utils.data_processing import EyeTrackingProcessor
 
-def load_and_process(data_path: Union[str, Path],
-                     columns: list[str],
-                     interpolate_cols: list[str],
-                     fill_cols: list[str],
-                     time_resampling: bool = True
-                     ) -> pd.DataFrame:
+def load_and_process(
+    data_path: Union[str, Path],
+    columns: list[str],
+    interpolate_cols: list[str],
+    fill_cols: list[str],
+    time_resampling: bool = True,            # Fixed time step resampling for JCAFNET 
+    fixed_window_ms: int | None = 3000,      # set to None to keep old behavior (chuning per task)
+    window_step_ms: int | None = None,       # hop size (None = same as window)
+    min_task_presence: float = 0.5,          # majority threshold
+) -> pd.DataFrame:
     
     files_list = os.listdir(data_path)
     files_list = [os.path.join(data_path, file) for file in files_list if file.endswith(".tsv")]
     
     processor = EyeTrackingProcessor()
     all_data, atco_task_map = processor.load_data(files_list)
-    chunks = processor.get_features(all_data, columns)
+
+    ###### Chunking Strategy ######
+    if fixed_window_ms is not None:
+        # Chunk every XX seconds
+        chunks = processor.get_fixed_window_chunks(
+            all_data,
+            features=columns,
+            window_ms=fixed_window_ms,
+            step_ms=window_step_ms,
+            min_presence=min_task_presence,
+        )
+    else:
+        # Chunk per task
+        chunks = processor.get_features(all_data, columns)
+
+    # Blink detection
     chunks, blinks = processor.detect_blinks(chunks)
     
-    # Fixed Time step resampling if activated
+    # Optional time-step resampling (e.g., XX ms grid for the sequential analsysis of the JCAFNET)
     if time_resampling: 
         resampled_chunks_time = processor.resample_task_chunks(chunks, interpolate_cols, mode="time", param=10)
 
         for task_id, chunk in resampled_chunks_time.items():
-            resampled_chunks_time[task_id].Blink = (resampled_chunks_time[task_id].Blink > 0.5) #Transform interpolated data
+            # Transform interpolated Blink back to boolean and fill other features
+            resampled_chunks_time[task_id].Blink = (resampled_chunks_time[task_id].Blink > 0.5)
             for col in fill_cols:
                 resampled_chunks_time[task_id][col] = resampled_chunks_time[task_id][col].ffill().bfill()
             
         return resampled_chunks_time, blinks, atco_task_map
+
     return chunks, blinks, atco_task_map
 
 def save_processed_data(save_dir: Union[str, Path], 
