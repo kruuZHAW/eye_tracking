@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package polaris_fdp_interface.protobuf;
+
+import "polaris_fdp_aftn_message.proto";
+import "uuid.proto";
+import "weatherMessage.proto";
+
+// Weather message with header information.
+message WeatherMessage {
+
+  // Defines a unique id for the message.
+  tern.protobuf.Uuid message_id = 1;
+
+  // The information of the transporting protocol.
+  AftnHeader aftn_header = 2;
+
+  // The actual message.
+  tern.protobuf.WeatherMessage message = 3;
+}

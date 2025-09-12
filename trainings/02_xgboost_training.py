@@ -93,8 +93,10 @@ def sanitize_column_names(df: pd.DataFrame) -> pd.DataFrame:
 if __name__ == "__main__":
     # ------------------------- 0. PARAMETERS -------------------------
     
+    #TODO: Modify storage paths according to new organisation
+    
     # Directories
-    store_data_dir = "/store/kruu/eye_tracking/atco_data"
+    store_data_dir = "/store/kruu/eye_tracking/training_data"
     jcafnet_metadata_path = "logs/jcafnet_classifier/hardy-water-3/model_metadata.json"
     save_model_path = "logs/xgboost_classifier"
     split_data_dir = os.path.join(store_data_dir, "splits")
@@ -126,7 +128,7 @@ if __name__ == "__main__":
     # Keeping the id split for train/test/val made during the training of the JCAFNET
     
     # Loading data from scratch
-    chunks_xgboost, blinks, atco_task_map = load_and_process(data_path=store_data_dir, 
+    chunks_xgboost, blinks, atco_task_map = load_and_process(root_dir=store_data_dir, 
                                                              columns=features, 
                                                              interpolate_cols=interpolate_cols, 
                                                              fill_cols=fill_columns, 

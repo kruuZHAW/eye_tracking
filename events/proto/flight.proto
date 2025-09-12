@@ -1,0 +1,617 @@
+syntax = "proto3";
+
+import "aeronautical.proto";
+import "dateTime.proto";
+import "geometry.proto";
+import "google/protobuf/timestamp.proto";
+import "math.proto";
+import "sectorCrossing.proto";
+import "uuid.proto";
+
+package tern.protobuf.flight;
+
+// Callsign of the flight
+message CallSign
+{
+    string value = 1;
+}
+
+// Phase of emergency [ICAO Doc 4444, Field Type 5 (a)]
+enum EmergencyPhase
+{
+    EMERGENCY_PHASE_NOT_SET = 0;
+    EMERGENCY_PHASE_INCERFA = 1;
+    EMERGENCY_PHASE_ALERFA = 2;
+    EMERGENCY_PHASE_DETRESFA = 3;
+}
+
+// Aircraft performance data, indicated by a single letter as specified in the Procedures for Air Navigation Services -
+// Aircraft Operations (PANS-OPS, Doc 8168), Volume I - Flight Procedures (I-4-1-2, 1.3.5)
+// "These categories provide a standardized basis for relating aircraft manoeuvrability to specific instrument approach procedures."
+enum AircraftPerformanceCategory
+{
+    AIRCRAFT_PERFORMANCE_CATEGORY_NOT_SET = 0;
+    AIRCRAFT_PERFORMANCE_CATEGORY_A = 1;
+    AIRCRAFT_PERFORMANCE_CATEGORY_B = 2;
+    AIRCRAFT_PERFORMANCE_CATEGORY_C = 3;
+    AIRCRAFT_PERFORMANCE_CATEGORY_D = 4;
+    AIRCRAFT_PERFORMANCE_CATEGORY_E = 5;
+    AIRCRAFT_PERFORMANCE_CATEGORY_H = 6;
+}
+
+// The category of flight rules with which the pilot intends to comply.
+// [ICAO Doc 4444, Appendix 2, Item 8]
+enum FlightRuleCategory
+{
+    FLIGHT_RULE_CATEGORY_NOT_SET = 0;
+    FLIGHT_RULE_CATEGORY_IFR = 1;
+    FLIGHT_RULE_CATEGORY_VFR = 2;
+    FLIGHT_RULE_CATEGORY_INITIALLY_IFR = 3;
+    FLIGHT_RULE_CATEGORY_INITIALLY_VFR = 4;
+}
+
+// The current flight rules or change of flight rules with which the pilot intends to comply.
+// [ICAO Doc 4444, Appendix 2, Item 15]
+enum CurrentFlightRules
+{
+    CURRENT_FLIGHT_RULES_NOT_SET = 0;
+    CURRENT_FLIGHT_RULES_IFR = 1;
+    CURRENT_FLIGHT_RULES_VFR = 2;
+}
+
+// A code indicating the capability of the aircraft and associated flight crew
+// qualifications to communicate with ATS
+enum CommunicationCapabilityCode
+{
+    COMMUNICATION_CAPABILITY_CODE_NOT_SET = 0;
+    COMMUNICATION_CAPABILITY_CODE_E1 = 1;
+    COMMUNICATION_CAPABILITY_CODE_E2 = 2;
+    COMMUNICATION_CAPABILITY_CODE_E3 = 3;
+    COMMUNICATION_CAPABILITY_CODE_H = 4;
+    COMMUNICATION_CAPABILITY_CODE_M1 = 5;
+    COMMUNICATION_CAPABILITY_CODE_M2 = 6;
+    COMMUNICATION_CAPABILITY_CODE_M3 = 7;
+    COMMUNICATION_CAPABILITY_CODE_P1 = 8;
+    COMMUNICATION_CAPABILITY_CODE_P2 = 9;
+    COMMUNICATION_CAPABILITY_CODE_P3 = 10;
+    COMMUNICATION_CAPABILITY_CODE_P4 = 11;
+    COMMUNICATION_CAPABILITY_CODE_P5 = 12;
+    COMMUNICATION_CAPABILITY_CODE_P6 = 13;
+    COMMUNICATION_CAPABILITY_CODE_P7 = 14;
+    COMMUNICATION_CAPABILITY_CODE_P8 = 15;
+    COMMUNICATION_CAPABILITY_CODE_P9 = 16;
+    COMMUNICATION_CAPABILITY_CODE_U = 17;
+    COMMUNICATION_CAPABILITY_CODE_V = 18;
+    COMMUNICATION_CAPABILITY_CODE_Y = 19;
+}
+
+// A code indicating the capability of the aircraft to communicate
+// or receive data.
+enum DatalinkCommunicationCapabilityCode
+{
+    DATALINK_COMMUNICATION_CAPABILITY_CODE_NOT_SET = 0;
+    DATALINK_COMMUNICATION_CAPABILITY_CODE_J1 = 1;
+    DATALINK_COMMUNICATION_CAPABILITY_CODE_J2 = 2;
+    DATALINK_COMMUNICATION_CAPABILITY_CODE_J3 = 3;
+    DATALINK_COMMUNICATION_CAPABILITY_CODE_J4 = 4;
+    DATALINK_COMMUNICATION_CAPABILITY_CODE_J5 = 5;
+    DATALINK_COMMUNICATION_CAPABILITY_CODE_J6 = 6;
+    DATALINK_COMMUNICATION_CAPABILITY_CODE_J7 = 7;
+}
+
+// A code indicating the navigation capability of the aircraft
+// and associated flight crew qualifications.
+enum NavigationCapabilityCode
+{
+    NAVIGATION_CAPABILITY_CODE_NOT_SET = 0;
+    NAVIGATION_CAPABILITY_CODE_A = 1;
+    NAVIGATION_CAPABILITY_CODE_B = 2;
+    NAVIGATION_CAPABILITY_CODE_C = 3;
+    NAVIGATION_CAPABILITY_CODE_D = 4;
+    NAVIGATION_CAPABILITY_CODE_F = 5;
+    NAVIGATION_CAPABILITY_CODE_G = 6;
+    NAVIGATION_CAPABILITY_CODE_I = 7;
+    NAVIGATION_CAPABILITY_CODE_K = 8;
+    NAVIGATION_CAPABILITY_CODE_L = 9;
+    NAVIGATION_CAPABILITY_CODE_O = 10;
+    NAVIGATION_CAPABILITY_CODE_R = 11;
+    NAVIGATION_CAPABILITY_CODE_T = 12;
+    NAVIGATION_CAPABILITY_CODE_W = 13;
+    NAVIGATION_CAPABILITY_CODE_X = 14;
+    NAVIGATION_CAPABILITY_CODE_Z = 15;
+}
+
+// A code indicating the capability of the aircraft to communicate
+// or receive data.
+enum PerformanceBasedNavigationCapabilityCode
+{
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_NOT_SET = 0;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_A1 = 1;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_B1 = 2;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_B2 = 3;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_B3 = 4;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_B4 = 5;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_B5 = 6;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_B6 = 7;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_C1 = 8;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_C2 = 9;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_C3 = 10;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_C4 = 11;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_D1 = 12;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_D2 = 13;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_D3 = 14;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_D4 = 15;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_L1 = 16;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_O1 = 17;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_O2 = 18;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_O3 = 19;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_O4 = 20;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_S1 = 21;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_S2 = 22;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_T1 = 23;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_T2 = 24;
+    PERFORMANCE_BASED_NAVIGATION_CAPABILITY_CODE_UNSPECIFIED = 25;
+}
+
+// CommunicationAndNavigationCapabilities represents the navigation capability
+// of the aircraft and associated flight crew qualifications.
+message CommunicationAndNavigationCapabilities
+{
+    bool hasStandardCapabilities = 1;
+    string otherCommunicationCapabilities = 2;
+    string otherDatalinkCapabilities = 3;
+    string otherNavigationalCapabilities = 4;
+    repeated CommunicationCapabilityCode communicationCapabilities = 5;
+    repeated DatalinkCommunicationCapabilityCode datalinkCommunicationCapabilities = 6;
+    repeated NavigationCapabilityCode  navigationalCapabilities = 7;
+    repeated PerformanceBasedNavigationCapabilityCode performanceBasedNavigationCapabilities = 8;
+}
+
+// Accumulated Time Over
+message AccumulatedTimeOver
+{
+    string point_or_fir = 1;
+    tern.protobuf.TimeSpan time_over = 2;
+}
+
+// Crossing Condition
+enum CrossingCondition {
+    CROSSING_CONDITION_NOT_SET = 0;
+    CROSSING_CONDITION_AT_OR_ABOVE = 1;
+    CROSSING_CONDITION_AT_OR_BELOW = 2;
+}
+
+// Runway Visual Range - from IFPS Users Manual - Network Manager 25.0
+message RunwayVisualRange {
+    // 1-3 digits
+    uint32 range_in_metres = 1;
+}
+
+// Aircraft Type and Wake Turbulence Category
+message AircraftTypeAndWakeTurbulenceCategory
+{
+    string aircraft_type = 1;
+    tern.protobuf.flight.WakeTurbulenceCategory wake_turbulence_category = 2;
+    tern.protobuf.flight.AircraftPerformanceCategory aircraft_performance_category = 3;
+}
+
+// from IFPS Users Manual - Network Manager 25.0
+enum IFPIndicator {
+    IFP_INDICATOR_NOT_SET = 0;
+    IFP_INDICATOR_ERROUTRAD = 1;
+    IFP_INDICATOR_ERROUTWE = 2;
+    IFP_INDICATOR_ERROUTE = 3;
+    IFP_INDICATOR_ERRTYPE = 4;
+    IFP_INDICATOR_ERRLEVEL = 5;
+    IFP_INDICATOR_ERREOBT = 6;
+    IFP_INDICATOR_NON833 = 7;
+    IFP_INDICATOR_833UNKNOWN = 8;
+    IFP_INDICATOR_NONRVSM = 9;
+    IFP_INDICATOR_RVSMUNKNOWN = 10;
+    IFP_INDICATOR_RVSMVIOLATION = 11;
+    IFP_INDICATOR_MODESASP = 12;
+    IFP_INDICATOR_ERREQPT = 13;
+    IFP_INDICATOR_ERRRTECOORD = 14;
+    IFP_INDICATOR_IFPSROUTEMOD = 15;
+}
+
+message NumberOfAircraft {
+    uint32 number_of_aircraft = 1;
+}
+
+message SelCal {
+    string code = 1;
+}
+
+// from IFPS Users Manual - Network Manager 25.0
+message StayInfo {
+    // Sequence number ranging from 1 to 9
+    uint32 sequence_number = 1;
+
+    // Free text information
+    string information = 2;
+}
+
+// Aircraft registraction as in ICAO flight plan
+message AircraftRegistration {
+    string aircraftregistration = 1;
+}
+
+// Type of Flight
+enum TypeOfFlight {
+    TYPE_OF_FLIGHT_NOT_SET = 0;
+    TYPE_OF_FLIGHT_SCHEDULED = 1;
+    TYPE_OF_FLIGHT_NON_SCHEDULED = 2;
+    TYPE_OF_FLIGHT_GENERAL = 3;
+    TYPE_OF_FLIGHT_MILITARY = 4;
+    TYPE_OF_FLIGHT_OTHER = 5;
+}
+
+// Special Status Codes
+enum SpecialStatusCode {
+    SPECIAL_STATUS_CODE_NOT_SET = 0;
+    SPECIAL_STATUS_CODE_ALTITUDE_RESERVATION = 1;
+    SPECIAL_STATUS_CODE_ATFM_EXEMPTION = 2;
+    SPECIAL_STATUS_CODE_FIREFIGHTING = 3;
+    SPECIAL_STATUS_CODE_FLIGHT_CHECK = 4;
+    SPECIAL_STATUS_CODE_HAZARDOUS_MATERIAL = 5;
+    SPECIAL_STATUS_CODE_HEAD_OF_STATE = 6;
+    SPECIAL_STATUS_CODE_HOSPITAL = 7;
+    SPECIAL_STATUS_CODE_HUMANITARIAN = 8;
+    SPECIAL_STATUS_CODE_MARSA = 9;
+    SPECIAL_STATUS_CODE_MEDEVAC = 10;
+    SPECIAL_STATUS_CODE_NON_RVSM = 11;
+    SPECIAL_STATUS_CODE_SEARCH_AND_RESCUE = 12;
+    SPECIAL_STATUS_CODE_STATE = 13;
+    SPECIAL_STATUS_CODE_REDCROSS = 14;
+}
+
+// Special Status: Reason for special handling by ATS, e.g. a search and rescue mission
+// [ICAO Doc 4444, Appendix 3, Field Type 18: STS]
+message SpecialStatus {
+    repeated SpecialStatusCode specialStatusCodes = 1;
+}
+
+// Address of an aircraft in hexadecimal string format
+message AircraftAddress
+{
+    fixed32 value = 1;
+}
+
+// WakeTurbulenceCategory
+enum WakeTurbulenceCategory {
+    WAKE_TURBULENCE_CATEGORY_NOT_SET = 0;
+    WAKE_TURBULENCE_CATEGORY_L = 1;
+    WAKE_TURBULENCE_CATEGORY_M = 2;
+    WAKE_TURBULENCE_CATEGORY_H = 3;
+    WAKE_TURBULENCE_CATEGORY_J = 4;
+}
+
+enum SurveillanceCapabilityCode{
+    SURVEILLANCE_CAPABILITY_CODE_NOT_SET = 0;
+    SURVEILLANCE_CAPABILITY_CODE_A = 1;
+    SURVEILLANCE_CAPABILITY_CODE_C = 2;
+    SURVEILLANCE_CAPABILITY_CODE_E = 3;
+    SURVEILLANCE_CAPABILITY_CODE_H = 4;
+    SURVEILLANCE_CAPABILITY_CODE_I = 5;
+    SURVEILLANCE_CAPABILITY_CODE_L = 6;
+    SURVEILLANCE_CAPABILITY_CODE_P = 7;
+    SURVEILLANCE_CAPABILITY_CODE_S = 8;
+    SURVEILLANCE_CAPABILITY_CODE_X = 9;
+    SURVEILLANCE_CAPABILITY_CODE_B1 = 10;
+    SURVEILLANCE_CAPABILITY_CODE_B2 = 11;
+    SURVEILLANCE_CAPABILITY_CODE_U1 = 12;
+    SURVEILLANCE_CAPABILITY_CODE_U2 = 13;
+    SURVEILLANCE_CAPABILITY_CODE_V1 = 14;
+    SURVEILLANCE_CAPABILITY_CODE_V2 = 15;
+    SURVEILLANCE_CAPABILITY_CODE_D1 = 16;
+    SURVEILLANCE_CAPABILITY_CODE_G1 = 17;
+}
+
+message SurveillanceCapabilities{
+    repeated SurveillanceCapabilityCode codes = 1;
+    string additional_surveillance_capabilities = 2;
+}
+
+// Arrival aerodrome
+message ArrivalAerodrome {
+    // ICAO 4-letter aerodrome indicator or ZZZZ
+    string aerodrome_indicator = 1;
+
+    // Actual time of arrival, four digits in HHMM format
+    string time_of_arrival = 2;
+
+    // If indicator was ZZZZ:
+    string name_of_aerodrome = 3;
+}
+
+// Planned Route Element
+message PlannedRouteElement {
+    oneof variants {
+        PlannedDesignatedPointOrNavaid planned_designated_point_or_navaid = 1;
+        PlannedDesignatedRoute planned_designated_route = 2;
+        PlannedDesignator planned_designator= 3;
+        PlannedPositionPoint planned_position_point= 4;
+        PlannedRelativePoint planned_relative_point = 5;
+        PlannedSID planned_sid = 6;
+        PlannedSTAR planned_star = 7;
+        PlannedDepartureAerodrome planned_departure_aerodrome = 8;
+        PlannedDestinationAerodrome planned_destination_aerodrome = 9;
+        PlannedIndicator planned_indicator = 10;
+    }
+}
+
+// Planned designated Point or navigation aid
+message PlannedDesignatedPointOrNavaid {
+    string designator = 1;
+    oneof planned_cruising_speed_and_level_or_cruise_climb {
+        PlannedCruisingSpeedAndLevel planned_cruising_speed_and_level = 2;
+        PlannedCruiseClimb planned_cruise_climb = 3;
+    }
+    FlightRuleCategory flight_rule_category = 4;
+}
+
+// Planned designated route
+message PlannedDesignatedRoute {
+    string designator = 1;
+}
+
+// Planned designator
+message PlannedDesignator {
+    string designator = 1;
+    oneof planned_cruising_speed_and_level_or_cruise_climb {
+        PlannedCruisingSpeedAndLevel planned_cruising_speed_and_level = 2;
+        PlannedCruiseClimb planned_cruise_climb = 3;
+    }
+    FlightRuleCategory flight_rule_category = 4;
+}
+
+// Planned position point
+message PlannedPositionPoint {
+    string designator = 1;
+    oneof planned_cruising_speed_and_level_or_cruise_climb {
+        PlannedCruisingSpeedAndLevel planned_cruising_speed_and_level = 2;
+        PlannedCruiseClimb planned_cruise_climb = 3;
+    }
+    FlightRuleCategory flight_rule_category = 4;
+    tern.protobuf.math.LatLon latlon = 5;
+}
+
+// Planned relative point
+message PlannedRelativePoint {
+    string designator = 1;
+    oneof planned_cruising_speed_and_level_or_cruise_climb {
+        PlannedCruisingSpeedAndLevel planned_cruising_speed_and_level = 2;
+        PlannedCruiseClimb planned_cruise_climb = 3;
+    }
+    FlightRuleCategory flight_rule_category = 4;
+    oneof reference_point {
+        PlannedDesignatedPointOrNavaid planned_designated_point_or_navaid = 5;
+        PlannedPositionPoint planned_position_point = 6;
+    }
+    tern.protobuf.math.Distance distance = 7;
+    tern.protobuf.math.MagneticBearing magnetic_bearing = 8;
+}
+
+// Planned standard departure
+message PlannedSID {
+    string designator = 1;
+}
+
+//Planned standard approach
+message PlannedSTAR {
+    string designator = 1;
+}
+
+//Planned alternate aerodrome
+message PlannedAlternateAerodrome {
+  string designator = 1;
+  string item18_alternate_destination_information = 2;
+}
+
+// Planned departure aerodrome
+message PlannedDepartureAerodrome {
+    string designator = 1;
+    string item18_departure_information = 2;
+}
+
+//Planned destination aerodrome
+message PlannedDestinationAerodrome {
+    string code = 1;
+    string item18_destination_information = 2;
+}
+
+// Planned indicator of an aircraft
+message PlannedIndicator {
+    enum PlannedIndicatorType {
+        PLANNED_INDICATOR_NOT_SET = 0;
+        PLANNED_INDICATOR_VFR = 1;
+        PLANNED_INDICATOR_IFR = 2;
+        PLANNED_INDICATOR_DCT = 3;
+        PLANNED_INDICATOR_T = 4;
+        PLANNED_INDICATOR_GAT = 5;
+        PLANNED_INDICATOR_OAT = 6;
+        PLANNED_INDICATOR_STAY = 7;
+    }
+    PlannedIndicatorType type = 1;
+    uint32 sequence_number = 2;
+    tern.protobuf.TimeSpan duration = 3;
+}
+
+// Planned cruising speed and level
+message PlannedCruisingSpeedAndLevel{
+    PlannedCruisingSpeed cruising_speed = 1;
+    PlannedCruisingLevel cruising_level = 2;
+}
+
+// Planned Cruise climb
+message PlannedCruiseClimb{
+   string cruise_climb = 1;
+}
+
+// Planned cruisie speed
+message PlannedCruisingSpeed {
+  string cruising_speed = 1;
+}
+
+// Planned Crusing level
+message PlannedCruisingLevel {
+  string cruising_level = 1;
+}
+
+// Standard procedure type
+enum StandardProcedureType {
+  STANDARD_PROCEDURE_TYPE_NOT_SET = 0;
+  STANDARD_PROCEDURE_TYPE_SID = 1;
+  STANDARD_PROCEDURE_TYPE_STAR = 2;
+  STANDARD_PROCEDURE_TYPE_OTHER = 3;
+}
+
+// Standard Procedure
+message StandardProcedure {
+  string designator = 1;
+  string entry_point = 2; // designator of the entry point
+  string exit_point = 3; // designator of the exit point
+  tern.protobuf.math.LatLon entry_location = 4; // coordinates of the entry point
+  tern.protobuf.math.LatLon exit_location = 5; // coordinates of the exit point
+  StandardProcedureType type = 6; // type of the standard procedure
+  repeated tern.protobuf.aeronautical.Leg legs = 7; // legs of the standard procedure
+}
+
+// Resolved Route Element
+message ResolvedRouteElement {
+  tern.protobuf.math.LatLon latlon = 1;
+  string designator = 2;
+  int32 index = 3;
+  string country = 4;
+  PlannedRouteElement unresolved_route_element = 5;
+  PlannedDesignatedRoute route_to_next = 6;
+  StandardProcedure sid = 7;
+  StandardProcedure star = 8;
+}
+
+// Expanded Route Element
+message ExpandedRouteElement {
+  oneof element {
+    PlannedRouteElement planned_route_element = 1;
+    ResolvedRouteElement resolved_route_element = 2;
+  }
+}
+
+// Expanded Route
+message ExpandedRoute {
+  repeated ExpandedRouteElement expanded_route_elements = 1;
+}
+
+// ModeACode
+message ModeACode {
+ uint32 code = 1;
+}
+
+// Emergency Description [see ICAO Doc 4444, Field Type 5]
+message EmergencyDescription {
+  EmergencyPhase emergency_phase = 1;
+  string originator = 2;
+  string nature_of_emergency = 3;
+}
+
+// Vertical Rate Condition
+enum VerticalRateCondition {
+    VERTICAL_RATE_CONDITION_NOT_SET = 0;
+    VERTICAL_RATE_CONDITION_AT_VALUE = 1;
+    VERTICAL_RATE_CONDITION_AT_OR_ABOVE = 2;
+    VERTICAL_RATE_CONDITION_AT_OR_BELOW = 3;
+    VERTICAL_RATE_CONDITION_EXPEDITE = 4;
+}
+
+// Assigned Speed Condition
+enum SpeedCondition {
+    SPEED_CONDITION_NOT_SET = 0;
+    SPEED_CONDITION_AT_VALUE = 1;
+    SPEED_CONDITION_AT_OR_ABOVE = 2;
+    SPEED_CONDITION_AT_OR_BELOW = 3;
+}
+
+// RouteTrajectoryElement representing a boundary crossing point
+message RouteTrajectoryElementBoundaryCrossing {
+    tern.protobuf.math.LatLon location = 1;
+    tern.protobuf.math.geometry.VerticalVariant vertical_variant = 2;
+    google.protobuf.Timestamp passing_time = 3;
+    tern.protobuf.Uuid airspace_before = 4;
+    tern.protobuf.Uuid airspace_after = 5;
+    bool has_been_passed = 6;
+    bool is_aor_entry = 7;
+    bool is_aor_exit = 8;
+    string crossing_point_designator = 9;
+}
+
+// RouteTrajectoryElement representing a handover point
+message RouteTrajectoryElementHandover {
+    tern.protobuf.math.LatLon location = 1;
+    tern.protobuf.math.geometry.VerticalVariant vertical_variant = 2;
+    google.protobuf.Timestamp passing_time = 3;
+    tern.protobuf.Uuid airspace_before = 4;
+    tern.protobuf.Uuid airspace_after = 5;
+    bool has_been_passed = 6;
+    tern.protobuf.trajectory.SectorCrossingType sector_crossing_type = 7;
+    string aor_unit_designator_before = 8;
+    string aor_unit_designator_after = 9;
+}
+
+// RouteTrajectoryElement representing an en-route route point
+message RouteTrajectoryElementEnRoute {
+    string route_point_designator = 1;
+    tern.protobuf.math.LatLon location = 2;
+    tern.protobuf.math.geometry.VerticalVariant vertical_variant = 3;
+    google.protobuf.Timestamp passing_time = 4;
+    bool has_been_passed = 5;
+}
+
+// RouteTrajectoryElement representing a point of a SID procedure
+message RouteTrajectoryElementSid {
+    string procedure_designator = 1;
+    string route_point_designator = 2;
+    tern.protobuf.math.LatLon location = 3;
+    tern.protobuf.math.geometry.VerticalVariant vertical_variant = 4;
+    google.protobuf.Timestamp passing_time = 5;
+    bool has_been_passed = 6;
+}
+
+// RouteTrajectoryElement representing a point of a STAR procedure
+message RouteTrajectoryElementStar {
+    string procedure_designator = 1;
+    string route_point_designator = 2;
+    tern.protobuf.math.LatLon location = 3;
+    tern.protobuf.math.geometry.VerticalVariant vertical_variant = 4;
+    google.protobuf.Timestamp passing_time = 5;
+    bool has_been_passed = 6;
+}
+
+// RouteTrajectoryElement representing a point of an approach procedure
+message RouteTrajectoryElementApproach {
+    string procedure_designator = 1;
+    string route_point_designator = 2;
+    tern.protobuf.math.LatLon location = 3;
+    tern.protobuf.math.geometry.VerticalVariant vertical_variant = 4;
+    google.protobuf.Timestamp passing_time = 5;
+    bool has_been_passed = 6;
+}
+
+// Variant for RouteTrajectoryElements
+message RouteTrajectoryElementVariant {
+    oneof route_trajectory_element_variant {
+      RouteTrajectoryElementBoundaryCrossing boundary_crossing_element = 1;
+      RouteTrajectoryElementHandover handover_element = 2;
+      RouteTrajectoryElementEnRoute en_route_element = 3;
+      RouteTrajectoryElementSid sid_element = 4;
+      RouteTrajectoryElementStar star_element = 5;
+      RouteTrajectoryElementApproach approach_element = 6;
+    }
+}
+
+// RouteTrajectory representing the route and trajectory information
+message RouteTrajectory {
+    ExpandedRoute expanded_route = 1;
+    repeated RouteTrajectoryElementVariant route_trajectory_elements = 2;
+}
+

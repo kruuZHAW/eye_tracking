@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "dateTime.proto";
+
+package tern.protobuf;
+
+// Specifies the operational status of the application as shown in the SMC
+enum OperationalStatus {
+    OPERATIONAL_STATUS_NOT_SET = 0;
+    // If the application is still setting up it will be marked as initialising.
+    OPERATIONAL_STATUS_INITIALISING = 1;
+    // If the application is fully operational it will be marked as operational.
+    OPERATIONAL_STATUS_OPERATIONAL = 2;
+    // If the application is relying on a data model that it doesn't have the latest version on it is marked as degraded.
+    OPERATIONAL_STATUS_DEGRADED = 3;
+    // If the application is down it's marked as not started.
+    OPERATIONAL_STATUS_NOT_STARTED = 4;
+}
+
+// Specifies different types of data models required by an atc system.
+enum DataModel {
+    DATA_MODEL_NOT_SET = 0;
+    // Specifies that the data model provides the sectorization profile.
+    DATA_MODEL_SECTORIZATION_PROFILE = 1;
+    // Specifies that the data model provides the operational status.
+    DATA_MODEL_OPERATIONAL_MODE = 2;
+    // Specifies that the data model provides the runways in use.
+    DATA_MODEL_RUNWAYS_IN_USE = 3;
+    // Specifies that the data model provides the frequency profile.
+    DATA_MODEL_FREQUENCY_PROFILE = 4;
+    // Specifies that the data model provides the qnh.
+    DATA_MODEL_QNH = 5;
+    // Specifies that the data model provides the weather forecast.
+    DATA_MODEL_WEATHER_FORECAST = 6;
+    // Specifies that the data model provides the track data.
+    DATA_MODEL_TRACK_DATA = 7;
+    // Specifies that the data model provides the flight data.
+    DATA_MODEL_FLIGHT_DATA = 8;
+    // Specifies that the data model provides flight messages.
+    DATA_MODEL_FLIGHT_MESSAGES = 9;
+    // Specifies that the data model provides the weather messages.
+    DATA_MODEL_WEATHER_MESSAGES = 10;
+    // Specifies that the data model provides the conspicuity code assignments.
+    DATA_MODEL_CONSPICUITY_CODE_ASSIGNMENTS = 11;
+    // Specifies that the data model provides the safety net settings.
+    DATA_MODEL_SAFETY_NET_SETTINGS = 12;
+    // Specifies that the data model provides the notam messages.
+    DATA_MODEL_NOTAM_MESSAGES = 13;
+    // Specifies that the data model provides the workstation status.
+    DATA_MODEL_WORKSTATION_STATUS = 14;
+    // Specifies that the data model provides the transmission status.
+    DATA_MODEL_TRANSMISSION_STATUS = 15;
+    // Specifies that the data model provides the message error queue.
+    DATA_MODEL_MESSAGE_ERROR_QUEUE = 16;
+    // Specifies that the data model provides the track marks.
+    DATA_MODEL_TRACK_MARKS = 17;
+    // Specifies that the data model provides the message reports.
+    DATA_MODEL_WORKSTATION_MESSAGE_REPORTS = 18;
+}
+
+// Specifies information related to the data model provided by the service.
+message DataModelInfo {
+    // Specifies which type the data model is.
+    DataModel data_model = 1;
+    // Specifies the version of the data model.
+    uint64 data_model_version = 2;
+}
+
+// Message containing general health info for a grpc service.
+message ServiceHealthInfo {
+    // Timestamp of the message.
+    google.protobuf.Timestamp timestamp = 1;
+
+    // Specifies information related to the data model provided by the service.
+    DataModelInfo data_model_info = 2;
+
+    // Time interval of the hearbeat from this service in milliseconds.
+    TimeSpan heartbeat_interval = 3;
+
+    // True if the application is depending on a degraded data model.
+    OperationalStatus operational_status = 4;
+}

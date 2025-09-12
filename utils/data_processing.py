@@ -22,13 +22,13 @@ class EyeTrackingProcessor:
             raise ValueError("No suitable timestamp column found in DataFrame.")
         
     @staticmethod
-    def extract_atco_task_roots(paths: list[str]) -> list[str]:
-        """Collect all unique task roots across all files."""
-        all_roots = set()
-
-        for path in paths:
-            df = pd.read_csv(path, sep="\t")
-            for event in df["Event"].unique():
+    def extract_atco_task_roots(dfs: list[pd.DataFrame]) -> list[str]:
+        """Collect all unique task roots across all scenarios dataframes."""
+        roots = set()
+        for df in dfs:
+            if "Event" not in df.columns:
+                continue
+            for event in df["Event"].dropna().unique():
                 if (
                     isinstance(event, str)
                     and " - " in event
@@ -36,10 +36,8 @@ class EyeTrackingProcessor:
                     and not event.startswith("Session -")
                     and not event.startswith("Conflict detection -")
                 ):
-                    root = event.split(" - ")[0]
-                    all_roots.add(root)
-
-        return sorted(all_roots)
+                    roots.add(event.split(" - ")[0])
+        return sorted(roots)
     
     @staticmethod
     def build_global_task_map(task_roots: list[str]) -> dict[str, str]:
@@ -62,113 +60,55 @@ class EyeTrackingProcessor:
 
     # ------------------------- 1. DATA LOADING & VALIDATION -------------------------
     
-    # def read_tsv_old(self, path: str) -> pd.DataFrame:
-    #     """Read a TSV file and validate task labeling."""
-    #     df = pd.read_csv(path, sep='\t')
-        
-    #     # Validate task counts
-    #     expected_tasks = [f"Task {i}" for i in range(1, 7)] + [f"Task {i} end" for i in range(1, 7)]
-    #     task_counts = df['Event'].value_counts()
-        
-    #     for task in expected_tasks:
-    #         if task_counts.get(task, 0) != 6:
-    #             print(f"Warning: {task} in {path} has {task_counts.get(task, 0)} occurrences instead of 6.")
-        
-    #     return df
-    
-    # def read_tsv(self, path: str) -> pd.DataFrame:
-    #     """Read a TSV file and convert task labeling."""
-    #     df = pd.read_csv(path, sep='\t')
-        
-    #     # Session is not a task
-    #     # Conflict detection is only start. Find a way to measure it. 
-    #     atco_tasks = [
-    #         event for event in df.Event.unique()
-    #         if (
-    #             isinstance(event, str)
-    #             and " - " in event
-    #             and (event.endswith("start") or event.endswith("end"))
-    #             and not event.startswith("Session -")
-    #             and not event.startswith("Conflict detection -")
-    #         )
-    #     ]
-        
-    #     # Mapping like Tasks were defined in ms_df
-    #     def map_events_to_tasks_inplace(df, event_column, task_events):
-    #         task_roots = sorted(set(event.split(" - ")[0] for event in task_events if " - " in event))
-    #         root_to_task = {root: f"Task {i+1}" for i, root in enumerate(task_roots)}
+    def load_data(
+        self,
+        file_index: list[dict],
+        want_columns: list[str] | None = None,
+    ) -> tuple[list[pd.DataFrame], dict[str, str]]:
+        """
+        Read multiple Parquet files, add participant/scenario ids, and map tasks.
+        file_index: [{'path': Path, 'participant_id': str, 'scenario_id': str}, ...]
+        want_columns: columns to read from parquet for speed (optional).
+        """
+        dfs: list[pd.DataFrame] = []
+        # Always request these if present
+        base_needed = {"Event", "Participant name", "epoch_ms", "Recording timestamp [ms]"}
+        read_cols = None
+        if want_columns:
+            read_cols = list(set(want_columns) | base_needed)
 
-    #         def map_event(event):
-    #             if isinstance(event, str) and " - " in event:
-    #                 root, suffix = event.split(" - ", maxsplit=1)
-    #                 task_label = root_to_task.get(root)
-    #                 if task_label:
-    #                     return task_label if suffix == "start" else f"{task_label} end"
-    #             return event
-            
-    #         df[event_column] = df[event_column].apply(map_event)
-    #         return root_to_task
-        
-    #     atco_tasks_map = map_events_to_tasks_inplace(df, "Event", atco_tasks)
-        
-    #     return df, atco_tasks_map
+        for item in file_index:
+            p = item["path"]
+            # read only necessary columns (pyarrow engine strongly recommended)
+            df = pd.read_parquet(p, columns=read_cols) if read_cols else pd.read_parquet(p)
 
-    # def load_data(self, paths: list[str]) -> list[pd.DataFrame]:
-    #     """Load multiple TSV files into a list of DataFrames, and map ATCO tasks"""
-    #     dfs = []
-    #     atco_tasks_maps = []
-    #     for i, path in enumerate(paths):
-    #         df, atco_map = self.read_tsv(path)
-    #         if "Participant name" not in df.columns:
-    #             df["Participant name"] = i
-    #         dfs.append(df)
-    #         atco_tasks_maps.append(atco_map)
-    #     return dfs, atco_tasks_maps
-    
-    
-    
-    def load_data(self, paths: list[str]) -> tuple[list[pd.DataFrame], dict[str, str]]:
-        """Load multiple TSV files with consistent ATCO task mapping."""
-        task_roots = self.extract_atco_task_roots(paths)
-        global_task_map = self.build_global_task_map(task_roots)
+            # attach ids
+            df = df.copy()
+            df["participant_id"] = str(item["participant_id"])
+            df["scenario_id"] = str(item["scenario_id"])
 
-        dfs = []
-        for i, path in enumerate(paths):
-            df = pd.read_csv(path, sep="\t")
-            df = self.apply_global_task_mapping(df, global_task_map)
+            # If no Participant name column, fill it with participant_id
             if "Participant name" not in df.columns:
-                df["Participant name"] = i
+                df["Participant name"] = str(item["participant_id"])
+
             dfs.append(df)
 
-        return dfs, global_task_map
+        # Build task map across all files (if Event exists)
+        task_roots = self.extract_atco_task_roots(dfs)
+        task_map = self.build_global_task_map(task_roots) if task_roots else {}
+
+        # Apply mapping
+        dfs = [self.apply_global_task_mapping(df, task_map) for df in dfs]
+
+        # Detect timestamp once (on first non-empty df)
+        for df in dfs:
+            if not df.empty:
+                self.detect_timestamp_column(df)
+                break
+
+        return dfs, task_map
 
     # ------------------------- 2. TASK IDENTIFICATION & FEATURE EXTRACTION -------------------------
-
-    # def task_range_finder_old(self, df: pd.DataFrame) -> dict[str, list[tuple[int, int]]]:
-    #     """Find start and end times of tasks within a DataFrame and warn for unmatched starts."""
-    #     self.detect_timestamp_column(df)
-    #     event_df = df[df['Event'].str.contains('Task', na=False)].sort_values(by=self.timestamp_col)
-    #     task_ranges = {}
-    #     task_stack = {}
-
-    #     for _, row in event_df.iterrows():
-    #         event, timestamp = row["Event"], row[self.timestamp_col]
-    #         if "end" not in event:
-    #             task_stack[event] = timestamp
-    #         else:
-    #             task_type = event.replace(" end", "")
-    #             if task_type in task_stack:
-    #                 task_ranges.setdefault(task_type, []).append((task_stack.pop(task_type), timestamp))
-    #             else:
-    #                 print(f"⚠️ Warning: End event '{event}' at {timestamp} without matching start.")
-
-    #     # After processing, check for unmatched starts
-    #     if task_stack:
-    #         print("⚠️ Warning: The following tasks have a start but no corresponding end:")
-    #         for task, start_time in task_stack.items():
-    #             print(f"   - {task} started at {start_time}")
-
-    #     return task_ranges
     
     def task_range_finder(self, df: pd.DataFrame) -> dict[str, list[tuple[int, int]]]:
         """Find start and end times of tasks within a DataFrame.
@@ -218,7 +158,8 @@ class EyeTrackingProcessor:
         task_chunks = {}
 
         for df in dfs:
-            participant = df["Participant name"].iloc[0] if "Participant name" in df.columns else 0
+            participant = df["participant_id"].iloc[0] if "participant_id" in df.columns else df["Participant name"].iloc[0]
+            scenario_id = df["scenario_id"].iloc[0]
             task_ranges = self.task_range_finder(df)  # ranges for each tasks
 
             for task, periods in task_ranges.items():
@@ -229,12 +170,13 @@ class EyeTrackingProcessor:
 
                     # Create unique ID
                     task_id = int(task.split()[-1])
-                    uid = f"{participant}_{task_id}_{i}"
+                    uid = f"{participant}_{scenario_id}_{task_id}_{i}"
 
                     # Assign metadata
                     task_data["Task_id"] = task_id
                     task_data["Task_execution"] = i
                     task_data["Participant name"] = participant
+                    task_data["Scenario_id"] = scenario_id
                     task_data["id"] = uid
 
                     task_chunks[uid] = task_data
@@ -268,7 +210,10 @@ class EyeTrackingProcessor:
 
         for df in dfs:
             # Participant id/name
-            participant = df["Participant name"].iloc[0] if "Participant name" in df.columns else 0
+            participant = df["participant_id"].iloc[0] if "participant_id" in df.columns else df["Participant name"].iloc[0]
+            
+            # Scenario id
+            scenario_id = df["scenario_id"].iloc[0]
 
             # Timestamp detection + normalization (ms)
             self.detect_timestamp_column(df)
@@ -342,7 +287,8 @@ class EyeTrackingProcessor:
                 # - The ID uses the *window* occurrence counter to stay unique per window.
                 window_df["Task_execution"] = best_occ_idx
                 window_df["Participant name"] = participant
-                uid = f"{participant}_{task_id}_{window_occurrence}"
+                window_df["Scenario_id"] = scenario_id
+                uid = f"{participant}_{scenario_id}_{task_id}_{window_occurrence}"
                 window_df["id"] = uid
 
                 chunks[uid] = window_df

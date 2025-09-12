@@ -1,0 +1,1104 @@
+syntax = "proto3";
+
+import "aeronautical.proto";
+import "dateTime.proto";
+import "flight.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "math.proto";
+import "notamMessage.proto";
+import "sectorization.proto";
+import "serviceHealthInfo.proto";
+import "serviceSubscriberInfo.proto";
+
+package polaris_eds_interface.protobuf;
+
+// The DynamicSafetyNetConfigurationParametersPublishService defines a service interface,
+// implemented by the polaris-eds that allows clients to subscribe to updates to the dynamic safety net configuration
+// parameters maintained by the polaris-eds.
+service DynamicSafetyNetConfigurationParametersPublishService {
+  // Defines the RPC for changing activation status of Safety Net types (i.e. STCA, APW, CLAM, etc)
+  // Result from processing the message is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the message has been successfully processed.
+  // INVALID_ARGUMENT         -   the message contained errors, processing failed.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc UpdateSafetyNetActivationStatus(SafetyNetStatus) returns (google.protobuf.Empty) {}
+
+  // Defines the RPC for changing inhibition status of Safety Net types (i.e. STCA, APW, CLAM, etc)
+  // Result from processing the message is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the message has been successfully processed.
+  // INVALID_ARGUMENT         -   the message contained errors, processing failed.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc UpdateSafetyNetInhibitionStatus(SafetyNetStatus) returns (google.protobuf.Empty) {}
+
+  // Defines the RPC for changing inhibited SSR codes of Safety Net types (i.e. STCA, APW, CLAM)
+  // Result from processing the message is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the message has been successfully processed.
+  // INVALID_ARGUMENT         -   the message contained errors, processing failed.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc UpdateSafetyNetInhibitedSsrCodes(SafetyNetInhibitedSsrCodes) returns (google.protobuf.Empty) {}
+
+  // Defines the RPC for subscribing to updates to the dynamic safety net data.
+  // Result from subscribing is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   client has been registered as a subscriber. The list of dynamic safety net data
+  //                              is sent to the client, over the stream.
+  // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc SubscribeToDynamicSafetyNetDataUpdates(SubscriberInfo) returns (stream SafetyNetSettingStream) {
+    option deprecated = true;
+  }
+
+  // Defines the RPC for subscribing to updates to the dynamic safety net data.
+  // Result from subscribing is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   client has been registered as a subscriber. The list of dynamic safety net data
+  //                              is sent to the client, over the stream.
+  // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc SubscribeToDynamicSafetyNetDataStreamUpdates(tern.protobuf.ServiceSubscriberInfo) returns (stream SafetyNetSettingStream) {}
+
+  // Defines the RPC for changing activation status of SNS volumes.
+  // Result from processing the message is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the message has been successfully processed.
+  // INVALID_ARGUMENT         -   the message contained errors, processing failed.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc UpdateVolumeActivation(SafetyNetVolume) returns (google.protobuf.Empty) {}
+
+  // Defines the RPC for creating a new APW volume.
+  // Result from processing the message is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the message has been successfully processed.
+  // INVALID_ARGUMENT         -   the message contained errors, processing failed.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc CreateApwVolume(NewApwVolume) returns (google.protobuf.Empty) {}
+
+  // Defines the RPC for deleting an existing APW volume.
+  // Result from processing the message is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the message has been successfully processed.
+  // INVALID_ARGUMENT         -   the message contained errors, processing failed.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc RemoveApwVolume(DeleteApwVolume) returns (google.protobuf.Empty) {}
+
+  // Defines the RPC for updating the list of ihibited target addresses.
+  // Result from processing the message is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the message has been successfully processed.
+  // INVALID_ARGUMENT         -   the message contained errors, processing failed.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc UpdateSafetyNetInhibitedTargetAddresses(SafetyNetInhibitedTargetAddresses) returns (google.protobuf.Empty) {}
+}
+
+// The NotamMessagePublishService defines a service implemented by EDS that receives NOTAM messages,
+// allows client to subscribe to updates and distributes the updates to the subscribers.
+service NotamMessagePublishService {
+  // Defines the RPC for maintaining NOTAM messages.
+  // Result from processing the NOTAM message is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the message has been successfully processed.
+  // INVALID_ARGUMENT         -   the message contained errors, processing failed.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc MaintainNotamMessage(tern.protobuf.NotamMessage) returns (google.protobuf.Empty) {}
+
+  // Defines the RPC for subscribing to updates to NOTAM messages.
+  // Result from subscribing is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   client has been registered as a subscriber. The latest NOTAM messages are sent
+  //                              to the client, over the stream.
+  // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc SubscribeToNotamMessagesUpdates(SubscriberInfo) returns (stream tern.protobuf.NotamMessage) {
+    option deprecated = true;
+  }
+
+  // Defines the RPC for subscribing to updates to NOTAM messages.
+  // Result from subscribing is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   client has been registered as a subscriber. The latest NOTAM messages are sent
+  //                              to the client, over the stream.
+  // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc SubscribeToNotamMessagesStreamUpdates(tern.protobuf.ServiceSubscriberInfo) returns (stream NotamMessageStream) {}
+}
+
+// The ChangeRunwayInUseService defines a service implemented by EDS that receives RunwayInUse messages,
+// allows client to subscribe to updates and distributes the updates to the subscribers.
+// NB: This service has been deprecated and will be removed in the future. RunwayInUseService should be used instead.
+service ChangeRunwayInUseService {
+  // Defines the RPC for subscribing to changes in Runway in use messages.
+  // Result from subscribing is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   client has been registered as a subscriber. The latest Runway-in-use messages are
+  //                              sent to the client, over the stream.
+  // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc SubscribeToNewRunwayInUseMessageUpdates(SubscriberInfo) returns (stream RunwayInUseMessageUpdate) {
+    option deprecated = true;
+  }
+
+  // Defines the RPC for changing runway in use on an aerodrome.
+  // Result from processing the change runway in use is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the message has been successfully processed.
+  // INVALID_ARGUMENT         -   the message contained errors, processing failed.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc SetRunwayInUse(RunwayInUseSetMessage) returns (google.protobuf.Empty) {}
+}
+
+// The RunwayInUseService defines a service implemented by EDS that receives RunwayInUse messages,
+// allows client to subscribe to updates and distributes the updates to the subscribers.
+service RunwayInUseService {
+  // Defines the RPC for subscribing to changes in Runway in use messages.
+  // Result from subscribing is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   client has been registered as a subscriber. The latest Runway-in-use messages are
+  //                              sent to the client, over the stream.
+  // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc SubscribeToRunwayInUseUpdates(SubscriberInfo) returns (stream RunwayInUseStream) {
+    option deprecated = true;
+  }
+
+  // Defines the RPC for subscribing to changes in Runway in use messages.
+  // Result from subscribing is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   client has been registered as a subscriber. The latest Runway-in-use messages are
+  //                              sent to the client, over the stream.
+  // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc SubscribeToRunwayInUseStreamUpdates(tern.protobuf.ServiceSubscriberInfo) returns (stream RunwayInUseStream) {}
+
+  // Defines the RPC for changing runway in use on an aerodrome.
+  // Result from processing the change runway in use is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the message has been successfully processed.
+  // INVALID_ARGUMENT         -   the message contained errors, processing failed.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc ChangeRunwayInUse(RunwayInUseUpdate) returns (google.protobuf.Empty) {}
+}
+
+// The DynamicSectorizationPublishService defines a service interface,
+// implemented by the polaris-eds that allows clients to subscribe to updates to the dynamic sectorization
+// maintained by the polaris-eds.
+service DynamicSectorizationPublishService {
+  // Defines the RPC for subscribing to get latest and updates to the sectorization profile.
+  // Result from subscribing is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   client has been registered as a subscriber. The currect sectorization profile
+  //                              is sent to the client, over the stream.
+  // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc SubscribeToSectorizationProfileUpdates(SubscriberInfo) returns (stream SectorizationProfileUpdate) {
+    option deprecated = true;
+  }
+
+  // Defines the RPC for subscribing to get latest and updates to the sectorization profile.
+  // Result from subscribing is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   client has been registered as a subscriber. The currect sectorization profile
+  //                              is sent to the client, over the stream.
+  // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc SubscribeToSectorizationProfileStreamUpdates(tern.protobuf.ServiceSubscriberInfo) returns (stream SectorizationProfileUpdateStream) {}
+
+  // Defines the RPC for creating or updating ControlSector to be then used in Sectorization Profiles.
+  // The update of ControlSector which is used in a SectorizationProfile will be successful only if the
+  // associated SectorizationProfiles which use the ControlSector remain valid.
+  // Result from processing the ControlSector is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the ControlSector is valid and it has been successfully persisted.
+  // INVALID_ARGUMENT         -   the ControlSector contains errors, processing failed.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc CreateOrUpdateControlSector(tern.protobuf.ControllerSector) returns (DynamicSectorizationOperationResult) {}
+
+  // Defines the RPC for deleting a ControlSector which is not used in any Sectorization Profile.
+  // Result from processing the ControlSectorToDelete message is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the ControlSector is valid and it has been successfully deleted.
+  // INVALID_ARGUMENT         -   the ControlSector does not exist or it is used in an existing sectorization profile
+  // and therefore can't be deleted. UNAVAILABLE              -   unable to process the message. The instruction did not
+  // success. Status codes, other than OK, also contain a text error message for more detail.
+  rpc DeleteControlSector(ControlSectorToDelete) returns (DynamicSectorizationOperationResult) {}
+
+  // Defines the RPC for returning the list of ControlSectors persisted.
+  // Result from the request is the list of ControlSectors.
+  rpc GetPersistedControlSectors(google.protobuf.Empty) returns (ListOfControlSectors) {}
+
+  // Defines the RPC to validate a given Sectorization Profile. This is a check for the sectorization profile
+  // Result from processing the SectorizationProfile is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the SectorizationProfile is valid.
+  // INVALID_ARGUMENT         -   the SectorizationProfile contains errors, processing failed.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc ValidateSectorizationProfile(tern.protobuf.TheSectorizationProfile)
+      returns (DynamicSectorizationOperationResult) {}
+
+  // Defines the RPC to create a new Sectorization Profile to be used by the system.
+  // Result from processing the SectorizationProfile is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the SectorizationProfile is valid and successfully persisted.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // DynamicSectorizationOperationResult message contains more information of the success of the operation and a text
+  // error message for more detail.
+  rpc CreateSectorizationProfile(SectorizationProfileWithAuthor) returns (DynamicSectorizationOperationResult) {}
+
+  // Defines the RPC to update an already persisted Sectorization Profile by given name.
+  // Result from processing the SectorizationProfile is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the SectorizationProfile is valid and successfully persisted.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // DynamicSectorizationOperationResult message contains more information of the success of the operation and a text
+  // error message for more detail.
+  rpc UpdateSectorizationProfile(SectorizationProfileWithAuthor) returns (DynamicSectorizationOperationResult) {}
+
+  // Defines the RPC for deleting a SectorizationProfile which is not active.
+  // Result from processing the SectorizationProfileToDelete message is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the SectorizationProfile is valid and it has been successfully deleted.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // DynamicSectorizationOperationResult message contains more information of the success of the operation and a text
+  // error message for more detail.
+  rpc DeleteSectorizationProfile(SectorizationProfileToDelete) returns (DynamicSectorizationOperationResult) {}
+
+  // Defines the RPC for returning the list of SectorizationProfile persisted.
+  // Result from the request is the list of SectorizationProfile.
+  rpc GetPersistedSectorizationProfiles(google.protobuf.Empty) returns (ListOfSectorizationProfiles) {}
+
+  // Defines the RPC for activating a sectorization profile.
+  // Result from processing the sectorization profile is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the sectorization profile is valid and it has been successfully activated.
+  // INVALID_ARGUMENT         -   the sectorization profile contains errors, processing failed.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc ActivateSectorizationProfile(ActivateSectorizationProfileRequest) returns (DynamicSectorizationOperationResult) {}
+
+  // Defines the RPC for enabling an external ATC unit table.
+  // Result from processing the sectorization profile is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the sectorization profile is valid and it has been successfully activated.
+  // INVALID_ARGUMENT         -   the sectorization profile contains errors, processing failed.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc ActivateExternalAtcUnit(ListOfExternalAtcUnitFrequencies) returns (google.protobuf.Empty) {}
+
+  // Defines the RPC for subscribing to get latest and updates to the workstations.
+  // Result from subscribing is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   client has been registered as a subscriber. The currect workstation status
+  //                              is sent to the client, over the stream.
+  // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc SubscribeToWorkstationStatusUpdates(SubscriberInfo) returns (stream WorkstationStatusUpdate) {
+    option deprecated = true;
+  }
+
+  // Defines the RPC for subscribing to get latest and updates to the workstations.
+  // Result from subscribing is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   client has been registered as a subscriber. The currect workstation status
+  //                              is sent to the client, over the stream.
+  // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc SubscribeToWorkstationStatusStreamUpdates(tern.protobuf.ServiceSubscriberInfo) returns (stream WorkstationStatusUpdateStream) {}
+}
+
+// The OperationalModePublishService defines a service interface,
+// implemented by the polaris-eds that allows clients to subscribe to updates to the operational mode
+// maintained by the polaris-eds.
+service OperationalModePublishService {
+  // Defines the RPC for subscribing to updates to the operational mode.
+  // Result from subscribing is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   client has been registered as a subscriber. The current operational mode
+  //                              is sent to the client.
+  // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc SubscribeToOperationalModeUpdates(SubscriberInfo) returns (stream OperationalMode) {
+    option deprecated = true;
+  }
+
+  // Defines the RPC for subscribing to updates to the operational mode.
+  // Result from subscribing is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   client has been registered as a subscriber. The current operational mode
+  //                              is sent to the client.
+  // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc SubscribeToOperationalModeStreamUpdates(tern.protobuf.ServiceSubscriberInfo) returns (stream OperationalModeStream) {}
+
+  // Defines the RPC for changing the operational mode.
+  // Result from processing the change in operational mode is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the change is valid and it has been successfully activated.
+  // INVALID_ARGUMENT         -   the change contains errors, processing failed.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc ChangeOperationalMode(OperationalMode) returns (google.protobuf.Empty) {}
+
+  // Defines the RPC for changing the outbound transmission status.
+  // Result from processing the change in outbound transmission status is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the change is valid and it has been successfully activated.
+  // INVALID_ARGUMENT         -   the change contains errors, processing failed.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc SetOutboundTransmissionStatus(ChannelsTransmissionStatus) returns (google.protobuf.Empty) {}
+
+  // Defines the RPC for subscribing to updates to the outbound transmission status.
+  // Result from subscribing is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   client has been registered as a subscriber. The current transmission status
+  //                              is sent to the client.
+  // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc SubscribeToTransmissionStatusUpdates(SubscriberInfo) returns (stream ChannelsTransmissionStatus) {
+    option deprecated = true;
+  }
+
+
+  // Defines the RPC for subscribing to updates to the outbound transmission status.
+  // Result from subscribing is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   client has been registered as a subscriber. The current transmission status
+  //                              is sent to the client.
+  // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc SubscribeToTransmissionStatusStreamUpdates(tern.protobuf.ServiceSubscriberInfo) returns (stream ChannelsTransmissionStatusStream) {}
+}
+
+// The ConspicuityCodeAssignmentPublishService defines a service interface,
+// implemented by the polaris-eds that allows clients to subscribe to updates to the conspicuity code assignment
+// maintained by the polaris-eds.
+service ConspicuityCodeAssignmentPublishService {
+  // Defines the RPC for changing the conspicuity code assignment.
+  // Result from processing the request is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   the change is valid and it has been successfully activated.
+  // INVALID_ARGUMENT         -   the change contains errors, processing failed.
+  // UNAVAILABLE              -   unable to process the message. The instruction did not success.
+  // Status codes, other than OK, also contain a text error message for more detail.
+  rpc SetConspicuityCodeAssigment(ConspicuityCodeAssignmentRestrictions) returns (google.protobuf.Empty) {}
+
+  // Defines the RPC for subscribing to updates to the conspicuity code assignment.
+  // Result from subscribing is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   client has been registered as a subscriber. The current conspicuity code assignment is
+  // sent to the client. FAILED_PRECONDITION      -   client is already registered as a subscriber. Status codes, other
+  // than OK, also contain a text error message for more detail.
+  rpc SubscribeToConspicuityCodeAssigmentUpdates(SubscriberInfo)
+      returns (stream ConspicuityCodeAssignmentRestrictions) {
+    option deprecated = true;
+  }
+
+  // Defines the RPC for subscribing to updates to the conspicuity code assignment.
+  // Result from subscribing is given with a status code. The following status
+  // codes are used (not listing codes provided by gRPC):
+  // OK                       -   client has been registered as a subscriber. The current conspicuity code assignment is
+  // sent to the client. FAILED_PRECONDITION      -   client is already registered as a subscriber. Status codes, other
+  // than OK, also contain a text error message for more detail.
+  rpc SubscribeToConspicuityCodeAssigmentStreamUpdates(tern.protobuf.ServiceSubscriberInfo)
+      returns (stream ConspicuityCodeAssignmentRestrictionsStream) {}
+}
+
+// The SubscriberInfo message defines information about a client subscribing to a service.
+message SubscriberInfo {
+  // Defines the name of the subscriber.
+  string name = 1;
+}
+
+// Defines an absolute schedule.
+message AbsoluteSchedule {
+  // Start time of absolute time interval.
+  google.protobuf.Timestamp start_time = 1;
+  // End time of absolute time interval.
+  google.protobuf.Timestamp end_time = 2;
+}
+
+// List of AbsoluteSchedule
+message ListOfAbsoluteSchedule {
+  repeated AbsoluteSchedule absolute_schedules = 1;
+}
+
+// Defines week day enum
+enum WeekDay {
+  WEEKDAY_NOT_SET = 0;
+  MONDAY = 1;
+  TUESDAY = 2;
+  WEDNESDAY = 3;
+  THURSDAY = 4;
+  FRIDAY = 5;
+  SATURDAY = 6;
+  SUNDAY = 7;
+}
+
+// Defines a daily schedule
+message DailySchedule {
+  // Start time for the schedule.
+  tern.protobuf.TimeOfDay start_time = 1;
+  // End time for the schedule.
+  tern.protobuf.TimeOfDay end_time = 2;
+  // The days that the schedule should be applied on.
+  repeated WeekDay list_of_days = 3;
+}
+
+// Defines a monthly activation schedule covering a range of days in a month.
+message MonthlySchedule {
+  // Start day for the schedule, days in the month, from 1 to 31.
+  uint32 start_day = 1;
+  // End day for the schedule, days in the month, from 1 to 31.
+  uint32 end_day = 2;
+  // Start time for the schedule
+  tern.protobuf.TimeOfDay start_time = 3;
+  // End time for the schedule
+  tern.protobuf.TimeOfDay end_time = 4;
+}
+
+// Message to represent a list of DailySchedule and/or MonthlySchedule
+message ListOfDailyAndOrMonthlySchedules {
+  repeated DailySchedule daily_schedules = 1;
+  repeated MonthlySchedule monthly_schedules = 2;
+}
+
+// Defines the scheduled activation
+message ScheduledActivation {
+  oneof schedule {
+    ListOfAbsoluteSchedule list_of_absolute_schedule = 1;
+    ListOfDailyAndOrMonthlySchedules list_of_daily_or_monthly_schedule = 2;
+  }
+  // The preactive time defines how long before the start time the scheduled volume becomes in PREACTIVE state.
+  tern.protobuf.TimeSpan preactive_time = 3;
+}
+
+// Defines the activation status of SNS volumes and networks.
+enum ActivationStatus {
+  ACTIVATION_STATUS_NOT_SET = 0;
+  ACTIVATION_STATUS_ACTIVE = 1;
+  ACTIVATION_STATUS_INACTIVE = 2;
+  ACTIVATION_STATUS_SCHEDULED = 3;
+}
+
+// Defines the types of Safery Nets.
+enum SafetyNetType {
+  SAFETY_NET_TYPE_NOT_SET = 0;
+  SAFETY_NET_TYPE_STCA = 1;
+  SAFETY_NET_TYPE_APW = 2;
+  SAFETY_NET_TYPE_CLAM = 3;
+  SAFETY_NET_TYPE_AIW = 4;
+  SAFETY_NET_TYPE_RAM = 5;
+  SAFETY_NET_TYPE_DSAM = 6;
+}
+
+// Defines current status of SNS volumes.
+enum CurrentStatus {
+  CURRENT_STATUS_NOT_SET = 0;
+  CURRENT_STATUS_ACTIVE = 1;
+  CURRENT_STATUS_INACTIVE = 2;
+  CURRENT_STATUS_PREACTIVE = 3;
+}
+
+// DynamicResourceType message defines if a volume is a dynamic volume or not. Dynamic volume properties can be changed
+// by the supervisor.
+enum DynamicResourceType {
+  DYNAMIC_RESOURCE_TYPE_NOT_SET = 0;
+  DYNAMIC_RESOURCE_TYPE_TRUE = 1;
+  DYNAMIC_RESOURCE_TYPE_FALSE = 2;
+}
+
+// Message representing the safety net volumes: Can contain offline and/or dynamic parameters
+message SafetyNetVolume {
+  string unique_id = 1;
+  // UUID for the airspace stored in the navigational Database. Empty for temporary volumes
+  string navdb_id = 2;
+  SafetyNetType type = 3;
+  // The priority rank of the parameter group. Lower number means higher priority. 0 means not set value.
+  uint32 priority_rank = 4;
+  // Add this from SNS config default DYNAMIC_RESOURCE_TYPE_TRUE. If false,
+  // the volume settings cannot be changed by a supervisor.
+  DynamicResourceType dynamic_resource = 5;
+  // The activation state of the offline volume. Set to ACTIVE, if not specified in the xml.
+  ActivationStatus offline_activation_state = 6;
+  // Optional. The activation state of the dynamic volume, overriding the offline state.
+  ActivationStatus overwrite_activation_state = 7;
+  // The current activation state of the volume. Calculated from the schedules and manual changes.
+  CurrentStatus current_state = 8;
+  // Optional. The scheduled activation of the volume.
+  ScheduledActivation scheduled_activation = 9;
+  // Optional, override vertical limits defined by navdb_id airspace
+  VerticalLimits override_vertical_limits = 10;
+  // Free text field for the volume
+  string free_text = 11;
+}
+
+// Defines the veritcal limits of a safety net volume
+message VerticalLimits {
+  tern.protobuf.aeronautical.VerticalType lower_limit = 1;
+  tern.protobuf.aeronautical.VerticalType upper_limit = 2;
+}
+
+// Message to request and report the removal of a dynamic apw volume.
+message DeleteApwVolume {
+  string unique_id = 1;  // string max 8 characters due to using asterix Cat004
+}
+
+// Defines parameters for the hit-miss warning cycle.
+message WarningCycle {
+  // How many hits are required in one cycle to trigger a warning. conflict-threshold shall be less than or equal to
+  // cycle-count.
+  uint32 conflict_threshold = 1;
+  // How many probe results are kept in the cycle. cycle-count shall be more than or equal to conflict-threshold.
+  uint32 cycle_count = 2;
+  // Maximum age, in seconds, of a probe result before it is discarded from the cycle.
+  double maximum_age_sec = 3;
+}
+
+// APW processing parameter group
+message ApwProcessingParameterGroup {
+  // TODO: To be added if needed, check
+  // https://gitlab.com/TernDev/ATM/polaris-sns/-/blob/master/schemas/sns.functions.apw/apw-volumes.xsd The criteria
+  // that must be met for the parent parameter group to apply to a target.
+  // string applicability_criteria = 1;
+
+  // The warning cycle parameters for area proximity warning probe.
+  WarningCycle warning_cycle = 1;
+
+  // The priority rank of the parameter group. Lower number means higher priority.
+  uint32 priority_rank = 2;  // Required
+
+  // The look-ahead time, in seconds, to be used to determine how far in the future to probe for conflicts.
+  // The look-ahead time shall be greater than the warning time and the imminent time.
+  uint32 look_ahead_time_sec = 3;  // Required
+
+  // The imminent time threshold for imminent level conflict, in seconds. The imminent time shall be less than the
+  // warning time.
+  uint32 imminent_time_sec = 4;  // Required
+
+  // The warning time threshold for warning level conflict, in seconds. The warning time shall be greater than the
+  // imminent time.
+  uint32 warning_time_sec = 5;  // Required
+
+  // Optional value for a horizontal buffer around the volume in nautical miles.
+  double horizontal_buffer_nm = 6;
+
+  // Optional value for a vertical buffer for the volume in feet.
+  double vertical_buffer_ft = 7;
+
+  // Boolean value that indicates whether the parameter group is considered active.
+  bool active = 8;
+}
+
+message VolumeByListOfLatLon {
+  // List of latlon locations which describe the horizontal profile of the Volume.
+  // The first and last positions are equivalent, and they MUST contain identical values.
+  repeated tern.protobuf.math.LatLon list_of_latlon = 1;
+  // Vertical limits
+  VerticalLimits vertical_limits = 2;
+}
+
+// Message to request or report a new dynamic apw volume.
+message NewApwVolume {
+  string unique_id = 1;  // string max 8 characters due to using asterix Cat004
+  oneof volume {
+    // The volume is described by list of latlon and lower and upper limits
+    VolumeByListOfLatLon volume_by_list_of_latlon = 2;
+    // The volume is described by using navdb_ID
+    string volume_by_navdb_id = 3;
+  }
+  ActivationStatus activation_status = 4;
+  ScheduledActivation scheduled_activation = 5;  // in case activation status is scheduled.
+  ApwProcessingParameterGroup apw_processing_parameter_group = 6;  // Not mandatory, if empty SNS will use default
+  string free_text = 7;  // Free text field for the volume
+}
+
+message SafetyNetStatus {
+  enum Status {
+    STATUS_NOT_SET = 0;
+    STATUS_ON = 1;
+    STATUS_OFF = 2;
+  }
+  SafetyNetType type = 1;
+  Status status = 2;
+}
+
+// Message to describe range of SSR codes. NB: from and to codes are inclusive
+message SsrCodeRange {
+  tern.protobuf.flight.ModeACode from_ssr_code = 1;
+  tern.protobuf.flight.ModeACode to_ssr_code = 2;
+}
+
+// Message to describe a single or a range of SSR codes
+message SingleOrRangeOfSsrCodes {
+  oneof ssr_codes {
+    tern.protobuf.flight.ModeACode single_ssr_code = 1;
+    SsrCodeRange range_ssr_codes = 2;
+  }
+}
+
+// Message to describe inhibited SSR codes as list of single or range of codes
+message SsrCodes {
+  repeated SingleOrRangeOfSsrCodes inhibited_ssr_codes = 1;
+}
+
+// Message to describe the Safety Net Inhibited SSR codes
+message SafetyNetInhibitedSsrCodes {
+  SafetyNetType type = 1;
+  SsrCodes inhibited_ssr_codes = 2;
+}
+
+message DynamicSafetyNetState {
+  // The offline/dynamic SNS volumes.
+  repeated SafetyNetVolume safety_net_volume = 1;
+  // The New Apw volumes.
+  repeated NewApwVolume safety_net_state_add_volume = 2;
+  // Activation status enables/disables the different safety net probes
+  repeated SafetyNetStatus safety_net_activation_status = 3;
+  // Inhibition status does not disable the sending of the different safety net alerts, just inhibits them
+  repeated SafetyNetStatus safety_net_inhibition_status = 4;
+  // SSR code inhibited
+  repeated SafetyNetInhibitedSsrCodes safety_net_inhibited_ssr_codes = 5;
+  // Inhibited target addresses
+  repeated SafetyNetInhibitedTargetAddresses safety_net_inhibited_target_addresses = 6;
+}
+
+// The stream is sending out a heartbeat message when it contains only the service_health_info object.
+// Otherwise the service_health_info object will contain information related to the new data model being sent.
+message SafetyNetSettingStream {
+  oneof safety_net_volumes_state {
+    // Defines SNS volumes and network states.
+    DynamicSafetyNetState safety_net_state_update = 1;
+    // Reports removal of a dynamic apw volume.
+    DeleteApwVolume safety_net_state_remove_volume = 2;
+  }
+  // Heartbeat health check message.
+  tern.protobuf.ServiceHealthInfo service_health_info = 3;
+}
+
+// List of old message for the Runway in use service
+
+// Enum for runway types
+enum RunwayChangeType {
+  option deprecated = true;
+  RUNWAY_CHANGE_TYPE_NOT_SET = 0;
+  ARRIVAL_RUNWAY = 1;
+  DEPARTURE_RUNWAY = 2;
+  BOTH_RUNWAYS = 3;
+}
+
+// Message to set the runway in use at an aerodrome.
+message RunwayInUseSetMessage {
+  option deprecated = true;
+  string aerodrome_icao = 1;
+  string runway = 2;
+  RunwayChangeType runway_change_type = 3;
+}
+
+// Message to publish the change in runway in use at an aerodrome.
+message RunwayInUseMessageUpdate {
+  option deprecated = true;
+  string aerodrome_icao = 1;
+  string aerodrome_name = 2;
+  string runway = 3;
+  RunwayChangeType runway_change_type = 4;
+  google.protobuf.Timestamp last_updated = 5;
+}
+
+// List of messages to be used by the runway in use service
+
+// This enum defines the runway status
+// In the future this could be extended to include: CLOSED_RUNWAY
+enum RunwayStatus {
+  RUNWAY_STATUS_NOT_SET = 0;
+  RUNWAY_STATUS_ACTIVE = 1;
+  RUNWAY_STATUS_INACTIVE = 2;
+}
+
+// This enum identifies the runway type
+enum RunwayType {
+  RUNWAY_TYPE_NOT_SET = 0;
+  RUNWAY_TYPE_DEPARTURE = 1;
+  RUNWAY_TYPE_ARRIVAL = 2;
+  RUNWAY_TYPE_BOTH = 3;
+}
+
+// This message defines the runway type and status for any runway name
+message RunwayInfo {
+  // Runway designator. E.g. 13, 13L, 13R
+  string runway_designator = 1;
+  // The type of the runway. E.g. Departure, Arrival, Both
+  RunwayType runway_type = 2;
+  // The status of the runway. E.g. Active, Inactive, Closed in the future
+  RunwayStatus runway_status = 3;
+}
+
+// This message defines the list of changes per aerodrome
+message ChangeRunwayInUsePerAerodrome {
+  string aerodrome_icao = 1;
+  // Each aerodrome can have multiple runways changes
+  repeated RunwayInfo change_runways_in_use = 2;
+  // Optional. The last time the runway in use was changed
+  google.protobuf.Timestamp last_updated = 3;
+}
+
+// This message defines the change to the runway in use service.
+message RunwayInUseUpdate {
+  // The changes in the runway in use.
+  repeated ChangeRunwayInUsePerAerodrome change_runways_in_use_per_aerodrome = 1;
+}
+
+// This enum identifies the airport for the front end.
+enum AirportOperationType {
+  AIRPORT_OPERATION_TYPE_NOT_SET = 0;
+  AIRPORT_OPERATION_TYPE_SEPARATE_RUNWAY = 1;  // Runway is identified specifically for departure or arrival
+  AIRPORT_OPERATION_TYPE_COMBINED_RUNWAY = 2;  // No distinction between departure and arrival
+}
+
+// This message defines information about the default approach procedure for a runway.
+message RunwayWithDefaultApproach {
+  string runway_designator = 1;
+  string default_approach_designator = 2;
+}
+
+// This message defines information about the aerodromes and the list of runways which are available for one aerodrome
+message AerodromeAndRunwaysDefinition {
+  string aerodrome_icao = 1;  // The Aerodrome ICAO code
+  string aerodrome_name = 2;  // The Aerodrome full name
+  AirportOperationType airport_operation_type = 3;  // The type of operation of the airport
+  int32 max_runways_assigned = 4;  // How many runways the user can set as active (between Departure and Arrival too)
+  repeated RunwayWithDefaultApproach available_runways_with_default_approach = 5;  // The available runways for the aerodrome, with the default approach procedures (order in the UI as ordered here)
+}
+
+// This message defines the initial message which is received by the client.
+message RunwayInUseInitial {
+  repeated AerodromeAndRunwaysDefinition aerodromes_and_runways_definition = 1;
+}
+
+// This message defines the streams message used by the runway in use service
+// The stream is sending out a heartbeat message when it contains only the service_health_info object.
+// Otherwise the service_health_info object will contain information related to the new data model being sent.
+message RunwayInUseStream {
+  oneof initial_or_update {
+    // This is only sent as first message to define the aerodromes and the runways available
+    RunwayInUseInitial runway_in_use_initial = 1;
+    // This is the normal stream message which contains the state of the runways in use
+    RunwayInUseUpdate runway_in_use_update = 2;
+  }
+  // The heartbeat health message.
+  tern.protobuf.ServiceHealthInfo service_health_info = 3;
+}
+
+// List of messages to be used by the Operational service
+
+// Transmission status types enum
+enum TransmissionStatusType {
+  TRANSMISSION_STATUS_NOT_SET = 0;
+  TRANSMISSION_STATUS_DISABLED = 1;
+  TRANSMISSION_STATUS_ENABLED = 2;
+}
+
+// Aftn and Fmtp outbound transmission status message. Used to block the output of the system to certain channels
+message SingleChannelTransmissionStatus {
+  // Channel name. Each project has a list of channels. EDS will have a list of channel names in its configuration.
+  string channel_name = 1;
+  // Transmission status
+  TransmissionStatusType transmission_status = 2;
+}
+
+// Transmission status for all the channels.
+message ChannelsTransmissionStatus {
+  // The transmission status for all the channels.
+  repeated SingleChannelTransmissionStatus channels_transmission_status = 1;
+}
+
+// The stream is sending out a heartbeat message when it contains only the service_health_info object.
+// Otherwise the service_health_info object will contain information related to the new data model being sent.
+message ChannelsTransmissionStatusStream {
+  // The transmission status for all the channels.
+  ChannelsTransmissionStatus transmission_status_message = 1;
+  // The heartbeat health message.
+  tern.protobuf.ServiceHealthInfo service_health_info = 2;
+}
+
+// Operational mode types enum
+enum OperationalModeType {
+  OPERATIONAL_MODE_NOT_SET = 0;
+  OPERATIONAL_MODE_SHADOW = 1;
+  OPERATIONAL_MODE_LIVE = 2;
+}
+
+// Contains the OperationalMode.
+message OperationalMode {
+  // The operational mode.
+  OperationalModeType operational_mode = 1;
+}
+
+// Stream object that contains either an update to the operational mode or a heartbeat message.
+// The stream is sending out a heartbeat message when it contains only the service_health_info object.
+// Otherwise the service_health_info object will contain information related to the new data model being sent.
+message OperationalModeStream {
+  // The update on the operational mode.
+  OperationalMode update = 1;
+  // The service health info.
+  tern.protobuf.ServiceHealthInfo service_health_info = 2;
+}
+
+// Message which returns information about the result of operations in DynamicSectorizationPublishService
+message DynamicSectorizationOperationResult {
+  // It can be the name of the ControlSector, or SectorizationProfile depending of the subject of the operation
+  string subject_name = 1;
+  enum SubjectOfOperation {
+    SUBJECT_NOT_SET = 0;
+    SECTORIZATION_PROFILE = 1;
+    CONTROL_SECTOR_VOLUME = 2;
+  }
+  SubjectOfOperation subject_of_operation = 2;
+  // The type of operation performed by the request
+  enum OperationType {
+    OPERATION_NOT_SET = 0;
+    CREATED = 1;
+    UPDATED = 2;
+    DELETED = 3;
+    ACTIVATED = 4;
+    VALIDATED = 5;
+  }
+  OperationType operation_type = 3;
+  // The result of the operation
+  enum OperationResultType {
+    RESULT_NOT_SET = 0;
+    SUCCESSFUL = 1;
+    UNSUCCESSFUL = 2;
+  }
+  OperationResultType result_type = 4;
+  // The error message if the result was unsuccessful
+  string error_message = 5;
+}
+
+// Message to be used to delete a control sector volume
+message ControlSectorToDelete {
+  // Name of the Control Sector Volume to be deleted
+  string name = 1;
+}
+
+// The message which lists the control sector volumes persisted in EDS
+message ListOfControlSectors {
+  repeated tern.protobuf.ControllerSector list_of_control_sector_volumes = 1;
+}
+
+// Message to request a sectorization profile
+message ActivateSectorizationProfileRequest {
+  // Name of the sectorization profile
+  string name = 1;
+  // Type of Sectorization Profile. E.g. ACC or APP
+  tern.protobuf.SectorizationProfileType sectorization_profile_type = 2;
+}
+
+// The message represent a sectorization profile with the author,
+// user for create/update and listing of sectorization profiles.
+message SectorizationProfileWithAuthor {
+  tern.protobuf.TheSectorizationProfile sectorization_profile = 1;
+  enum Author {
+    NOT_SET = 0;
+    SUPERVISOR = 1;
+    TECHNICAL_USER = 2;
+  }
+  Author author = 2;
+}
+
+// The message which lists the sectorization profiles persisted in EDS
+message ListOfSectorizationProfiles {
+  repeated SectorizationProfileWithAuthor list_of_sectorization_profiles = 1;
+}
+
+// Message to be used to delete a sectorization profile
+message SectorizationProfileToDelete {
+  // Name of the sectorization profile
+  string name = 1;
+  // Type of Sectorization Profile. E.g. ACC or APP
+  tern.protobuf.SectorizationProfileType sectorization_profile_type = 2;
+}
+
+// This message represents a sectorization service stream update.
+// It shares information about Active Sectorization in use and CWP profiles settings
+message ActiveSectorization {
+  // Active Sectorization Profiles (One for APP, one for ACC, etc)
+  repeated SectorizationProfileWithAuthor active_sectorization_profiles = 1;
+}
+
+// This message represents a sectorization service stream update.
+// It shares information about a sectorization profile change.
+message SectorizationProfileChange {
+  // The sectorizstion profile that has been changed
+  SectorizationProfileWithAuthor sectorization_profile_with_author = 1;
+  // Change type
+  enum ChangeType {
+    CHANGE_TYPE_NOT_SET = 0;
+    CREATE = 1;
+    UPDATE = 2;
+    DELETE = 3;
+  }
+  // The change type
+  ChangeType change_type = 2;
+}
+
+// This message represent the stream sent after each sectorization profile change
+message SectorizationProfileUpdate {
+  oneof sectorization_update {
+    // Update to the active sectorization.
+    ActiveSectorization active_sectorization_profile_update = 1;
+    // Changed sectorization profile.
+    SectorizationProfileChange sectorization_profile_change = 2;
+  }
+  // The list of active external sector frequencies.
+  // Only one frequency profile when activated. Many at the first message
+  ListOfExternalAtcUnitFrequenciesUpdate active_frequency_tables = 3;
+  // The list of offline external sector frequencies.
+  // Only sent when the client connects to the service
+  ListOfExternalAtcUnitFrequencies offline_frequency_tables = 4;
+}
+
+// This message represents the stream sent after each sectorization profile change.
+// The stream is sending out a heartbeat message when it contains only the service_health_info object.
+// Otherwise the service_health_info object will contain information related to the new data model being sent.
+message SectorizationProfileUpdateStream {
+  // The actual sectorization update.
+  SectorizationProfileUpdate update = 1;
+  // The heartbeat message.
+  tern.protobuf.ServiceHealthInfo service_health_info = 2;
+}
+
+// This message defines a FIR for ModeS operations.
+message ModeSDesignatedFir {
+  // Identifying the FIR, i.e. the designator used in aeronautical database
+  string fir_designator = 1;
+  // If true, conspicuity code assignment for the above FIR is disabled.
+  bool mode_s_deactivated = 2;
+}
+
+// This message defines the list of ModeS restricted FIRs and in addition a global restrict parameter.
+message ConspicuityCodeAssignmentRestrictions {
+  // If set to true, conspicuity code assignment for all the FIRs is disabled.
+  bool master_conspicuity_code_assignment_disabled = 1;
+  // Defines the list of ModeS restricted FIR.
+  repeated ModeSDesignatedFir list_of_mode_s_designated_fir = 2;
+}
+
+// This message defines the stream sent after each conspicuity code assignment restrictions change.
+// The stream is sending out a heartbeat message when it contains only the service_health_info object.
+// Otherwise the service_health_info object will contain information related to the new data model being sent.
+message ConspicuityCodeAssignmentRestrictionsStream {
+  // The actual conspicuity code assignment restrictions update.
+  ConspicuityCodeAssignmentRestrictions update = 1;
+  // The heartbeat message.
+  tern.protobuf.ServiceHealthInfo service_health_info = 2;
+}
+
+// This message defines the list of Safety net inhibited target addresses.
+message SafetyNetInhibitedTargetAddresses {
+  SafetyNetType type = 1;
+  repeated string inhibited_target_addresses = 2;
+}
+
+// This message defines one row in an external sector frequency table.
+message ExternalSectorFrequency {
+  string sector_name = 1;  // Mandatory
+  string lower_limit = 2;  // Mandatory
+  string upper_limit = 3;  // Mandatory
+  string frequency = 4;  // Mandatory
+}
+
+enum ExternalUnitSectorGroup {
+  EXTERNAL_UNIT_SECTOR_GROUP_NOT_SET = 0;
+  EXTERNAL_UNIT_SECTOR_GROUP_APP = 1;
+  EXTERNAL_UNIT_SECTOR_GROUP_ACC = 2;
+  EXTERNAL_UNIT_SECTOR_GROUP_FIC = 3;
+  EXTERNAL_UNIT_SECTOR_GROUP_MIL_CIV = 4;
+  EXTERNAL_UNIT_SECTOR_GROUP_TWR = 5;
+}
+
+// This message defines an external sector frequency table.
+message ExternalSector {
+  string region_name = 1;  // Mandatory
+  string profile_name = 2;  // Mandatory
+  ExternalUnitSectorGroup sector_group = 3;  // Mandatory
+  string airspace_designator_reference = 4;  // Mandatory
+  repeated ExternalSectorFrequency frequencies = 5;  // Mandatory
+}
+
+// Defines an activated external sector frequency table.
+message ActiveExternalSector {
+  ExternalSector external_sector = 1;
+  google.protobuf.Timestamp last_activated_datetime = 2;
+}
+
+// This message defines the external ATC unit frequency tables, shall include all the tables for a fir_code.
+message ExternalAtcUnitFrequencies {
+  string fir_code = 1;  // Mandatory
+  repeated ExternalSector sectors = 2;  // Mandatory
+}
+
+// An activated external ATC unit frequency table. Shall include the active tables for a fir_code.
+message ActiveExternalAtcUnitFrequencies {
+  string fir_code = 1;  // Mandatory
+  repeated ActiveExternalSector sectors = 2;  // Mandatory
+}
+
+// List of ExternalAtcUnitFrequencies
+message ListOfExternalAtcUnitFrequencies {
+  repeated ExternalAtcUnitFrequencies frequency_profiles = 1;
+}
+
+// List of ActiveExternalAtcUnitFrequencies for activation
+message ListOfExternalAtcUnitFrequenciesUpdate {
+  repeated ActiveExternalAtcUnitFrequencies frequency_profile_updates = 1;
+}
+
+// This message reports the status of a workstation (identified by hostname).
+// The status depends if there is a connection to EDS and if control sector is allocated or not.
+message WorkstationStatus {
+  string cwp_hostname = 1;
+  enum CwpStatus {
+    NOT_SET = 0;
+    ONLINE_ALLOCATED = 1;
+    ONLINE_AVAILABLE = 2;
+    OFFLINE_ALLOCATED = 3;
+    OFFLINE = 4;
+  }
+  CwpStatus cwp_status = 2;
+}
+
+// The list of all workstations and their status.
+message WorkstationStatusUpdate {
+  // The list of all workstations and their status.
+  repeated WorkstationStatus list_of_workstations = 1;
+}
+
+// The stream is sending out a heartbeat message when it contains only the service_health_info object.
+// Otherwise the service_health_info object will contain information related to the new data model being sent.
+message WorkstationStatusUpdateStream {
+  // The update containing the list of workstation status updates.
+  WorkstationStatusUpdate update = 1;
+  // The heartbeat info.
+  tern.protobuf.ServiceHealthInfo service_health_info = 2;
+}
+
+message NotamMessageStream {
+  tern.protobuf.NotamMessage notam_message = 1;
+  // Service health info.
+  tern.protobuf.ServiceHealthInfo service_health_info = 2;
+}

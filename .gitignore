@@ -35,3 +35,6 @@ wandb/
 GazeMouse_Classification/
 trainings/logs/
 
+# proto
+events/gen
+

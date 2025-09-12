@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package polaris_fdp_interface.protobuf;
+
+import "google/protobuf/timestamp.proto";
+import "polaris_fdp_flight_message_fields.proto";
+
+// The AftnMessageHeader message defines the information that can be transmitted as part of an AFTN message.
+message AftnHeader {
+
+  // Defines the transmission id of the message.
+  string transmission_id = 1;
+
+  // Defines the sequence number of the message.
+  SequenceNumber sequence_number = 2;
+
+  // Defines the priority of the message.
+  string priority = 3;
+
+  // Defines the destination address of the message.
+  repeated string destination_address = 4;
+
+  // Defines the filing time of the message.
+  google.protobuf.Timestamp filing_time = 5;
+
+  // Defines the address of the originator of the message.
+  string originator_address = 6;
+
+  // Defines the optional data field (ODF) of the message.
+  OptionalDataField optional_data_field = 7;
+}
+
+// The AftnMessage is used for the information exchanges between aeronautical fixed stations.
+message AftnMessage {
+
+  // Defines the header of the message.
+  AftnHeader header = 1;
+
+  // Defines the un-parsed body of the message.
+  string body = 2;
+
+  // Defines the full, un-parsed AFTN message.
+  string original_message = 3;
+}

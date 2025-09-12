@@ -1,4 +1,4 @@
-from typing import Union, Dict, Tuple
+from typing import Union, Dict, Tuple, Optional, Iterable
 from collections import defaultdict
 from pathlib import Path
 import os
@@ -7,27 +7,36 @@ import json
 import pandas as pd
 
 from utils.data_processing import EyeTrackingProcessor
+from utils.task_data_io import PARQUET_NAME, list_parquet_files
 
 def load_and_process(
-    data_path: Union[str, Path],
+    root_dir: Union[str, Path],
     columns: list[str],
     interpolate_cols: list[str],
     fill_cols: list[str],
-    time_resampling: bool = True,            # Fixed time step resampling for JCAFNET 
-    fixed_window_ms: int | None = 3000,      # set to None to keep old behavior (chuning per task)
-    window_step_ms: int | None = None,       # hop size (None = same as window)
-    min_task_presence: float = 0.5,          # majority threshold
-) -> pd.DataFrame:
+    participants: Optional[Iterable[str]] = None,
+    scenarios: Optional[Iterable[Union[str, int]]] = None,
+    time_resampling: bool = True,
+    fixed_window_ms: int | None = 3000,
+    window_step_ms: int | None = None,
+    min_task_presence: float = 0.5,
+):
+    # Get all data files
+    file_index = list_parquet_files(root_dir, participants=participants, scenarios=scenarios)
+    if not file_index:
+        raise FileNotFoundError(f"No {PARQUET_NAME} found under {root_dir}")
+
+    # Option: Only download the necessary columns
+    needed = set(columns) | {
+        "Event", "Participant name", "epoch_ms", "Recording timestamp [ms]"
+    }
     
-    files_list = os.listdir(data_path)
-    files_list = [os.path.join(data_path, file) for file in files_list if file.endswith(".tsv")]
-    
+    # Load data
     processor = EyeTrackingProcessor()
-    all_data, atco_task_map = processor.load_data(files_list)
+    all_data, atco_task_map = processor.load_data(file_index, want_columns=list(needed))
 
     ###### Chunking Strategy ######
     if fixed_window_ms is not None:
-        # Chunk every XX seconds
         chunks = processor.get_fixed_window_chunks(
             all_data,
             features=columns,
@@ -36,22 +45,21 @@ def load_and_process(
             min_presence=min_task_presence,
         )
     else:
-        # Chunk per task
         chunks = processor.get_features(all_data, columns)
 
     # Blink detection
     chunks, blinks = processor.detect_blinks(chunks)
-    
-    # Optional time-step resampling (e.g., XX ms grid for the sequential analsysis of the JCAFNET)
-    if time_resampling: 
-        resampled_chunks_time = processor.resample_task_chunks(chunks, interpolate_cols, mode="time", param=10)
 
+    # Time-step resampling
+    if time_resampling:
+        resampled_chunks_time = processor.resample_task_chunks(
+            chunks, interpolate_cols, mode="time", param=10
+        )
+        # post-process: Blink back to bool + fill others
         for task_id, chunk in resampled_chunks_time.items():
-            # Transform interpolated Blink back to boolean and fill other features
-            resampled_chunks_time[task_id].Blink = (resampled_chunks_time[task_id].Blink > 0.5)
+            chunk["Blink"] = chunk["Blink"] > 0.5
             for col in fill_cols:
-                resampled_chunks_time[task_id][col] = resampled_chunks_time[task_id][col].ffill().bfill()
-            
+                chunk[col] = chunk[col].ffill().bfill()
         return resampled_chunks_time, blinks, atco_task_map
 
     return chunks, blinks, atco_task_map

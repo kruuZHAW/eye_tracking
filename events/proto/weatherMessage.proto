@@ -1,0 +1,196 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "uuid.proto";
+
+package tern.protobuf;
+
+// Message which contains one METAR message and optionally a QNH value.
+message MetarMessage {
+  string station_icao_code = 1;
+  google.protobuf.Timestamp time_of_observation = 2;
+  enum MetarMessageType {
+    METAR_MESSAGE_TYPE_NOT_SET = 0;
+    METAR_MESSAGE_TYPE_FIRST_MESSAGE = 1;
+    METAR_MESSAGE_TYPE_CORRECTION = 2;
+  }
+  MetarMessageType type = 3;
+  string original_message = 4;  // will be stored and persisted as is by WDS
+  // This next section is used only if a valid QNH value is present in the METAR message
+  bool is_qnh_present = 5;  // True if present, false otherwise
+  double qnh_value_in_mbar = 6;  // QNH value extracted from METAR in mbar
+}
+
+// The Validity message describes a validity period.
+message Validity {
+  google.protobuf.Timestamp begin = 1;
+  google.protobuf.Timestamp end = 2;
+}
+
+// Message which contains one TAF message.
+message TafMessage {
+  string station_icao_code = 1;
+  google.protobuf.Timestamp time_of_observation = 2;
+  Validity validity = 3;
+  enum TafMessageType {
+    TAF_MESSAGE_TYPE_NOT_SET = 0;
+    TAF_MESSAGE_TYPE_FIRST_MESSAGE = 1;
+    TAF_MESSAGE_TYPE_CORRECTION = 2;
+    TAF_MESSAGE_TYPE_AMENDMENT = 3;
+  }
+  TafMessageType type = 4;
+  string original_message = 5;  // will be stored and persisted as is by WDS
+}
+
+// Message which contains one SPECI message.
+message SpeciMessage {
+  string station_icao_code = 1;
+  google.protobuf.Timestamp time_of_observation = 2;
+  enum SpeciMessageType {
+    SPECI_MESSAGE_TYPE_NOT_SET = 0;
+    SPECI_MESSAGE_TYPE_FIRST_MESSAGE = 1;
+    SPECI_MESSAGE_TYPE_CORRECTION = 2;
+  }
+  SpeciMessageType type = 3;
+  string original_message = 4;  // will be stored and persisted as is by WDS
+}
+
+// Message which contains one SIGMET message.
+message SigmetMessage {
+  string station_icao_code = 1;
+  Validity validity = 2;
+  string original_message = 3;  // will be stored and persisted as is by WDS
+}
+
+// Message which contains one AIRMET message.
+message AirmetMessage {
+  string station_icao_code = 1;
+  Validity validity = 2;
+  string original_message = 3;  // will be stored and persisted as is by WDS
+}
+
+// Message which contains one GAMET message.
+message GametMessage {
+  string station_icao_code = 1;
+  google.protobuf.Timestamp time_of_observation = 2;
+  Validity validity = 3;
+  enum GametMessageType {
+    GAMET_MESSAGE_TYPE_NOT_SET = 0;
+    GAMET_MESSAGE_TYPE_FIRST_MESSAGE = 1;
+    GAMET_MESSAGE_TYPE_CORRECTION = 2;
+    GAMET_MESSAGE_TYPE_AMENDMENT = 3;
+  }
+  GametMessageType type = 4;
+  string original_message = 5;  // will be stored and persisted as is by WDS
+}
+
+// Defines the QNH report message.
+message QnhReport {
+  // ICAO code of the reporting station
+  string station_icao_identifier = 1;
+  // pressure in mbar
+  double pressure_in_mbar = 2;
+  // date and time of the report
+  google.protobuf.Timestamp date_time = 3;
+}
+
+// Specifies the QnhReportType.
+enum QnhReportType {
+  QNH_REPORT_TYPE_NOT_SET = 0;
+  QNH_REPORT_TYPE_FROM_METAR = 1;  // Automatically from sensors
+  QNH_REPORT_TYPE_MANUALLY_ENTERED = 2;  // Manually inserted
+}
+
+// Defines the QNH update.
+message QnhUpdate {
+  // the QNH report
+  QnhReport qnh_report = 1;
+  // type of the report
+  QnhReportType qnh_report_type = 2;
+  // Notification type of QNH processing, if any processing issues occurred
+  QnhProcessingNotificationType qnh_processing_notification_type = 3;
+}
+
+// Defines the different QNH processing notifications types.
+enum QnhProcessingNotificationType {
+  QNH_PROCESSING_NOTIFICATION_TYPE_NOT_SET = 0;
+  // Notification that the QNH value differs from the previous value by more than a THRESHOLD
+  QNH_PROCESSING_NOTIFICATION_TYPE_QNH_CHANGE_THRESHOLD_EXCEEDED = 1;
+  // Notification that the QNH value for a given aerodrome has not been updated for a specific period of time
+  QNH_PROCESSING_NOTIFICATION_TYPE_QNH_DEPRECATION_PERIOD_EXPIRED = 2;
+  // Notification that the QNH value is outside custom validity
+  QNH_PROCESSING_NOTIFICATION_TYPE_QNH_VALUE_OUT_OF_RANGE = 3;
+}
+
+// Type for backward compatibility!
+// Defines a combined weather message that can contain any of the weather messages: metar, taf, speci, sigmet.
+message WeatherMessage {
+  oneof weather_message {
+    MetarMessage metar_message = 1;
+    TafMessage taf_message = 2;
+    SpeciMessage speci_message = 3;
+    SigmetMessage sigmet_message = 4;
+    AirmetMessage airmet_message = 5;
+    GametMessage gamet_message = 6;
+  }
+}
+
+// Defines a combined weather message that can contain any of the weather messages: metar, taf, speci, sigmet, and
+// a unique id.
+message WeatherMessageWithUUID {
+  Uuid uuid = 1;
+  oneof weather_message {
+    MetarMessage metar_message = 2;
+    TafMessage taf_message = 3;
+    SpeciMessage speci_message = 4;
+    SigmetMessage sigmet_message = 5;
+    AirmetMessage airmet_message = 6;
+    GametMessage gamet_message = 7;
+  }
+}
+
+// Defines more than one METAR messages
+message MetarMessages {
+  repeated MetarMessage metar_messages = 1;
+}
+
+// Defines more than one TAF messages
+message TafMessages {
+  repeated TafMessage taf_messages = 1;
+}
+
+// Defines more than one SPECI messages
+message SpeciMessages {
+  repeated SpeciMessage speci_messages = 1;
+}
+
+// Defines more than one SIGMET messages
+message SigmetMessages {
+  repeated SigmetMessage sigmet_messages = 1;
+}
+
+// Defines more than one AIRMET messages
+message AirmetMessages {
+  repeated AirmetMessage airmet_messages = 1;
+}
+
+// Defines more than one GAMET messages
+message GametMessages {
+  repeated GametMessage gamet_messages = 1;
+}
+
+// Defines a message that can contain multiple weather messages with unique id.
+message WeatherMessages {
+  repeated WeatherMessageWithUUID weather_messages = 1;
+  // The UUID which identifies the original pack of weather messages parsed
+  Uuid uuid = 2;
+  // The pack of weather messages are all of the same type, one of the following kind
+  oneof messages {
+    MetarMessages metar_message = 3;
+    TafMessages taf_message = 4;
+    SpeciMessages speci_message = 5;
+    SigmetMessages sigmet_message = 6;
+    AirmetMessages airmet_message = 7;
+    GametMessages gamet_message = 8;
+  }
+}

@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package tern.protobuf.aeronautical;
+
+import "google/protobuf/descriptor.proto";
+
+// These describe custom options that contain extra info used to generate the aeronautical database editor.
+extend google.protobuf.FieldOptions {
+    // The label with the name of the field.
+    // Every field must have a label.
+    string label = 60001;
+
+    // The unit for the numerical value entered in the field.
+    string unit = 60002;
+
+    // Can provide additional text to explain the purpose of a field.
+    // Helpful when the label can not provide enough information or
+    // just to provide explanation on what the field contains.
+    string additionalInfo = 60003;
+
+    // True if the field contains the name of the repeated message.
+    // The field must be a string field. The name field can also be
+    // in an embedded message if there is no name field in the parent
+    // message. This way it is possible to have name fields inside oneofs
+    // as long as each field in the oneof has or is a name field.
+    bool isRepeatedMessageName = 60004;
+
+    // True if the string field should contain data to represent a time
+    // interval. The field should then contain a string representing date
+    // and time. Should be used with the tern framework TimeSpan class.
+    // @example P5DT12H35M30S  5 days, 12 hours, 35 minutes, 30 seconds
+    bool isTimeSpan = 60005;
+
+    // True if the string field should contain data to represent a time
+    // of day. The field should then contain a string representing the time
+    // in the format HH:MM:SS.
+    // Should be used with the tern framework TimeOfDay class.
+    bool isTimeOfDay = 60006;
+
+    // Not implemented yet!
+    // True if the string field should represent an instant in time. The field should
+    // then contain a string representing the date and time of day. Should be
+    // used with the tern framework DateTime class.
+    // @example 2011-12-23T12:00:00Z
+    // @example 2011-12-23T12:00:00.232Z
+    bool isDateTime = 60007;
+
+    // True if the string field contains a hex color value.
+    bool isHexColor = 60008;
+
+    // Validates input, can be either some regex to validate or "number" to validate number ranges using the options below.
+    string validation = 60009;
+
+    // Provides explanation to the user on what criteria the input should match to fulfill the validation.
+    // Not needed when using number validation.
+    string validationExplanation = 60010;
+
+    // Used for data validation. Specifies the lowest number a field can have. rangeFromIncluding <= number.
+    int32 rangeFromIncluding = 60011;
+
+    // Used for data validation. Specifies the highest number a field can have. number <= rangeToIncluding.
+    int32 rangeToIncluding = 60012;
+
+    // True if the field contains the uuid of the message, this field is then hidden from displaying and
+    // the uuid is generated on message creation.
+    bool isUuid = 60013;
+
+    // True if the field is a part of the displayed identifier for the referenced message.
+    // Any message that is referenced needs to have one or more of these fields display.
+    bool inReferenceKey = 60014;
+
+    // The path to the repeated field being referenced.
+    // The string field will contain the uuid of the field being referenced.
+    // Make sure that this path only contains messages that are not part of
+    // oneofs or repeated fields. Only the last field in the path should be
+    // a repeated message field.
+    // Example path: aeronauticalData.waypoints
+    string references = 60015;
+
+    // the list of uuids that reference the message
+    repeated string isReferenceList = 60018;
+}
+
+extend google.protobuf.MessageOptions {
+    // If true the message is not included in the tree navigation of the editor.
+    bool excludeFromTree = 60016;
+}
+
+extend google.protobuf.OneofOptions {
+    // The label with the name of the oneof.
+    string oneofLabel = 60017;
+}

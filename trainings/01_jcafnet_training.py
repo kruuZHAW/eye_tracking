@@ -72,8 +72,9 @@ def enrich_with_gaze_mouse_metrics(task_chunks: dict[str, pd.DataFrame]) -> dict
 if __name__ == "__main__":
     
     # ------------------------- 0. PARAMETERS -------------------------
+    # TODO: Modify Storage paths according to new organisation (All participant will be together) 
     # Long term storage
-    store_dir = str(Path('~/store/eye_tracking/atco_data').expanduser())
+    store_dir = str(Path('~/store/eye_tracking/training_data').expanduser())
     store_processed_dir = os.path.join(store_dir, "processed_inputs")
     store_splits_dir = os.path.join(store_dir, "splits")
     split_names = ["train", "val", "test"]
@@ -111,7 +112,7 @@ if __name__ == "__main__":
         enriched_chunks, blinks, atco_task_map = load_processed_data(temp_processed_dir)
     else:
         print("No cached dataset found — processing from raw files...")
-        chunks_jcafnet, blinks, atco_task_map  = load_and_process(data_path=temp_data_dir, 
+        chunks_jcafnet, blinks, atco_task_map  = load_and_process(root_dir=temp_data_dir, 
                                                                   columns=features, 
                                                                   interpolate_cols=interpolate_cols, 
                                                                   fill_cols=fill_columns, 

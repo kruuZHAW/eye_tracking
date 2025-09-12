@@ -1,0 +1,167 @@
+syntax = "proto3";
+
+package aware.proto;
+
+import "asd_events.proto";
+import "polaris_eds_interface.proto";
+import "polaris_fdp_interface.proto";
+import "google/protobuf/timestamp.proto";
+
+message Event {
+  google.protobuf.Timestamp timestamp = 1;
+  oneof payload {
+    Track track = 2;
+    FlightPlan flight_plan = 3;
+    TrajectoryPrediction trajectory = 4;
+    tern.asd.events.Event asd_event = 5;
+    Alert alert = 6;
+    SafetyNetVolume safetynet_volume = 7;
+
+    bytes asterix = 8;
+    polaris_fdp_interface.protobuf.FlightRecordReportStream flight_record_report_stream = 9;
+    polaris_fdp_interface.protobuf.TrajectoryResponse trajectory_response = 10;
+    polaris_eds_interface.protobuf.SafetyNetSettingStream safety_net_setting_stream= 11;
+  }
+}
+
+// Alert contains information from Cat4.
+message Alert {
+  enum MessageType {
+    MessageType_None = 0;
+    MessageType_RAMLD = 1;
+    MessageType_RAMHD = 2;
+    MessageType_APW = 3;
+    MessageType_CLAM = 4;
+    MessageType_STCA = 5;
+    MessageType_AIW = 6;
+    MessageType_DSAM = 7;
+  }
+
+  enum AlertStatus {
+    AlertStatus_None = 0;
+    AlertStatus_Warning = 1;
+    AlertStatus_Imminent = 2;
+    AlertStatus_Actual = 3;
+  }
+
+  // The message type (field I004/000).
+  MessageType message_type = 1;
+  // The alert status (field I004/045).
+  AlertStatus alert_status = 2;
+  // The track number (field I004/030).
+  uint32 track_number_1 = 3;
+  // The track number (field I004/035). Only nonzero for STCA alerts.
+  uint32 track_number_2 = 4;
+  // The alert identifier (field I004/040).
+  uint32 alert_id = 5;
+}
+
+// Track contains information from Cat62.
+message Track {
+  // The track number (field I062/040) assigned by Polaris.
+  uint32 track_number = 1;
+  string target_identification = 9;
+
+  message Position {
+    // The calculated track latitude (field I062/105) in degrees.
+    double lat_deg = 1;
+    // The calculated track longitude (field I062/105) in degrees.
+    double lon_deg = 2;
+  }
+
+  message Velocity{
+    // the calculated track velocity (field I062/185) Vx
+    double Vx_ms = 1;
+    // the calculated track velocity (field I062/185) Vy
+    double Vy_ms = 2;
+  }
+  // The position of the track.
+  Position position = 2;
+  Velocity velocity = 3;
+
+  // The call sign of the track.
+  string call_sign = 4;
+  // The flight level (field I062/136) in metres.
+  double flight_level_m = 5;
+
+  //the calculated barometric altitude (field I062/135)
+  double calculated_altitude_m = 6;
+  //the calculated rate_of_climb (field I062/220)
+  double calculated_rate_of_climb_ftmin = 7;
+}
+
+// FlightPlan contains information about a flight plan.
+message FlightPlan {
+  // The UUID of the flight plan.
+  string uuid = 1;
+  //The FIXM representation of the flight plan
+  string fixm = 2;
+}
+
+// TrajectoryPrediction contains the predicted trajectory of a flight.
+message TrajectoryPrediction {
+  // The UUID of the flight plan this prediction is for.
+  string flight_plan_uuid = 1;
+  // The points of the predicted trajectory.
+  // The timestamp of the point of index i is `Event.timestamp + i seconds`.
+  repeated TrajectoryPoint points = 2;
+}
+
+message TrajectoryPoint {
+  // The point latitude in degrees.
+  double lat_deg = 1;
+  // The point longitude in degrees.
+  double lon_deg = 2;
+  oneof vertical {
+    // The point altitude in metres.
+    double altitude_m = 3 [deprecated = true];
+    // The point flight level.
+    double flight_level = 4 [deprecated = true];
+  }
+  oneof speed_variant{
+    double ground_speed_ms = 5;
+    double indicated_airspeed_ms = 6;
+    double true_airspeed_ms = 7;
+    double mach = 8; 
+  }
+  //
+  double true_heading = 9;
+  //
+  double vertical_rate = 10;
+  // Altitude in feet
+  double altitude_ft = 11;
+}
+
+message SafetyNetVolume {
+  string safety_net_volume_unique_id = 1;
+  SafetyNetType type = 2;
+  ActivationStatus activeation_status = 3;
+  CurrentStatus current_status = 4;
+}
+
+// Defines the types of Safery Nets.
+enum SafetyNetType {
+  SAFETY_NET_TYPE_NOT_SET = 0;
+  SAFETY_NET_TYPE_STCA = 1;
+  SAFETY_NET_TYPE_APW = 2;
+  SAFETY_NET_TYPE_CLAM = 3;
+  SAFETY_NET_TYPE_AIW = 4;
+  SAFETY_NET_TYPE_RAM = 5;
+  SAFETY_NET_TYPE_DSAM = 6;
+}
+
+// Defines the activation status of SNS volumes and networks.
+enum ActivationStatus {
+  ACTIVATION_STATUS_NOT_SET = 0;
+  ACTIVATION_STATUS_ACTIVE = 1;
+  ACTIVATION_STATUS_INACTIVE = 2;
+  ACTIVATION_STATUS_SCHEDULED = 3;
+}
+
+// Defines current status of SNS volumes.
+enum CurrentStatus {
+  CURRENT_STATUS_NOT_SET = 0;
+  CURRENT_STATUS_ACTIVE = 1;
+  CURRENT_STATUS_INACTIVE = 2;
+  CURRENT_STATUS_PREACTIVE = 3;
+}
