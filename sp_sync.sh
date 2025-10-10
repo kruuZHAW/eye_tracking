@@ -34,6 +34,10 @@ else
 fi
 echo "SCRIPT_PATH: $SCRIPT_PATH"
 
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+PROJECT_DIR="$SCRIPT_DIR"
+echo "PROJECT_DIR: $PROJECT_DIR"
+
 APP_ROOT="$(dirname "$(dirname "$SCRIPT_PATH")")"
 echo "APP_ROOT: $APP_ROOT"
 
@@ -56,7 +60,7 @@ rclone sync "${REMOTE}:${REMOTE_PATH}" "${LOCAL_IN}" \
   --contimeout 1m --timeout 10m --log-file "${PWD}/rclone_pull.log" --log-level INFO
 
 
-uv run "${APP_ROOT}/events/build_raw_inputs.py" "${LOCAL_IN}"
+uv run "${PROJECT_DIR}/utils/build_raw_inputs.py" "${LOCAL_IN}"
 
 # # Sharepoint pushback (Maybe pushback the training datasets + the results after the pipeline has been run)
 # rclone copy "${LOCAL_OUT}" "${REMOTE}:${REMOTE_PATH}/results" \

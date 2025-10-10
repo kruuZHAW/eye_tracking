@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from pathlib import Path
 
 class EyeTrackingProcessor:
     """
@@ -110,16 +111,17 @@ class EyeTrackingProcessor:
 
     # ------------------------- 2. TASK IDENTIFICATION & FEATURE EXTRACTION -------------------------
     
-    def task_range_finder(self, df: pd.DataFrame) -> dict[str, list[tuple[int, int]]]:
-        """Find start and end times of tasks within a DataFrame.
-        
-        Handles overlapping or nested starts of the same task using per-task stacks.
-        """
+    def task_range_finder(self, df: pd.DataFrame) -> tuple[dict[str, list[tuple[int, int]]], pd.DataFrame]:
+        """Find start and end times of tasks within a DataFrame and record unmatched markers."""
         self.detect_timestamp_column(df)
 
+        participant = df["participant_id"].iloc[0] if "participant_id" in df.columns else df["Participant name"].iloc[0]
+        scenario_id = df["scenario_id"].iloc[0]
+
         event_df = df[df['Event'].str.contains('Task', na=False)].sort_values(by=self.timestamp_col)
-        task_ranges = {}
-        task_stack = {}
+        task_ranges: dict[str, list[tuple[int, int]]] = {}
+        task_stack: dict[str, list[int]] = {}
+        unmatched_records: list[dict] = []
 
         for _, row in event_df.iterrows():
             event, timestamp = row["Event"], row[self.timestamp_col]
@@ -130,22 +132,38 @@ class EyeTrackingProcessor:
                     start_time = task_stack[task_type].pop()
                     task_ranges.setdefault(task_type, []).append((start_time, timestamp))
                 else:
+                    # record unmatched end
+                    unmatched_records.append({
+                        "participant": participant,
+                        "scenario_id": scenario_id,
+                        "task": task_type,
+                        "marker": "end",
+                        "timestamp": timestamp,
+                    })
                     print(f"⚠️ Unmatched 'end' for {task_type} at {timestamp}")
             else:
                 task_type = event  # e.g., "Task 3"
                 task_stack.setdefault(task_type, []).append(timestamp)
 
-        # Warn about unmatched starts
+        # record unmatched starts
         for task_type, stack in task_stack.items():
             for unmatched_start in stack:
+                unmatched_records.append({
+                    "participant": participant,
+                    "scenario_id": scenario_id,
+                    "task": task_type,
+                    "marker": "start",
+                    "timestamp": unmatched_start,
+                })
                 print(f"⚠️ Unmatched 'start' for {task_type} at {unmatched_start}")
 
-        return task_ranges
-    
+        return task_ranges, pd.DataFrame(unmatched_records)
+
     def get_features(
         self,
         dfs: list[pd.DataFrame],
-        features: list[str]
+        features: list[str], 
+        unmatched_excel_path: str | None = None,
     ) -> dict[str, pd.DataFrame]:
         """
         Extracts per-task chunks from each DataFrame (for each participant) and returns a dict where:
@@ -153,33 +171,68 @@ class EyeTrackingProcessor:
         - value = corresponding dataframe chunk (can overlap)
 
         Overlapping task intervals are handled: a row can appear in multiple chunks.
+        Write an Excel file that identifies all missing markers
         """
 
-        task_chunks = {}
+        task_chunks: dict[str, pd.DataFrame] = {}
+        writer = None
+        used_sheet_names: set[str] = set()
 
-        for df in dfs:
-            participant = df["participant_id"].iloc[0] if "participant_id" in df.columns else df["Participant name"].iloc[0]
-            scenario_id = df["scenario_id"].iloc[0]
-            task_ranges = self.task_range_finder(df)  # ranges for each tasks
+        if unmatched_excel_path:
+            Path(unmatched_excel_path).parent.mkdir(parents=True, exist_ok=True)
+            writer = pd.ExcelWriter(unmatched_excel_path, engine="xlsxwriter")
 
-            for task, periods in task_ranges.items():
-                for i, (start, end) in enumerate(periods):
-                    # Extract the task slice
-                    mask = (df[self.timestamp_col] >= start) & (df[self.timestamp_col] <= end)
-                    task_data = df.loc[mask, features].copy()
+        try:
+            for df in dfs:
+                participant = df["participant_id"].iloc[0] if "participant_id" in df.columns else df["Participant name"].iloc[0]
+                scenario_id = df["scenario_id"].iloc[0]
+                print(f"Finding tasks for participant {participant} Scenario {scenario_id}")
 
-                    # Create unique ID
-                    task_id = int(task.split()[-1])
-                    uid = f"{participant}_{scenario_id}_{task_id}_{i}"
+                task_ranges, unmatched_df = self.task_range_finder(df)
 
-                    # Assign metadata
-                    task_data["Task_id"] = task_id
-                    task_data["Task_execution"] = i
-                    task_data["Participant name"] = participant
-                    task_data["Scenario_id"] = scenario_id
-                    task_data["id"] = uid
+                # --- Write unmatched markers sheet (INSIDE the loop) ---
+                if writer is not None:
+                    sheet_base = f"{participant}_{scenario_id}"
+                    sheet_name = sheet_base[:31]
+                    suffix = 1
+                    while sheet_name in used_sheet_names:
+                        truncated = sheet_base[: max(0, 31 - (len(str(suffix)) + 1))]
+                        sheet_name = f"{truncated}_{suffix}"
+                        suffix += 1
+                    used_sheet_names.add(sheet_name)
 
-                    task_chunks[uid] = task_data
+                    if unmatched_df.empty:
+                        unmatched_df = pd.DataFrame([{
+                            "participant": participant,
+                            "scenario_id": scenario_id,
+                            "task": None,
+                            "marker": None,
+                            "timestamp": None,
+                            "note": "No unmatched markers",
+                        }])
+
+                    unmatched_df.sort_values(by=["timestamp"], inplace=True, na_position="last")
+                    unmatched_df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+                # --- Existing chunk extraction (INSIDE the loop) ---
+                for task, periods in task_ranges.items():
+                    for i, (start, end) in enumerate(periods):
+                        mask = (df[self.timestamp_col] >= start) & (df[self.timestamp_col] <= end)
+                        task_data = df.loc[mask, features].copy()
+
+                        task_id = int(task.split()[-1])  # task is normalized, e.g., "Task 3"
+                        uid = f"{participant}_{scenario_id}_{task_id}_{i}"
+
+                        task_data["Task_id"] = task_id
+                        task_data["Task_execution"] = i
+                        task_data["Participant name"] = participant
+                        task_data["Scenario_id"] = scenario_id
+                        task_data["id"] = uid
+
+                        task_chunks[uid] = task_data
+        finally:
+            if writer is not None:
+                writer.close()
 
         return task_chunks
     
@@ -224,6 +277,7 @@ class EyeTrackingProcessor:
                 df_sorted[self.timestamp_col] = df_sorted[self.timestamp_col] / 1000.0
 
             # Build task ranges (per original occurrences)
+            print(f"Finding tasks for participant {participant} Scenario {scenario_id}")
             task_ranges = self.task_range_finder(df_sorted)  # {"Task N": [(start,end), ...]}
             # Precompute a flat list with (task_name, occ_index, start, end) for quick overlap checks
             flat_ranges: list[tuple[str, int, float, float]] = []
@@ -383,6 +437,10 @@ class EyeTrackingProcessor:
         """
 
         df = df.sort_values(by=self.timestamp_col).reset_index(drop=True)
+        
+        # Check which interpolate_cols are non-numeric
+        bad = [c for c in interpolate_cols if c in df.columns and not pd.api.types.is_numeric_dtype(df[c])]
+        print("Non-numeric columns among interpolate_cols:", bad)
 
         # Normalize timestamp units if necessary
         time_diff = df[self.timestamp_col].diff().dropna().median()

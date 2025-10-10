@@ -45,7 +45,7 @@ def load_and_process(
             min_presence=min_task_presence,
         )
     else:
-        chunks = processor.get_features(all_data, columns)
+        chunks = processor.get_features(all_data, columns, unmatched_excel_path="unmatched_markers.xlsx")
 
     # Blink detection
     chunks, blinks = processor.detect_blinks(chunks)

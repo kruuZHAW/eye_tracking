@@ -26,6 +26,7 @@ dependencies = [
     "tsfresh>=0.21.0",
     "wandb>=0.19.9",
     "xgboost>=3.0.0",
+    "xlsxwriter>=3.2.9",
 ]
 
 [project.optional-dependencies]
