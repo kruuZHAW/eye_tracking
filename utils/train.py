@@ -27,26 +27,55 @@ import onnxruntime as ort
 
 # ------------------------- SPLIT BY PARTICIPANT -------------------------
 
-def split_by_participant(dataset, val_split=0.2, test_split=0.1, random_state=42):
-    participants = dataset["Participant name"].unique()
-    
-    # Split into train and temp (val + test)
+def split_chunks_by_participant(
+    chunks: dict[str, pd.DataFrame],
+    val_split=0.2,
+    test_split=0.1,
+    random_state=42
+) -> tuple[dict[str, pd.DataFrame], dict[str, pd.DataFrame], dict[str, pd.DataFrame]]:
+    """
+    Split a dictionary of task chunks into train, val, and test sets by participant.
+
+    Parameters:
+        chunks: dict[str, pd.DataFrame] - key = ID, value = task dataframe
+        val_split: proportion of participants for validation set
+        test_split: proportion of participants for test set
+        random_state: reproducibility
+
+    Returns:
+        train_chunks, val_chunks, test_chunks as dictionaries
+    """
+
+    # Step 1: Map each chunk to its participant
+    id_to_participant = {
+        task_id: df["Participant name"].iloc[0] for task_id, df in chunks.items()
+    }
+    all_participants = list(set(id_to_participant.values()))
+
+    # Step 2: Split participants
     train_participants, temp_participants = train_test_split(
-        participants, test_size=(val_split + test_split), random_state=random_state
+        all_participants, test_size=(val_split + test_split), random_state=random_state
     )
-    
-    # Further split temp into val and test
     relative_val_split = val_split / (val_split + test_split)
     val_participants, test_participants = train_test_split(
         temp_participants, test_size=(1 - relative_val_split), random_state=random_state
     )
-    
-    # Filter dataset
-    train_df = dataset[dataset["Participant name"].isin(train_participants)].copy()
-    val_df = dataset[dataset["Participant name"].isin(val_participants)].copy()
-    test_df = dataset[dataset["Participant name"].isin(test_participants)].copy()
 
-    return train_df, val_df, test_df
+    # Step 3: Partition chunks by participant membership
+    train_chunks = {
+        task_id: df for task_id, df in chunks.items()
+        if id_to_participant[task_id] in train_participants
+    }
+    val_chunks = {
+        task_id: df for task_id, df in chunks.items()
+        if id_to_participant[task_id] in val_participants
+    }
+    test_chunks = {
+        task_id: df for task_id, df in chunks.items()
+        if id_to_participant[task_id] in test_participants
+    }
+
+    return train_chunks, val_chunks, test_chunks
 
 # ------------------------- PADDING FOR JCAFNET -------------------------
 
@@ -73,8 +102,8 @@ def collate_jcafnet(batch):
 
 # ------------------------- TRAINING FUNCTION -------------------------
 def train_classifier(model,
-                     train_df,
-                     val_df, 
+                     train_dict,
+                     val_dict, 
                      features, 
                      checkpoint_base_dir: Union[str, Path],
                      batch_size=32, 
@@ -86,8 +115,8 @@ def train_classifier(model,
 
     Args:
         model: Model to train
-        train_df (pd.DataFrame): Training set.
-        val_df (pd.DataFrame): Validation set.
+        train_dict (dict[str, pd.DataFrame]): Training set.
+        val_dict (dict[str, pd.DataFrame]): Validation set.
         features (list): List of input feature column names (for LSTM) or Dict of input features (for JCAFNet)
         batch_size (int): Batch size for training.
         hidden_dim (int): Number of hidden units in LSTM.
@@ -102,14 +131,15 @@ def train_classifier(model,
         model (LSTMClassifier or JCAFNet): Trained PyTorch Lightning model.
     """
     
+    # DEPRECIATED
     # Determine dataset mode from model class
     if isinstance(model, LSTMClassifier):
         if not isinstance(features, list):
             raise ValueError("For LSTMClassifier, 'features' must be a flat list.")
         feature_list = features
-        train_set = GazeMouseDatasetLSTM(train_df, feature_list, augment=data_augment)
+        train_set = GazeMouseDatasetLSTM(train_dict, feature_list, augment=data_augment)
         mean, std = train_set.mean, train_set.std
-        val_set = GazeMouseDatasetLSTM(val_df, features, augment=False, mean = mean, std = std)
+        val_set = GazeMouseDatasetLSTM(val_dict, features, augment=False, mean = mean, std = std)
         train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
         val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
         
@@ -118,7 +148,7 @@ def train_classifier(model,
             raise ValueError("For JCAFNet, 'features' must be a dict with keys: 'gaze', 'mouse', 'joint'")
         feature_list = features["gaze"] + features["mouse"] + features["joint"]
         train_set = GazeMouseDatasetJCAFNet(
-            dataset=train_df,
+            dataset_dict=train_dict,
             gaze_features=features["gaze"],
             mouse_features=features["mouse"],
             joint_features=features["joint"],
@@ -128,7 +158,7 @@ def train_classifier(model,
         )
         mean, std = train_set.mean, train_set.std
         val_set = GazeMouseDatasetJCAFNet(
-            dataset=val_df,
+            dataset_dict=val_dict,
             gaze_features=features["gaze"],
             mouse_features=features["mouse"],
             joint_features=features["joint"],
@@ -209,7 +239,7 @@ def train_classifier(model,
 
 def evaluate_pytorch_model(
     model,
-    df,
+    dict_df,
     features, # For LSTM: list; For JCAFNet: dict with keys ["gaze", "mouse", "joint"]
     num_classes,
     mean,
@@ -221,13 +251,14 @@ def evaluate_pytorch_model(
     model = model.to(device)
     
     # --- Select dataset & input unpacking ---
+    # DEPRECIATED
     if isinstance(model, LSTMClassifier):
-        dataset = GazeMouseDatasetLSTM(df, features, augment=False, mean=mean, std=std)
+        dataset = GazeMouseDatasetLSTM(dict_df, features, augment=False, mean=mean, std=std)
         loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
         
     elif isinstance(model, JCAFNet):
         dataset = GazeMouseDatasetJCAFNet(
-            df,
+            dict_df,
             gaze_features=features["gaze"],
             mouse_features=features["mouse"],
             joint_features=features["joint"],

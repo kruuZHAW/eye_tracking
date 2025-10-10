@@ -1,7 +1,6 @@
-# TODO: Modify to accomodate JCAFNet inputs
-
 import numpy as np
 import random
+import pandas as pd
 
 import torch
 from torch.utils.data import Dataset
@@ -104,47 +103,49 @@ class GazeMouseDatasetLSTM(Dataset):
 
 # -------------------- JCAFNET DATASET --------------------
 class GazeMouseDatasetJCAFNet(Dataset):
-    def __init__(self, dataset, gaze_features, mouse_features, joint_features, augment=False, mean=None, std=None):
+    def __init__(self, dataset_dict: dict[str, pd.DataFrame], 
+                 gaze_features: list[str], 
+                 mouse_features:list[str], 
+                 joint_features: list[str], 
+                 augment: bool=False, 
+                 mean: float=None, 
+                 std: float =None):
+        
         self.augment = augment
         self.gaze_features = gaze_features
         self.mouse_features = mouse_features
         self.joint_features = joint_features
         self.features = gaze_features + mouse_features + joint_features 
-
-        # Build sample ID
-        if "id" not in dataset.columns:
-            dataset["id"] = (
-                dataset["Participant name"].astype(str) 
-                + "_" 
-                + dataset["Task_id"].astype(str) 
-                + "_" 
-                + dataset["Task_execution"].astype(str)
-            )
+        
+        # Flatten all DataFrames to compute normalization (if needed)
+        full_df = pd.concat(dataset_dict.values(), ignore_index=True)
 
         # Normalize
         if mean is None or std is None:
-            self.mean = dataset[self.features].mean()
-            self.std = dataset[self.features].std()
+            self.mean = full_df[self.features].mean()
+            self.std = full_df[self.features].std()
         else:
             self.mean = mean
             self.std = std
-            
-        #standardization
-        dataset[self.features] = (dataset[self.features] - self.mean) / self.std        
-        dataset[self.features] = dataset[self.features].fillna(0.0)
-
-        # Group data by sample_id
-        grouped = dataset.groupby("id")
         
-        self.samples = [] # Tuple grouping id, gaze features, mouse features and joint features
+        self.samples = []
         self.ids = []
-        for sample_id, group in grouped:
-            group = group.sort_values("Recording timestamp")
-            gaze_sequence = torch.tensor(group[self.gaze_features].values, dtype=torch.float32)
-            mouse_sequence = torch.tensor(group[self.mouse_features].values, dtype=torch.float32)
-            joint_sequence = torch.tensor(group[self.joint_features].values, dtype=torch.float32)
-            task_id = group["Task_id"].iloc[0].item() - 1
-            self.samples.append((gaze_sequence, mouse_sequence, joint_sequence, task_id))
+        
+        for sample_id, df in dataset_dict.items():
+            timestamp_col = next((col for col in df.columns if "Recording timestamp" in col), None)
+            df = df.copy().sort_values(timestamp_col)
+            
+            # Normalize
+            df[self.features] = (df[self.features] - self.mean) / self.std
+            df[self.features] = df[self.features].fillna(0.0)
+            
+             # Convert to tensors
+            gaze_seq = torch.tensor(df[self.gaze_features].values, dtype=torch.float32)
+            mouse_seq = torch.tensor(df[self.mouse_features].values, dtype=torch.float32)
+            joint_seq = torch.tensor(df[self.joint_features].values, dtype=torch.float32)
+            task_id = df["Task_id"].iloc[0]
+        
+            self.samples.append((gaze_seq, mouse_seq, joint_seq, task_id))
             self.ids.append(sample_id)
 
     def __len__(self):
@@ -173,8 +174,8 @@ class GazeMouseDatasetJCAFNet(Dataset):
 
     def _augment_sequence(self, x):
         x = x.clone()
-        noise = torch.randn_like(x) * self.noise_std
-        shift = random.randint(-self.max_shift, self.max_shift)
+        noise = torch.randn_like(x) * 0.05
+        shift = random.randint(-3, 3)
         jittered = torch.roll(x, shifts=shift, dims=0)
 
         valid_len = len(jittered)

@@ -1,0 +1,2235 @@
+syntax = "proto3";
+
+package polaris_fdp_interface.protobuf;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+import "flight.proto";
+import "geometry.proto";
+import "math.proto";
+import "notamMessage.proto";
+import "polaris_fdp_aftn_message.proto";
+import "polaris_fdp_flight_messages.proto";
+import "polaris_fdp_flight_message_fields.proto";
+import "polaris_fdp_fmtp_message.proto";
+import "polaris_fdp_notam_message.proto";
+import "polaris_fdp_weather_message.proto";
+import "trajectory.proto";
+import "uuid.proto";
+import "weatherMessage.proto";
+import "dateTime.proto";
+import "serviceHealthInfo.proto";
+import "serviceSubscriberInfo.proto";
+
+// The FlightRecordPublish service defines a service interface, for subscribing to updates to the flight record
+// data model, as maintained by the service implementation.
+service FlightRecordPublishService {
+
+    // Defines the RPC for subscribing to updates to the flight record data model.
+    // Result from subscribing is given with a status code. The following status
+    // codes are used (not listing codes provided by gRCP):
+    //
+    // OK                       -   client has been registered as a subscriber. The current
+    //                              flight record data model is sent to the client, over the
+    //                              FlightRecordReport stream.
+    // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+    //
+    // Status codes, other than OK, also contain a text error message for more detail.
+    rpc SubscribeToFlightRecordUpdates( SubscriberInfo ) returns( stream FlightRecordReportStream ) {
+    }
+
+    // Defines the RPC for subscribing to updates to the flight record data model.
+    // Result from subscribing is given with a status code. The following status
+    // codes are used (not listing codes provided by gRCP):
+    //
+    // OK                       -   client has been registered as a subscriber. The current
+    //                              flight record data model is sent to the client, over the
+    //                              FlightRecordReport stream.
+    // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+    //
+    // Status codes, other than OK, also contain a text error message for more detail.
+    rpc SubscribeToFlightRecordStreamUpdates( tern.protobuf.ServiceSubscriberInfo ) returns( stream FlightRecordReportStream ) {
+    }
+
+    // Define the RPC for subscribing to updates to flight messages associated to flight records.
+    // When a client subscribes, the full set of flight messages for each flight record will be
+    // delivered to the client, wrapped with 'start-of-batch' and 'end-of-batch' events.
+    // Subsequently, each update to the list of flight messages for a single flight record in the
+    // flight record data model, will be published on the stream as a full update of the flight
+    // messages associated to that flight record (i.e. the update will contain all message
+    // associated to the flight record).
+    // When a flight record is removed, the client will receive a notification that the flight
+    // record has been removed, and the associated flight messages are no longer available.
+    // Result from subscribing is given with a status code. The following status
+    // codes are used (not listing codes provided by gRCP):
+    //
+    // OK                       -   client has been registered as a subscriber. The current
+    //                              flight message, associated with flight records are sent to the
+    //                              client, over the FlightRecordMessageReportStream stream.
+    // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+    //
+    // Status codes, other than OK, also contain a text error message for more detail.
+    rpc SubscribeToFlightRecordMessageUpdates( SubscriberInfo ) returns( stream FlightRecordMessageReportStream ) {
+    }
+
+    // Define the RPC for subscribing to updates to flight messages associated to flight records.
+    // When a client subscribes, the full set of flight messages for each flight record will be
+    // delivered to the client, wrapped with 'start-of-batch' and 'end-of-batch' events.
+    // Subsequently, each update to the list of flight messages for a single flight record in the
+    // flight record data model, will be published on the stream as a full update of the flight
+    // messages associated to that flight record (i.e. the update will contain all message
+    // associated to the flight record).
+    // When a flight record is removed, the client will receive a notification that the flight
+    // record has been removed, and the associated flight messages are no longer available.
+    // Result from subscribing is given with a status code. The following status
+    // codes are used (not listing codes provided by gRCP):
+    //
+    // OK                       -   client has been registered as a subscriber. The current
+    //                              flight message, associated with flight records are sent to the
+    //                              client, over the FlightRecordMessageReportStream stream.
+    // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+    //
+    // Status codes, other than OK, also contain a text error message for more detail.
+    rpc SubscribeToFlightRecordMessageStreamUpdates( tern.protobuf.ServiceSubscriberInfo ) returns( stream FlightRecordMessageReportStream ) {
+    }
+
+    // Defines the RPC for subscribing to full updates to the flight record data model, i.e. the stream
+    // will contain a full update of the flight record, including the flight messages associated to the
+    // flight record.
+    // When a client subscribes, the flight record data model will be delivered to the client, wrapped
+    // with 'start-of-batch' and 'end-of-batch' events.
+    // Subsequently, each update contains an updated to a single flight record, were each version contains
+    // the full information about the flight record.
+    // Result from subscribing is given with a status code. The following status
+    // codes are used (not listing codes provided by gRCP):
+    //
+    // OK                       -   client has been registered as a subscriber. The current
+    //                              flight record data model is sent to the client, over the
+    //                              FullFlightRecordReportStream stream.
+    // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+    //
+    // Status codes, other than OK, also contain a text error message for more detail.
+    rpc SubscribeToFullFlightRecordUpdates( SubscriberInfo ) returns( stream FullFlightRecordReportStream ) {
+    }
+
+    // Defines the RPC for subscribing to full updates to the flight record data model, i.e. the stream
+    // will contain a full update of the flight record, including the flight messages associated to the
+    // flight record.
+    // When a client subscribes, the flight record data model will be delivered to the client, wrapped
+    // with 'start-of-batch' and 'end-of-batch' events.
+    // Subsequently, each update contains an updated to a single flight record, were each version contains
+    // the full information about the flight record.
+    // Result from subscribing is given with a status code. The following status
+    // codes are used (not listing codes provided by gRCP):
+    //
+    // OK                       -   client has been registered as a subscriber. The current
+    //                              flight record data model is sent to the client, over the
+    //                              FullFlightRecordReportStream stream.
+    // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+    //
+    // Status codes, other than OK, also contain a text error message for more detail.
+    rpc SubscribeToFullFlightRecordStreamUpdates( tern.protobuf.ServiceSubscriberInfo ) returns( stream FullFlightRecordReportStream ) {
+    }
+
+    // Defines an RPC for getting the trajectory of a flight record.
+    // Clients should use SubscribeToFlightRecordUpdates to learn what flight
+    // records are available, and monitor the 
+    //
+    //     FlightRecord.flight_record_fields_last_updated.TRAJECTORY
+    //
+    // value to see when they should request an updated trajectory for a given
+    // flight record.
+    rpc GetTrajectory( TrajectoryRequest ) returns( TrajectoryResponse ) {
+    }
+}
+
+// The FlightRecordInstructionService defines a service interface for submitting instructions that
+// affect the flight record, maintained by the service implementation.
+service FlightRecordInstructionService {
+
+    // Defines the RPC for submitting a flight record instruction for processing.
+    // Result from processing the instruction is given with a status code. The following status
+    // codes are used (not listing codes provided by gRCP):
+    //
+    // OK                       -   the instruction has been successfully processed by the service implementation.
+    //                              An updated flight record will subsequently be published on the
+    //                              FlightRecordReport stream, provide by the FlightRecordPublishService.
+    // INVALID_ARGUMENT         -   the provided instruction is erroneous.
+    // NOT_FOUND                -   the associated flight record, given with an unique id in the
+    //                              incoming instruction, is not found in the service implementation's flight
+    //                              record data model.
+    // FAILED_PRECONDITION      -   the version of the associated flight record, given with an
+    //                              integer value in the incoming instruction, does not match with the
+    //                              version of the flight record found in the service implementation's flight
+    //                              record data model.
+    // PERMISSION_DENIED        -   eligibility check for the incoming instruction failed.
+    //
+    // Status codes, other than OK, also contain a text error message for more detail.
+    rpc ProcessInstruction( FlightRecordInstruction ) returns( google.protobuf.Empty ) {
+    }
+
+    // Defines the RPC for submitting a flight record creation instruction for processing.
+    // Result from processing the instruction is given with a status code. The following status
+    // codes are used (not listing codes provided by gRCP):
+    //
+    // OK                       -   the instruction has been successfully processed by the service implementation.
+    //                              A new flight record will subsequently be created and published on the
+    //                              FlightRecordReport stream, provide by the FlightRecordPublishService.
+    // INVALID_ARGUMENT         -   the provided instruction is erroneous.
+    // NOT_FOUND                -   the associated system track to be correlated with the flight record, 
+    //                              is not found or unavailable.
+    // PERMISSION_DENIED        -   eligibility check for the incoming instruction failed.
+    //
+    // Status codes, other than OK, also contain a text error message for more detail.
+    // The returned FlightRecordInstructionResponse contains the flight record ID when status is OK.
+    rpc ProcessFlightRecordCreationInstruction( FlightRecordCreationInstruction ) returns( FlightRecordCreationResponse ) {}
+}
+
+// The MessageProcessorService service defines a service interface, implemented by the
+// polaris-message-processor that allows clients to submit incoming and outgoing messages
+// for further processing and routing to the correct handler.
+service MessageProcessorService {
+
+    // Defines the RPC for submitting an incoming message for processing. The message will be
+    // persisted and stored in the incoming-queue, before it is parsed and forwarded to a handler,
+    // based on the message type.
+    // If an incoming message cannot be parsed or processed by a handler, it is added to
+    // the error queue.
+    // If an incoming message cannot be persisted, i.e. added to the incoming queue, a
+    // failure statue code is returned.
+    // Result from processing the message is given with a status code. The following status
+    // codes are used (not listing codes provided by gRCP):
+    //
+    // OK                       -   the message has been successfully processed by the polaris-
+    //                              message-processor.
+    // INVALID_ARGUMENT         -   the message contained errors, processing failed.
+    // UNAVAILABLE              -   unable to persist the incoming message, processing
+    //                              failed.
+    //
+    // Status codes, other than OK, also contain a text error message for more detail.
+    rpc ProcessIncomingMessage( IncomingMessage ) returns( google.protobuf.Empty ) {}
+
+    // Defines the RPC for submitting an outgoing message for processing. The message will be
+    // persisted and stored in the outgoing-queue. The outgoing message is then used to
+    // generate the raw output format of the message, before it is passed to the correct
+    // channel, to be sent onwards.
+    // If a raw message cannot be generated or sent by a channel, it is added to the error
+    // queue.
+    // If the outgoing message cannot be persisted, i.e. it cannot be added to the outgoing
+    // queue, a failure status code is returned.
+    // Result from processing the message is given with a status code. The following status
+    // codes are used (not listing codes provided by gRCP):
+    //
+    // OK                       -   the message has been successfully processed by the polaris-
+    //                              message-processor.
+    // INVALID_ARGUMENT         -   the message contained errors, processing failed.
+    // UNAVAILABLE              -   unable to persist the incoming message, processing
+    //                              failed.
+    //
+    // Status codes, other than OK, also contain a text error message for more detail.
+    rpc ProcessOutgoingMessage( OutgoingMessage ) returns( google.protobuf.Empty ) {}
+
+    // Defines the RPC for subscribing to updates of error messages.
+    // Result from subscribing is given with a status code. The following status
+    // codes are used (not listing codes provided by gRCP):
+    //
+    // OK                       -   client has been registered as a subscriber. The current
+    //                              incoming ErrorMessages are sent to the client, over the
+    //                              ErrorMessageStream stream.
+    // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+    //
+    // Status codes, other than OK, also contain a text error message for more detail.
+    rpc SubscribeToErrorMessageQueue( SubscriberInfo ) returns( stream ErrorMessageQueueStream ) {}
+
+    // Defines the RPC for subscribing to updates of error messages.
+    // Result from subscribing is given with a status code. The following status
+    // codes are used (not listing codes provided by gRCP):
+    //
+    // OK                       -   client has been registered as a subscriber. The current
+    //                              incoming ErrorMessages are sent to the client, over the
+    //                              ErrorMessageStream stream.
+    // FAILED_PRECONDITION      -   client is already registered as a subscriber.
+    //
+    // Status codes, other than OK, also contain a text error message for more detail.
+    rpc SubscribeToErrorMessageQueueStreamUpdates( tern.protobuf.ServiceSubscriberInfo ) returns( stream ErrorMessageQueueStream ) {}
+
+    // Defines the RPC for submitting an error message for processing.
+    // Result from processing the message is given with a status code. The following status
+    // codes are used (not listing codes provided by gRCP):
+    //
+    // OK                       - message has been successfully added to the incoming- or outgoing- queue
+    //                            and will be forwarded for further processing.
+    // INVALID_ARGUMENT         - the provided message is not in the error queue and is therefore not a
+    //                            known error message; message will NOT be forwarded for further processing.
+    //
+    // Status codes, other than OK, also contain a text error message for more detail.
+    rpc ProcessErrorMessage( ErrorMessage ) returns( google.protobuf.Empty ) {}
+
+    // Defines the RPC for removing an error message from the Error Queue.
+    // Result from processing the message is given with a status code. The following status
+    // codes are used (not listing codes provided by gRCP):
+    //
+    // OK                       - message has been successfully removed from the Error Queue.
+    // INVALID_ARGUMENT         - the provided message is not in the error queue and is therefore not a
+    //                            known error message; message will NOT be removed.
+    //
+    // Status codes, other than OK, also contain a text error message for more detail.
+    rpc RemoveErrorMessage( tern.protobuf.Uuid ) returns( google.protobuf.Empty ) {}
+}
+
+// The SubscriberInfo message defines information about a client subscribing to a service.
+message SubscriberInfo {
+
+    // Defines the name of the subscriber.
+    string name = 1;
+
+    // Defines the unique identifier for the subscriber.
+    tern.protobuf.Uuid uuid = 2;
+}
+
+// The UserInformation message defines  information about the user submitting the message
+message UserInformation {
+
+    // Defines the unique if of the user.
+    string user_id = 1;
+}
+
+// The FlightRecordReportStream message defines the different types of messages that will be sent to
+// subscribers of fight record updates.
+// Initially, when a new subscriber connects, it will receive the current status of all flight records
+// in the flight record data model. This is done by first sending a 'start of batch' message, followed
+// by a set of 'flight record update' messages (one for each flight record) and finally, the operation
+// is concluded with an 'end of batch' message.
+// After the initial batch of flight records, the subscriber will receive updates regarding changes to
+// the flight record data model. An update can be a new flight record, in which case the version of the
+// flight record is 1, it can be an updated flight record or a notification that a flight record has
+// been removed.
+message FlightRecordReportStream {
+
+    oneof report {
+
+        // Defines a batch event on the FlightRecordReportStream.
+        FlightRecordReportStreamBatchEvent batch_event = 1;
+
+        // Defines the updated (added or updated) flight record, along with the trigger.
+        FlightRecordUpdate flight_record_update = 2;
+
+        // Defines the removed flight record.
+        FlightRecordRemoved flight_record_removed = 3;
+    }
+
+    // Defines the service health information heartbeat message.
+    tern.protobuf.ServiceHealthInfo service_health_info = 4;
+}
+
+// The FlightRecordReportStreamBatchEvent enum defines the batch event for the FlightRecordReportStream.
+enum FlightRecordReportStreamBatchEvent {
+    FLIGHT_RECORD_REPORT_STREAM_BATCH_EVENT_NOT_SET = 0;
+    FLIGHT_RECORD_REPORT_STREAM_BATCH_EVENT_START_OF_BATCH = 1;
+    FLIGHT_RECORD_REPORT_STREAM_BATCH_EVENT_END_OF_BATCH = 2;
+}
+
+// The FlightRecordUpdate message defines the information provided when a new flight record is added to
+// the flight record data model, or when an existing flight record in the data model is updated. Along with
+// the flight record, information about the trigger that initiated the add or update event, is provided.
+message FlightRecordUpdate {
+
+    // Defines the flight record that is modified.
+    FlightRecord flight_record = 1;
+
+    // Defines the trigger that caused the flight record to be updated (added or updated).
+    FlightRecordUpdateTrigger trigger = 2;
+}
+
+// The FlightRecordRemoved message defines the notification provided when a flight record is removed
+// from the flight record data model.
+message FlightRecordRemoved {
+
+    // Defines the unique id of the flight record removed.
+    string flight_record_id = 1;
+}
+
+// The FlightRecordMessageReportStream message defines the different types of messages that will be sent to
+// subscribers of fight record message updates.
+// Initially, when a new subscriber connects, it will receive the current status of all flight records
+// messages in the flight record data model. This is done by first sending a 'start of batch' message,
+// followed by a set of 'flight record message update' messages (one for each flight record, containing
+// the flight messages associated to the flight record) and finally, the operation is concluded with an
+// 'end of batch' message.
+// After the initial batch of flight record messages, the subscriber will receive updates regarding changes to
+// the flight record data model, i.e. when a flight message is added to the flight record. Each update
+// will contain all flight messages associated with the particular flight record.
+// When a flight record is removed, the subscriber will receive a notification that the flight record has been
+// removed, and the associated flight messages are no longer available.
+message FlightRecordMessageReportStream {
+
+    oneof report {
+
+        // Defines a batch event on the FlightRecordMessageReportStream.
+        FlightRecordReportStreamBatchEvent batch_event = 1;
+
+        // Defines the updated (added or updated) flight record messages.
+        FlightRecordMessageUpdate flight_record_message_update = 2;
+
+        // Defines the removed flight record, indicating that flight messages for the flight record are
+        // no longer available and should be removed in the subscriber's data model.
+        FlightRecordRemoved flight_record_removed = 3;
+    }
+
+    // Defines the service health information heartbeat message.
+    tern.protobuf.ServiceHealthInfo service_health_info = 4;
+}
+
+// The FullFlightRecordReportStream message defines the different types of messages that will be sent to
+// subscribers of full fight record updates.
+// Initially, when a new subscriber connects, it will receive the current status of all flight records
+// in the flight record data model. This is done by first sending a 'start of batch' message, followed
+// by a set of 'flight record update' messages (one for each flight record) and finally, the operation
+// is concluded with an 'end of batch' message.
+// After the initial batch of flight records, the subscriber will receive updates regarding changes to
+// the flight record data model. An update can be a new flight record, in which case the version of the
+// flight record is 1, it can be an updated flight record or a notification that a flight record has
+// been removed.
+message FullFlightRecordReportStream {
+
+    oneof report {
+
+        // Defines a batch event on the FullFlightRecordReportStream.
+        FlightRecordReportStreamBatchEvent batch_event = 1;
+
+        // Defines the updated (added or updated) flight record.
+        PersistedFlightRecord flight_record_update = 2;
+
+        // Defines the removed flight record.
+        FlightRecordRemoved flight_record_removed = 3;
+    }
+
+    // Defines the service health information heartbeat message.
+    tern.protobuf.ServiceHealthInfo service_health_info = 4;
+}
+
+// The FlightRecordMessageUpdate message defines the information provided when the flight message data model
+// of flight record is updated.
+message FlightRecordMessageUpdate {
+
+    // Defines the id of the flight record that the included flight messages are associated to.
+    tern.protobuf.Uuid flight_record_id = 1;
+
+    // Defines a list of flight messages associated with the given flight record id above.
+    repeated FlightMessage flight_messages = 2;
+}
+
+// The FlightRecord message defines the information about a single flight record contained in the flight
+// record data model.
+message FlightRecord {
+    reserved 44, 84;
+    reserved "cleared_sector_exit_levels", "planned_entry_level";
+
+    // Defines a unique identifier for a flight record.
+    string flight_record_id = 1;
+
+    // Defines the version of the flight record.
+    uint32 version = 2;
+
+    // Defines the aircraft identification (callsign).
+    tern.protobuf.flight.CallSign aircraft_identification = 3;
+
+    // Defines the 24-bit aircraft address.
+    tern.protobuf.flight.AircraftAddress aircraft_address = 4;
+
+    // Defines the flight rule category, as received in coming messages or edited by user.
+    tern.protobuf.flight.FlightRuleCategory flight_rule_category = 5;
+
+    // Defines the current flight rule category.
+    tern.protobuf.flight.CurrentFlightRules current_flight_rules = 6;
+
+    // Defines the type of flight.
+    tern.protobuf.flight.TypeOfFlight type_of_flight = 7;
+
+    // Defines the number of aircraft.
+    tern.protobuf.flight.NumberOfAircraft number_of_aircraft = 8;
+
+    // Defines the aircraft type and wake turbulence category.
+    tern.protobuf.flight.AircraftTypeAndWakeTurbulenceCategory aircraft_type_and_wake_turbulence_category = 9;
+
+    // Defines the communication and navigation capapbilities.
+    tern.protobuf.flight.CommunicationAndNavigationCapabilities communication_and_navigation_capabilities = 10;
+
+    // Defines the surveillance capabilities.
+    tern.protobuf.flight.SurveillanceCapabilities surveillance_capabilities = 11;
+
+    // Defines the planned departure aerodrome and estimated off-block time.
+    tern.protobuf.flight.PlannedDepartureAerodrome planned_departure_aerodrome_and_time = 12;
+
+    // Defines the planned cruising speed and level.
+    tern.protobuf.flight.PlannedCruisingSpeedAndLevel planned_cruising_speed_and_level = 13;
+
+    // Defines the planned route.
+    repeated tern.protobuf.flight.PlannedRouteElement planned_route_elements = 14;
+
+    // Defines the planned destination aerodrome and total estimated elapsed time, from EOBT to landing.
+    tern.protobuf.flight.PlannedDestinationAerodrome planned_destination_aerodrome_and_total_estimated_elapsed_time = 15;
+
+    // Defines the planned alternative destination aerodromes.
+    repeated tern.protobuf.flight.PlannedAlternateAerodrome planned_destination_alternate_aerodromes = 16;
+
+    // Defines the SSR Code allocation record.
+    SsrCodeAllocationRecord ssr_code_allocation_record = 17;
+
+    // Defines the special status.
+    tern.protobuf.flight.SpecialStatus special_status = 18;
+
+    // Defines the date of flight.
+    google.protobuf.Timestamp date_of_flight = 19;
+
+    // Defines the registration.
+    tern.protobuf.flight.AircraftRegistration aircraft_registration = 20;
+
+    // Defines the accumulated estimated elapsed time at significant points and FIR boundaries.
+    repeated tern.protobuf.flight.AccumulatedTimeOver points_firs_and_accumulated_estimated_elapsed_times = 21;
+
+    // Defines the SELCAL code.
+    string selcal_code = 22;
+
+    // Defines the additional aircraft types, if any.
+    string additional_aircraft_types = 23;
+
+    // Defines the enroute delay.
+    repeated tern.protobuf.flight.AccumulatedTimeOver enroute_delay = 24;
+
+    // Defines the operating agency.
+    string aircraft_operating_agency = 25;
+
+    // Defines the originator address.
+    string originators_address = 26;
+
+    // Defines the aircraft performance data, as provided by the 'PER/' sub-field of field 18 in an ICAO ATS message
+    // or its equivalent in an EuroControl ADEXP message.
+    string aircraft_performance_data = 27;
+
+    string enroute_alternate_aerodromes = 28;
+    string takeoff_alternate_aerodrome = 29;
+
+    // Defines the route details to the revised destination aerodrome, followed by the ICAO four-letter location
+    // indicator of the aerodrome, as provided by the 'RIF/' sub-field of field 18 in an ICAO ATS message or its
+    // equivalent in an EuroControl ADEXP message.
+    string route_elements_to_revised_destination_aerodrome = 30;
+
+    string remarks = 31;
+    CorrelationRecord correlation_record = 32;
+    tern.protobuf.flight.ExpandedRoute expanded_route = 33;
+    LifecycleRecord lifecycle_record = 34;
+
+    // Defines the coordination terms on entering and leaving the AoR.
+    // Several instances allow for maintaining coordination on several borders (a case of re-entering flight), and
+    // to track abrogation of previously made coordination in cases when the flight changes its next FIR,
+    // e.g. due to rerouting.
+    repeated CoordinationRecord incoming_coordination = 35;
+    repeated CoordinationRecord outgoing_coordination = 36;
+    repeated tern.protobuf.trajectory.PointOfInterest point_of_interest = 37;
+
+    // Defines the current state of the flight's clearance.
+    FlightLevelClearance level_clearance = 40;
+    tern.protobuf.math.geometry.VerticalVariant requested_level = 43;
+    
+    // Defines the current lateral clearance.
+    LateralClearance lateral_clearance = 45;
+
+    // Defines the current speed clearance.
+    SpeedClearance speed_clearance = 46;
+
+    // Defines the current vertical rate clearance.
+    VerticalRateClearance vertical_rate_clearance = 47;
+
+    // Defines the current holding clearance.
+    HoldingClearance holding_clearance = 48;
+
+    // Defines the current controlling sector, by name.
+    ControllingSectorName current_controlling_sector_name = 49;
+
+    // Defines the proposed controlling sector, by name.
+    ControllingSectorName proposed_controlling_sector_name = 50;
+
+    // Defines the control state for controlling sectors.
+    repeated ControllingSectorControlState controlling_sector_control_states = 51;
+
+    // Defines the last airborne initialization point and time, used to calculate the trajectory for the
+    // flight record. The initialization point is usually derived from surveillance data, position report or
+    // estimate (such as from a coordination message) or from a previous trajectory calculation, in such cases
+    // as when a reroute clearance is applied to the flight record.
+    // Deprecated! No longer to be used - replaced by: last_observed_trajectory_initialization_point_and_time
+    InitialTrajectoryPointAndTime last_trajectory_initialization_point_and_time = 52;
+
+    // Planned departure datetime
+    google.protobuf.Timestamp planned_departure_time_and_date = 53;
+    // Planned arrival datetime
+    google.protobuf.Timestamp planned_arrival_time_and_date = 54;
+
+    // Defines a unique id for the flight record, that is used when generating track data. The
+    // id is recycled once the flight record becomes terminated.
+    uint32 flight_record_track_id = 55;
+
+    // Defines the flight's assigned departure and destination runway.
+    string assigned_departure_runway_designator = 56 [deprecated = true];
+    string assigned_destination_runway_designator = 57 [deprecated = true];
+
+    // Defines the free text message assigned to flight.
+    FreeText free_text = 58;
+
+    // Defines activated warnings related to flight's equipment and flight route.
+    repeated EquipmentWarning equipment_warnings = 59;
+
+    // Defines the SID and STAR designators, automatically or manually assigned to the flight.
+    string assigned_sid_designator = 60;
+    string assigned_star_designator = 61;
+
+    // Defines the reported level and position, set by Atco.
+    // Deprecated! No longer to be used. Replaced by: last_reported_trajectory_initialization_point_and_time
+    ReportedFlightLevelAndPosition reported_flight_level_and_position = 62;
+
+    // Defines whether the flight record handover is automatically handled when the system is in shadow mode.
+    bool automatic_handover_enabled = 63;
+
+    // Defines the next approaching waypoint according to current trajectory calculation.
+    tern.protobuf.flight.PlannedRouteElement next_waypoint_in_route = 64 [deprecated = true];
+
+    // Actual departure datetime
+    google.protobuf.Timestamp actual_departure_time_and_date = 65;
+
+    // List of IFP indicators.
+    repeated tern.protobuf.flight.IFPIndicator ifp_indicators = 66;
+
+    // Defines the last observed point and time, stored for the flight record. Derived from
+    // surveillance data.
+    InitialTrajectoryPointAndTime last_observed_point_and_time = 67;
+
+    // Defines the last reported point and time, stored for the flight record. Derived from
+    // an AssignReportedFlightLevelAndPositionInstruction.
+    InitialTrajectoryPointAndTime last_reported_point_and_time = 68;
+
+    // Defines the last estimated point and time, stored for the flight record. Derived from
+    // the last coordination message associated to the flight record.
+    InitialTrajectoryPointAndTime last_estimated_point_and_time = 69;
+
+    // Defines the point where the calculated trajectory crosses the border upon entering the AOR.
+    tern.protobuf.trajectory.PointOfInterest aor_entry_boundary_crossing_point = 70 [deprecated = true];
+
+    // Defines the point where the calculated trajectory crosses the border upon exiting the AOR.
+    tern.protobuf.trajectory.PointOfInterest aor_exit_boundary_crossing_point = 71 [deprecated = true];
+
+    // List of all fields that have changed since previous flight record version
+    repeated FlightRecordFieldType flight_record_fields_last_updated = 72;
+
+    // Estimated arrival datetime
+    google.protobuf.Timestamp estimated_arrival_time_and_date = 73;
+
+    // EUR status
+    string eur_status = 74;
+
+    // Runway Visual Range capability of the flight (in meters)
+    oneof runway_visual_range_optional
+    {
+        uint32 runway_visual_range = 75;
+    }
+
+    // Stay info
+    repeated tern.protobuf.flight.StayInfo stay_info = 76;
+
+    // AOWIR (Aircraft Operator What-if Re-Route)
+    string aowir = 77;
+
+    // Source Indicator
+    string source_indicator = 78;
+
+    // Replacement Flight Plan
+    string replacement_flight_plan = 79;
+
+    // Supplementary Information
+    FieldType19 supplementary_information = 80;
+
+    // Flight record category , i.e MINIMAL of FULL
+    FlightRecordCategoryType flight_record_category = 81;
+
+    // Defines whether the flight record has startup clearance.
+    bool has_startup_clearance = 82;
+
+    // Defines the flight record's key value fields' initial value.
+    InitialFlightRecord initial_flight_record = 83;
+
+    // Defines the flight record's sector transfer levels.
+    repeated SectorTransferLevel sector_transfer_levels = 85;
+
+    RunwayInUse departure_runway_in_use = 86;
+    RunwayInUse destination_runway_in_use = 87;
+
+    // Defines the frequency for the next atc unit the flight shall enter.
+    NextAtcUnitFrequency next_atc_unit_frequency = 88 [deprecated = true];
+
+    // Defines the flight record's inter-sector coordination within the AoR.
+    repeated InterSectorCoordinationRecord inter_sector_coordination = 89;
+
+    // Defines the actual departure aerodrome and time.
+    tern.protobuf.flight.PlannedDepartureAerodrome actual_departure_aerodrome_and_time = 90;
+
+    // Defines the actual arrival aerodrome and time of arrival.
+    tern.protobuf.flight.ArrivalAerodrome actual_arrival_aerodrome_and_time_of_arrival = 91;
+
+    // Defines the flight record's RVSM equipment status.
+    RvsmEquipmentStatus rvsm_equipment_status = 92;
+    
+    // Defines the rejoining waypoint along the route, from the system track.
+    tern.protobuf.flight.PlannedRouteElement rejoining_point = 93;
+    
+    // Contains the initial route and trajectory calculation result
+    tern.protobuf.flight.RouteTrajectory initial_route_trajectory = 94;
+    // Contains the latest updated route and trajectory calculation result
+    tern.protobuf.flight.RouteTrajectory current_route_trajectory = 95;
+
+    // Approach sequence number
+    ApproachSequence approach_sequence_number = 96;
+    
+    // Defines the approach clearance received for the flight record.
+    ApproachClearance approach_clearance = 97;
+    // Defines the approach procedure UUID, automatically or manually assigned to the flight.
+    tern.protobuf.Uuid assigned_approach_uuid = 98;
+
+    // Calculated take off time for te flight.
+    google.protobuf.Timestamp calculated_take_off_time_and_date = 99;
+    // Status of all acknowledgeable fields.
+    repeated AcknowledgeableFieldAndStatus acknowledgeable_fields_status = 100;
+
+    // Unique identifier of the flight plan in the IFPS database (IFPLID).
+    UniqueFlightPlanIdentifier unique_flight_plan_identifier = 101;
+
+    // Defines the flight record's diversion aerodrome, if one is set, and optionally the updated total estimated elapsed time.
+    tern.protobuf.flight.PlannedDestinationAerodrome diversion_aerodrome = 102;
+
+    // Defines the actual arrival time and date.
+    google.protobuf.Timestamp actual_arrival_time_and_date = 103;
+
+    // Defines the frequency for the previous ATC unit that the flight enters the AoR from.
+    AtcUnitFrequency frequency_of_previous_atc_unit = 104;
+
+    // Defines the frequency for the next ATC unit that the flight exits the AoR to.
+    AtcUnitFrequency frequency_of_next_atc_unit = 105;
+    
+    // Defines the en-route cruising level for the flight record.
+    tern.protobuf.math.geometry.VerticalVariant enroute_cruising_level = 106;
+}
+
+// The FlightRecordCreationRequest message defines the information about a single new flight record, minimal or full,
+// to be created and stored in the flight record data model.
+message FlightRecordCreationInstruction{
+    // Defines the unique id of the instruction.
+    string instruction_id = 1;
+    oneof instruction{
+        // Defines the information about a single new initial flight record to be created and stored in the
+        // flight record data model.
+        InitialFlightRecord initial_flight_record = 2;
+        // Defines the information about a single new initial minimal flight record to be created and stored in the
+        // flight record data model.
+        InitialMinimalFlightRecord initial_minimal_flight_record = 3;
+        // Defines information about a single minimal flight record to be converted to a full flight record.
+        // minimal flight record.
+        ConvertMinimalFlightRecordToFull convert_minimal_flight_record_to_full = 4;
+    }
+    // Defines the originator of the flight record instruction.
+    UserInformation instruction_originator = 5;
+}
+
+// The InitialFlightRecord message defines the information about a single new full flight record to be created and stored in the
+// flight record data model.
+message InitialFlightRecord {
+    // Defines the flight record's callsign.
+    tern.protobuf.flight.CallSign aircraft_identification = 1;
+    // Defines the flight record's flight rule category.
+    tern.protobuf.flight.FlightRuleCategory flight_rule_category = 2;
+    // Defines the flight record's type of flight.
+    tern.protobuf.flight.TypeOfFlight type_of_flight = 3;
+    // Defines the flight record's number of aircraft.
+    tern.protobuf.flight.NumberOfAircraft number_of_aircraft = 4;
+    // Defines the flight record's aircraft type and wake turbulence category.
+    tern.protobuf.flight.AircraftTypeAndWakeTurbulenceCategory aircraft_type_and_wake_turbulence_category = 5;
+    // Defines the flight record's communication and navigation capabilities.
+    tern.protobuf.flight.CommunicationAndNavigationCapabilities communication_and_navigation_capabilities = 6;
+    // Defines the flight record's surveillance capabilities.
+    tern.protobuf.flight.SurveillanceCapabilities surveillance_capabilities = 7;
+    // Defines the flight record's planned departure aerodrome and estimated off-block time.
+    tern.protobuf.flight.PlannedDepartureAerodrome planned_departure_aerodrome_and_time = 8;
+    // Defines the flight record's planned cruising speed and level.
+    tern.protobuf.flight.PlannedCruisingSpeedAndLevel planned_cruising_speed_and_level = 9;
+    // Defines the flight record's planned route elements.
+    repeated tern.protobuf.flight.PlannedRouteElement planned_route_elements = 10;
+    // Defines the flight record's planned destination aerodrome and estimated elapsed time.
+    tern.protobuf.flight.PlannedDestinationAerodrome planned_destination_aerodrome_and_total_estimated_elapsed_time = 11;
+    // Defines the flight record's planned destination alternate aerodromes.
+    repeated tern.protobuf.flight.PlannedAlternateAerodrome planned_destination_alternate_aerodromes = 12;
+    // Defines the flight record's pre-allocated SSR code (PSSR).
+    tern.protobuf.flight.ModeACode pre_allocated_ssr_code = 13;
+    // Defines the requested flight level.
+    tern.protobuf.math.geometry.VerticalVariant requested_level = 14;
+    // Defines other additional information as captured in the field 18 of the flight plan.
+    FieldType18 other_information = 15;
+    // Defines supplementary information as captured in the field 19 of the flight plan.
+    FieldType19 supplementary_information = 16;
+    // Defines the free text message assigned to flight.
+    FreeText free_text = 17;
+    // Defines the estimated arrival time and date.
+    google.protobuf.Timestamp estimated_arrival_time_and_date = 18;
+}
+
+// The InitialMinimalFlightRecord message defines the information about a single new minimal flight record to be created and
+// stored in the flight record data model.
+message InitialMinimalFlightRecord {
+    // Defines the flight record's callsign.
+    tern.protobuf.flight.CallSign aircraft_identification = 1;
+    // Defines the flight record's pre-allocated SSR code (PSSR).
+    tern.protobuf.flight.ModeACode pre_allocated_ssr_code = 2;
+    // Defines the current and controlling sector, by name.
+    ControllingSectorName current_controlling_sector_name = 3;
+    // Defines information related to correlation and initialization point.
+    oneof track_or_initialization_point {
+        // Defines the track number giving the initial position and correlation information.
+        TrackNumber track_number = 4;
+        // Defines the flight record's initial position.
+        tern.protobuf.math.LatLon initialization_point = 11;
+    }
+    // Defines the flight record's current position, containing speed, heading and level[deprecated].
+    tern.protobuf.trajectory.AirborneInitializationPoint airborne_initialization_point = 5 [deprecated = true];
+    // Defines the flight record's next waypoint.
+    tern.protobuf.flight.PlannedRouteElement next_waypoint = 6 [deprecated = true ];
+    tern.protobuf.flight.PlannedDesignator next_waypoint_designator = 12;
+    // Defines the flight record's flight rule category, if not set defaults to VFR.
+    tern.protobuf.flight.FlightRuleCategory flight_rule_category = 7;
+    // Defines the flight record's planned destination aerodrome, if not set defaults to ZZZZ.
+    tern.protobuf.flight.PlannedDestinationAerodrome planned_destination_aerodrome = 8 [deprecated = true ];
+    tern.protobuf.flight.PlannedDesignator planned_destination_aerodrome_designator = 13;
+    // Defines the flight record's aircraft type and wake turbulence category, if not set defaults to configuration.
+    tern.protobuf.flight.AircraftTypeAndWakeTurbulenceCategory aircraft_type_and_wake_turbulence_category = 9;
+    // Defines the flight record's cleared level.
+    tern.protobuf.math.geometry.VerticalVariant cleared_level_or_altitude = 10;
+}
+
+// The ConvertMinimalFlightRecordToFull message defines the information to convert an existing minimal flight record
+// to a full flight record.
+message ConvertMinimalFlightRecordToFull {
+    // Defines the unique id of the existing minimal flight record to be converted.
+    tern.protobuf.Uuid flight_record_id = 1;
+    // Defines the initial flight record to replace existing minimal flight record.
+    InitialFlightRecord initial_flight_record = 2;
+}
+
+// The FlightRecordCreationResponse message defines the response to the CreateFlightRecord service.
+message FlightRecordCreationResponse {
+    // Defines the flight record's unique identifier when successfully created.
+    string flight_record_id = 1;
+}
+
+// The FlightRecordUpdateTrigger message defines the triggers that can cause a flight record to be updated.
+message FlightRecordUpdateTrigger {
+
+    oneof trigger {
+
+        // Defines an instruction that caused the flight record to be updated.
+        FlightRecordInstruction instruction = 1;
+
+        // Defines a flight record creation instruction that caused the flight record to be added.
+        FlightRecordCreationInstruction creation_instruction = 2;
+
+        // Defines the flight messages that caused the flight record to be updated (added or updated).
+        FlightMessageVariant flight_message = 3;
+    }
+}
+
+// The FlightRecordInstruction message defines instruction(s) that a controller or a supervisor
+// can perform on a flight record. An instruction can be in the form of setting a property
+// on the flight record, modifying its state or assigning a clearance to the flight record.
+// The FlightRecordInstruction contains information about the flight record it is aimed at
+// and the version of the flight record, when the instruction was created. If the version does
+// not match the version in the data model, the instruction will be rejected.
+// The FlightRecordInstruction also contains information about the originator of the instruction.
+// This information is used to verify the eligibility of the originator to perform the given
+// instruction.
+// Each FlightRecordInstruction contains one or more instruction to be applied to the flight record.
+message FlightRecordInstruction {
+
+    // Defines the unique id of the instruction.
+    string instruction_id = 1;
+
+    // Defines the unique id of the flight record, that the instruction is associated with.
+    string flight_record_id = 2;
+
+    // Defines the version of the flight record, when the instruction was created.
+    uint32 flight_record_version = 3;
+
+    // Defines the originator of the flight record instruction.
+    UserInformation instruction_originator = 4;
+
+    // Defines the instruction, one or more, to be applied to the flight record.
+    repeated Instruction instructions = 5;
+}
+
+// The Instruction message defines the instructions supported by the polaris-flight-data-processor.
+message Instruction {
+    oneof instruction {
+        // Clearance instructions.
+        AssignSidClearanceInstruction assign_sid_clearance_instruction = 1;
+        AssignStarClearanceInstruction assign_star_clearance_instruction = 2;
+        AssignLevelClearanceInstruction assign_level_clearance_instruction = 3;
+        AssignRequestedLevelInstruction assign_requested_level_instruction = 4;
+        AssignSectorExitLevelClearanceInstruction assign_sector_exit_level_clearance_instruction = 5;
+        AssignLateralClearanceInstruction assign_lateral_clearance_instruction = 6;
+        AssignSpeedClearanceInstruction assign_speed_clearance_instruction = 7;
+        // AssignRouteClearanceInstruction assign_route_clearance_instruction = 8;
+        AssignHoldingClearanceInstruction assign_holding_clearance_instruction = 9;
+        AssignVerticalRateClearanceInstruction assign_vertical_rate_clearance_instruction = 10;
+        AssignDepartureAerodromeRunwayClearanceInstruction assign_departure_aerodrome_runway_clearance_instruction = 11;
+        AssignDestinationAerodromeRunwayClearanceInstruction assign_destination_aerodrome_runway_clearance_instruction = 12;
+        ClearVerticalRateClearanceInstruction clear_vertical_rate_clearance_instruction = 13;
+        ClearLateralClearanceInstruction clear_lateral_clearance_instruction = 14;
+        ClearSpeedClearanceInstruction clear_speed_clearance_instruction = 15;
+
+        // Equipment instructions.
+        AcknowledgeEquipmentWarningInstruction acknowledge_equipment_warning_instruction = 16;
+        SetFlightRulesCategoryInstruction set_flight_rules_category_instruction = 17;
+
+        // Correlation instructions.
+        ManualCorrelationInstruction manual_correlation_instruction = 18;
+        ManualDecorrelationInstruction manual_decorrelation_instruction = 19;
+        AcknowledgeCorrelationWarningInstruction acknowledge_correlation_warning_instruction = 54;
+
+        // Ssr code allocation instruction.
+        SsrCodeAllocationInstruction ssr_code_allocation_instruction = 20;
+
+        // Coordination instructions.
+        NotifyPriorToCoordinateInstruction notify_prior_to_coordinate_instruction = 21;
+        CoordinateInstruction coordinate_instruction = 22;
+        CancelCoordinationInstruction cancel_coordination_instruction = 23;
+        CancelInboundCoordinationInstruction cancel_inbound_coordination_instruction = 64;
+        AcknowledgeOpenCoordinationInstruction acknowledge_open_coordination_instruction = 24;
+        ManualInboundCoordinationInstruction manual_inbound_coordination_instruction = 25;
+        ManualOutboundCoordinationInstruction manual_outbound_coordination_instruction = 26;
+        ManualActivateInterSectorCoordinationInstruction manual_activate_inter_sector_coordination_instruction = 56;
+
+        // Handover instructions.
+        InitiateTransferOfControlInstruction initiate_transfer_of_control_instruction = 27;
+        CancelTransferOfControlInstruction cancel_transfer_of_control_instruction = 28;
+        AssumeControlInstruction assume_control_instruction = 29;
+        RejectTransferOfControlInstruction reject_transfer_of_control_instruction = 30;
+        DecontrolInstruction decontrol_instruction = 31;
+        ForceAssumeControlInstruction force_assume_control_instruction = 32;
+        ReleaseControlInstruction release_control_instruction = 33;
+        EnablePseudoControlInstruction enable_pseudo_control_instruction = 34;
+
+        //Other instructions
+        TerminateFlightRecordInstruction terminate_flight_record_instruction = 35;
+        AssignReportedFlightLevelAndPositionInstruction assign_reported_flight_level_and_position_instruction = 36;
+        AssignFreeTextInstruction assign_free_text_instruction = 37;
+        SetCurrentFlightRulesInstruction set_current_flight_rules_instruction = 38;
+
+        // Flight record update instructions.
+        UpdateCallSignInstruction update_callsign_instruction = 39;
+        UpdateFlightTypeInstruction update_flight_type_instruction = 40;
+        UpdateNumberOfAircraftInstruction update_number_of_aircraft_instruction = 41;
+        UpdateAircraftTypeAndWakeTurbulenceCategoryInstruction update_aircraft_type_and_wake_turbulence_category_instruction = 42;
+        UpdatePlannedDepartureAerodromeInstruction update_planned_departure_aerodrome_instruction = 43;
+        UpdatePlannedDestinationAerodromeInstruction update_planned_destination_aerodrome_instruction = 44;
+        UpdatePlannedAlternateAerodrome1Instruction update_planned_alternate_aerodrome1_instruction = 45;
+        UpdatePlannedAlternateAerodrome2Instruction update_planned_alternate_aerodrome2_instruction = 46;
+        UpdatePlannedCruisingSpeedAndLevelInstruction update_planned_cruising_speed_and_level_instruction = 47;
+        UpdateOtherInformationInstruction update_other_information_instruction = 48;
+        UpdatePlannedRouteInstruction update_planned_route_instruction = 49;
+        UpdateCommunicationAndNavigationCapabilitiesInstruction update_communication_and_navigation_capabilities_instruction = 50;
+        UpdateSurveillanceCapabilitiesInstruction update_surveillance_capabilities_instruction = 51;
+        AssignStartupClearanceInstruction assign_startup_clearance_instruction = 52;
+        CancelStartupClearanceInstruction cancel_startup_clearance_instruction = 53;
+        UpdateNextAtsUnitFrequencyInstruction update_next_ats_unit_frequency = 55;
+        AcknowledgeMessageValidationFailureInstruction acknowledge_message_validation_failure_instruction = 62;
+        UpdateEnrouteCruisingLevelInstruction update_enroute_cruising_level_instruction = 65;
+
+        // Handover instructions
+        ForceReleaseControlInstruction force_release_control_instruction = 57;
+
+        // Sequencing instructions
+        AssignApproachSequenceInstruction assign_approach_sequence_instruction = 58;
+        RemoveFromApproachSequenceInstruction remove_from_approach_sequence_instruction = 59;
+        
+        // Approach clearance instruction
+        AssignApproachClearanceInstruction assign_approach_clearance_instruction = 60;
+
+        // Acknowledgement instructions
+        AcknowledgeFieldUpdateInstruction acknowledge_field_update_instruction = 61;
+
+        // Send message instruction.
+        SendMessageInstruction send_message_instruction = 63;
+    }
+}
+
+// The SendMessageInstruction message defines an instruction to send a message for a flight record.
+message SendMessageInstruction {
+
+    // Defines the content of a departure message, set by the user.
+    message DepartureMessage
+    {
+        // Defines the actual time of departure.
+        google.protobuf.Timestamp actual_time_of_departure = 1;
+    }
+
+    // Defines the content of an arrival message, set by the user.
+    message ArrivalMessage
+    {
+        // Defines the actual time of arrival.
+        google.protobuf.Timestamp actual_time_of_arrival = 1;
+    }
+
+    // Defines the message to send.
+    oneof message {
+        // Defines that a departure message, with the given actual time of departure, should be sent.
+        DepartureMessage departure_message = 1;
+
+        // Defines that an arrival message, with the given actual time of arrival, should be sent.
+        ArrivalMessage arrival_message = 2;
+
+        // Defines that a request for flight plan message should be sent.
+        google.protobuf.Empty rqp_message = 3;
+
+        // Defines that a request for supplementary information message should be sent.
+        google.protobuf.Empty rqs_message = 4;
+    }
+}
+
+// Approach sequence number
+message ApproachSequence {
+    int32 sequence_number = 1;
+}
+
+// Instruction to assign an approach sequence number to a flight record.
+message AssignApproachSequenceInstruction {
+    // The approach sequence number requested by the user. If not provided, the next available number will be assigned.
+    ApproachSequence approach_sequence = 1;
+}
+
+// Instruction to remove a flight record from the approach sequence.
+message RemoveFromApproachSequenceInstruction {
+    bool remove_from_sequence = 1;
+}
+
+// UpdateNextAtsUnitFrequencyInstruction message defines an instruction to update the frequency selected for the next Ats unit.
+message UpdateNextAtsUnitFrequencyInstruction {
+    string frequency = 1;
+}
+
+// The UpdateCallSignInstruction message defines an instruction to update the call sign of a flight record.
+message UpdateCallSignInstruction {
+    tern.protobuf.flight.CallSign aircraft_identification = 1;
+}
+
+// The UpdateFlightTypeInstruction message defines an instruction to update the flight type of a flight record.
+message UpdateFlightTypeInstruction {
+    tern.protobuf.flight.TypeOfFlight type_of_flight = 1;
+}
+
+// The UpdateNumberOfAircraftInstruction message defines an instruction to update the number of aircraft of a flight record.
+message UpdateNumberOfAircraftInstruction {
+    tern.protobuf.flight.NumberOfAircraft number_of_aircraft = 1;
+}
+
+// The UpdateAircraftTypeAndWakeTurbulenceCategoryInstruction message defines an instruction to update the aircraft type
+// and wake turbulence category of a flight record.
+message UpdateAircraftTypeAndWakeTurbulenceCategoryInstruction {
+    tern.protobuf.flight.AircraftTypeAndWakeTurbulenceCategory aircraft_type_and_wake_turbulence_category = 1;
+}
+
+// The UpdatePlannedDepartureAerodromeInstruction message defines an instruction to update the planned departure aerodrome
+// and off-block time a flight record.
+message UpdatePlannedDepartureAerodromeInstruction {
+    tern.protobuf.flight.PlannedDepartureAerodrome planned_departure_aerodrome_and_time = 1;
+}
+
+// The UpdatePlannedDestinationAerodromeInstruction message defines an instruction to update the planned destination aerodrome
+// and and estimated elapsed time of a flight record.
+message UpdatePlannedDestinationAerodromeInstruction {
+    tern.protobuf.flight.PlannedDestinationAerodrome planned_destination_aerodrome_and_time = 1;
+}
+
+// The UpdatePlannedAlternateAerodrome1Instruction message defines an instruction to update the planned alternate aerodrome 1
+// of a flight record.
+message UpdatePlannedAlternateAerodrome1Instruction {
+    oneof set_or_cleared {
+        tern.protobuf.flight.PlannedAlternateAerodrome planned_alternate_aerodrome_1_and_time = 1;
+        bool clear_planned_alternate_aerodrome_1 = 2;
+    }
+}
+
+// The UpdatePlannedAlternateAerodrome2Instruction message defines an instruction to update the planned alternate aerodrome 2
+// of a flight record.
+message UpdatePlannedAlternateAerodrome2Instruction {
+    oneof set_or_cleared {
+        tern.protobuf.flight.PlannedAlternateAerodrome planned_alternate_aerodrome_2_and_time = 1;
+        bool clear_planned_alternate_aerodrome_2 = 2;
+    }
+}
+
+// The UpdatePlannedCruisingSpeedAndLevelInstruction message defines an instruction to update the planned cruising speed and
+// level of a flight record.
+message UpdatePlannedCruisingSpeedAndLevelInstruction {
+    tern.protobuf.flight.PlannedCruisingSpeedAndLevel planned_cruising_speed_and_level = 1;
+}
+
+// The UpdateOtherInformationInstruction message defines an instruction to update the other information of a flight record.
+// As defined in field 18
+message UpdateOtherInformationInstruction {
+    oneof set_or_cleared {
+        FieldType18 other_information = 1;
+        ClearField18Subfields clear_fields = 2;
+    }
+}
+
+// The AcknowledgeMessageValidationFailureInstruction message defines an instruction to
+// acknowledge a message validation failure.
+message AcknowledgeMessageValidationFailureInstruction {
+    // Defines the unique id of the message validation failure to acknowledge.
+    tern.protobuf.Uuid message_id = 1;
+    // Defines whether the message validation failure is acknowledged.
+    bool acknowledge = 2;
+}
+
+// The Field18Subfields lists all defined fields within the FieldType 18 that can be cleared out.
+message ClearField18Subfields {
+    bool aircraft_registration = 1; //REG
+    bool ifp_indicators = 2; //IFP
+    bool eur = 3; //EUR
+    bool awr = 4; //AWR
+    bool remarks = 5; //RMK
+    bool special_status = 6; //STS
+    bool eet = 7; //EET
+    bool aircraft_address = 8; //CODE
+    bool date_of_flight = 9; //DOF
+    bool enroute_delay = 10; //DLE
+    bool runway_visual_range = 11; //RVR
+    bool stay_info = 12; //STAYINFO
+    bool selcal_code = 13; //SEL
+    bool typ = 14; //TYP
+    bool aircraft_operating_agency = 15; //OPR
+    bool originator = 16; //ORGN
+    bool aircraft_performance_data = 17; //PER
+    bool enroute_alternate_aerodromes = 18; //RALT
+    bool takeoff_alternate_aerodrome = 19; //TALT
+    bool route_elements_to_revised_destination_aerodrome = 20; //RIF
+    bool source_indicator = 21; //SRC
+    bool replacement_flight_plan = 22; //RFP
+}
+
+// The UpdatePlannedRouteInstruction message defines an instruction to update the planned route of a flight record.
+message UpdatePlannedRouteInstruction {
+    repeated tern.protobuf.flight.PlannedRouteElement planned_route_elements = 1;
+}
+
+// The UpdateCommunicationAndNavigationCapabilitiesInstruction message defines an instruction to update the communication
+// and navigation capabilities of a flight record.
+message UpdateCommunicationAndNavigationCapabilitiesInstruction {
+    tern.protobuf.flight.CommunicationAndNavigationCapabilities communication_and_navigation_capabilities = 1;
+}
+
+// The UpdateSurveillanceCapabilitiesInstruction message defines an instruction to update the surveillance capabilities of
+// a flight record.
+message UpdateSurveillanceCapabilitiesInstruction {
+    tern.protobuf.flight.SurveillanceCapabilities surveillance_capabilities = 1;
+}
+
+// The AssignSidClearanceInstruction message defines an instruction to assign a standard instrument departure (SID)
+// clearance to a flight record.
+message AssignSidClearanceInstruction {
+    tern.protobuf.Uuid sid_id = 1;
+
+    // The following parameter is strictly not needed, but useful when logging information
+    // about possible error conditions.
+    string sid_designator = 2;
+}
+
+// The AssignStarClearanceInstruction message defines an instruction to assign a standard instrument arrival (STAR)
+// clearance to a flight record.
+message AssignStarClearanceInstruction {
+    tern.protobuf.Uuid star_id = 1;
+
+    // The following parameter is strictly not needed, but useful when logging information
+    // about possible error conditions.
+    string star_designator = 2;
+}
+
+// The AssignLevelClearanceInstruction message defines an instruction to assign a flight level or altitude clearance
+// to a flight record.
+message AssignLevelClearanceInstruction {
+    tern.protobuf.math.geometry.VerticalVariant cleared_level_or_altitude = 1;
+    ApproachClearanceType approach_clearance = 2 [deprecated=true];
+}
+
+// The AssignRequestedLevelInstruction message defines an instruction to assign a pilot requested flight level or
+// altitude to a flight record.
+message AssignRequestedLevelInstruction {
+    tern.protobuf.math.geometry.VerticalVariant requested_level_or_altitude = 1;
+}
+
+// The AssignSectorExitLevelClearanceInstruction message defines an instruction to assign a sector exit flight level
+// or altitude to a flight record.
+message AssignSectorExitLevelClearanceInstruction {
+    ControllingSectorName controlling_sector_name = 1;
+    tern.protobuf.math.geometry.VerticalVariant sector_exit_level_or_altitude = 2;
+}
+
+// The AssignLateralClearanceInstruction message defines an instruction to assign a heading clearance or a
+// direct-to clearance to a flight record.
+message AssignLateralClearanceInstruction {
+    LateralClearance lateral_clearance = 1;
+}
+
+// The ClearLateralClearanceInstruction message defines an instruction to clear previously assigned lateral clearance.
+message ClearLateralClearanceInstruction {
+    bool clear_lateral_clearance = 1;
+}
+
+
+// The AssignSpeedClearanceInstruction message defines an instruction to assign a speed clearance to a flight record.
+message AssignSpeedClearanceInstruction {
+    SpeedClearance speed_clearance = 1;
+}
+
+// The ClearSpeedClearanceInstruction message defines an instruction to clear a previously assigned speed clearance.
+message ClearSpeedClearanceInstruction {
+    bool clear_speed_restrictions = 1;
+}
+
+// The AssignRouteClearanceInstruction message defines an instruction to assign a route clearance to a flight record.
+message AssignRouteClearanceInstruction {
+    // NOTE:    - parameters to be determined.
+}
+
+// The AssignHoldingClearanceInstruction message defines an instruction to assign a holding clearance to a flight
+// record.
+message AssignHoldingClearanceInstruction {
+    HoldingClearance holding_clearance = 1;
+}
+
+// The AssignVerticalRateClearanceInstruction message defines an instruction to assign a vertical rate clearance to
+// a flight record.
+message AssignVerticalRateClearanceInstruction {
+    VerticalRateClearance vertical_rate_clearance = 1;
+}
+
+// The ClearVerticalRateClearanceInstruction message defines an instruction to clear a previously assigned
+// vertical rate clearance to a flight record.
+message ClearVerticalRateClearanceInstruction {
+    bool clear_vertical_rate_restrictions = 1;
+}
+
+// The AssignDepartureAerodromeRunwayClearanceInstruction message defines an instruction to assign a departure runway
+// to a flight record.
+message AssignDepartureAerodromeRunwayClearanceInstruction {
+    string airport_designator = 1;
+    string runway_designator = 2;
+}
+
+// The AssignDestinationAerodromeRunwayClearanceInstruction message defines an instruction to assign a destination
+// runway to a flight record.
+message AssignDestinationAerodromeRunwayClearanceInstruction {
+    string airport_designator = 1;
+    string runway_designator = 2;
+}
+
+// The AssignFreeTextInstruction message defines an instruction to assign a freeText message to a flight record.
+// The instruction overwrites any currently assigned freeText message.
+message AssignFreeTextInstruction {
+  string free_text = 1;
+}
+
+// The AssignApproachClearanceInstruction message defines an instruction to assign an approach clearance to
+// a flight record.
+message AssignApproachClearanceInstruction {
+  ApproachClearance approach_clearance = 1;
+}
+
+// The UpdateEnrouteCruisingLevelInstruction message defines an instruction to update the en-route cruising level for
+// a flight record.
+message UpdateEnrouteCruisingLevelInstruction {
+  tern.protobuf.math.geometry.VerticalVariant enroute_cruising_level = 1;
+}
+
+// Defines equipment warning type.
+enum EquipmentWarningType {
+    EQUIPMENT_WARNING_TYPE_NOT_SET = 0;
+    EQUIPMENT_WARNING_833KHZ = 1;
+    EQUIPMENT_WARNING_RVSM = 2;
+}
+
+// The EquipmentWarning message defines the equipment warning for a flight record.
+message EquipmentWarning {
+    enum WarningStatus {
+        // The warning status is not set.
+        WARNING_STATUS_NOT_SET = 0;
+        // The status is set to SUSPENDED by atco.
+        WARNING_STATUS_SUSPENDED = 1;
+        // The status is set to EXEMPT by atco or system.
+        WARNING_STATUS_EXEMPT = 2;
+        // The status is set to NONE as default by the system.
+        WARNING_STATUS_NONE = 3;
+    }
+    // Defines the type of this equipment warning.
+    EquipmentWarningType type = 1;
+    bool acknowledged = 2 [deprecated = true];
+    // Defines the current value of the status.
+    WarningStatus status = 3;
+}
+
+// The AcknowledgeEquipmentWarningInstruction message defines an instruction to update the equipment warning status on a flight record.
+message AcknowledgeEquipmentWarningInstruction {
+    // Defines the type of this equipment warning.
+    EquipmentWarningType acknowledge_warning_type = 1;
+    // Defines the status to be assigned to the flight record's equipment warning.
+    EquipmentWarning.WarningStatus status = 2;
+}
+
+// The SetFlightRulesCategoryInstruction message defines an instruction to set a specific flight rules category on a flight record.
+message SetFlightRulesCategoryInstruction {
+    tern.protobuf.flight.FlightRuleCategory flight_rules_category = 1;
+}
+
+// The SetCurrentFlightRulesInstruction message defines an instruction to set a specific flight rules as current on a flight record.
+message SetCurrentFlightRulesInstruction {
+    tern.protobuf.flight.CurrentFlightRules current_flight_rules = 1;
+}
+
+// The TrackNumber message defines the member attribute containing the TrackNumber value.
+message TrackNumber {
+    uint32 value = 1;
+}
+
+// The ManualCorrelationInstruction message defines an instruction to manually correlate a flight record to a certain
+// track number.
+message ManualCorrelationInstruction {
+    TrackNumber track_number = 1;
+}
+
+// The ManualDecorrelationInstruction message defines an instruction to manually de-correlate a flight record from a
+// certain track number.
+message ManualDecorrelationInstruction {
+    TrackNumber track_number = 1;
+}
+
+// The AcknowledgeCorrelationWarningInstruction message defines an instruction to acknowledge a correlation warning.
+message AcknowledgeCorrelationWarningInstruction {
+    enum CorrelationWarningType {
+        NOT_SET = 0;
+        SSR_CODE_MISMATCH = 1;
+        CALLSIGN_MISMATCH = 2;
+        AMBIGUOUS_CORRELATION = 3;
+    }
+    CorrelationWarningType warning_type = 1;
+}
+
+// The SsrCodeAllocationInstruction message defines an instruction to manually assign a given ssr code to a flight,
+// or allocate first available code from the manual ssr code allocation list.
+message SsrCodeAllocationInstruction {
+    oneof allocation {
+        tern.protobuf.flight.ModeACode manually_allocated_ssr_code = 1; // The value of the ssrCode to be assigned
+        bool allocate_from_manual_ssr_band = 2; // If true ssrCode is allocated from Manual list.
+    }
+}
+
+// The AtsUnit message defines the attributes that identify an ATS unit.
+message AtsUnit {
+    string id = 1;
+    string name = 2;
+}
+
+// The NotifyPriorToCoordinateInstruction message defines an instruction to create and send a notification message,
+// prior to coordination, to the given external ATS unit.
+message NotifyPriorToCoordinateInstruction {
+    // Deprecated don't use the ATS unit is automatically determined!
+    AtsUnit external_ats_unit = 1 [deprecated = true];
+    bool notify_prior_to_coordination = 2;
+}
+
+// The CoordinateInstruction message defines an instruction to create and send a coordination message to the given
+// external ATS unit.
+message CoordinateInstruction {
+    // Deprecated don't use the ATS unit is automatically determined!
+    AtsUnit external_ats_unit = 1 [deprecated = true];
+    bool coordinate = 2;
+}
+
+// The CancelCoordinationInstruction message defines an instruction to create and send a cancel coordination message
+// to the given external ATS unit.
+message CancelCoordinationInstruction {
+    // Deprecated don't use the ATS unit is automatically determined!
+    AtsUnit external_ats_unit = 1 [deprecated = true];
+
+    // Defines the coordination status of the flight record, after the cancel coordination instruction has been applied.
+    OldiCoordinationStatus status = 2;
+
+    // Defines the reason for cancelling coordination.
+    OldiCoordinationReason reason = 3;
+}
+
+// The CancelInboundCoordinationInstruction message defines an instruction to cancel inbound coordination.
+message CancelInboundCoordinationInstruction {
+    // Empty message, used to cancel inbound coordination.
+}
+
+// The AcknowledgeOpenCoordinationInstruction message defines an instruction to manually acknowledge an open
+// coordination dialog with the given external ATS unit.
+message AcknowledgeOpenCoordinationInstruction {
+    AtsUnit external_ats_unit = 1;
+}
+
+// The ManualInboundCoordinationInstruction message defines an instruction to manually inbound
+// coordinate a flight record.
+message ManualInboundCoordinationInstruction {
+    // Defines the cleared entry coordination point received manually from the upstream ATS unit.
+    CoordinationPoint copn = 1;
+
+    // Defines the entry time.
+    tern.protobuf.TimeOfDay entry_time = 2;
+
+    // Defines the entry flight level.
+    tern.protobuf.flight.PlannedCruisingLevel planned_entry_level = 3;
+}
+
+// The ManualOutboundCoordinationInstruction message defines an instruction to manually outbound
+// coordinate a flight record.
+message ManualOutboundCoordinationInstruction {
+    // Defines the cleared exit coordination point cleared with the downstream ATS unit.
+    // Currently not used when processing the instruction.
+    CoordinationPoint copx = 1;
+
+    // Defines the exit time.
+    tern.protobuf.TimeOfDay exit_time = 2;
+
+    // Defines the exit flight level.
+    tern.protobuf.flight.PlannedCruisingLevel exit_flight_level = 3;
+}
+
+// The InitiateTransferOfControlInstruction message defines the information needed to perform an initiate
+// transfer of control instruction.
+message InitiateTransferOfControlInstruction {
+    // Defines the name of the controlling sector, initiating transfer of control.
+    ControllingSectorName originating_controlling_sector = 1;
+
+    // Defines the name of the proposed controlling sector.
+    ControllingSectorName proposed_controlling_sector = 2;
+}
+
+// The CancelTransferOfControlInstruction message defines the information needed to perform a cancel
+// transfer of control instruction.
+message CancelTransferOfControlInstruction {
+    // Defines the name of the controlling sector, cancelling transfer of control.
+    ControllingSectorName originating_controlling_sector = 1;
+}
+
+// The AssumeControlInstruction message defines the information needed to perform an assume
+// control instruction.
+message AssumeControlInstruction {
+    // Defines the name of the controlling sector, assuming control.
+    ControllingSectorName originating_controlling_sector = 1;
+}
+
+// The RejectTransferOfControlInstruction message defines the information needed to perform a reject
+// transfer of control instruction.
+message RejectTransferOfControlInstruction {
+    // Defines the name of the controlling sector, rejecting transfer of control.
+    ControllingSectorName originating_controlling_sector = 1;
+}
+
+// The DecontrolInstruction message defines the information needed to perform a decontrol instruction.
+message DecontrolInstruction {
+    // Defines the name of the controlling sector, decontrolling.
+    ControllingSectorName originating_controlling_sector = 1;
+}
+
+// The ForceAssumeControlInstruction message defines the information needed to perform a force
+// assume control instruction.
+message ForceAssumeControlInstruction {
+    // Defines the name of the controlling sector, force assuming transfer of control.
+    ControllingSectorName originating_controlling_sector = 1;
+}
+
+// The ReleaseControlInstruction message defines the information needed to perform a release
+// control instruction.
+message ReleaseControlInstruction {
+    // Defines the name of the controlling sector, releasing control of a flight.
+    ControllingSectorName originating_controlling_sector = 1;
+
+    // Defines the name of the proposed controlling sector.
+    ControllingSectorName proposed_controlling_sector = 2;
+}
+
+// The ForceReleaseControlInstruction message defines the information needed to transfer control of the flight to next downstream sector.
+message ForceReleaseControlInstruction {
+    // Defines the name of the controlling sector, initiating transfer of control.
+    ControllingSectorName originating_controlling_sector = 1;
+
+    // Defines the name of the proposed controlling sector.
+    ControllingSectorName proposed_controlling_sector = 2;
+}
+
+// The ManualActivateInterSectorCoordinationInstruction message defines the information needed to perform
+// activation of inter-sector coordination with the next downstream sector.
+message ManualActivateInterSectorCoordinationInstruction  {
+    // Defines the name of the controlling sector initiating the coordination.
+    ControllingSectorName originating_controlling_sector = 1;
+}
+
+// The EnablePseudoControlInstruction message defines the information needed to enable the pseudo-controller
+// handover functionality, for the flight record. This instruction is only accepted when the system is in
+// shadow mode.
+message EnablePseudoControlInstruction {
+    // Defines the information needed to enable pseudo-controller handover functionality. Should be
+    // set to true, for the instruction to be accepted and applied to the flight record.
+    bool enable_automatic_handover = 1;
+}
+
+// The AssignReportedFlightLevelAndPositionInstruction message defines the information needed to assign a reported position to a flight record.
+message AssignReportedFlightLevelAndPositionInstruction {
+    tern.protobuf.math.geometry.VerticalVariant reported_level_or_altitude = 1;
+    oneof position
+    {
+        // The geographical coordinates of the flight
+        tern.protobuf.math.LatLon reported_position = 2;
+        //The designator of a known named point,
+        string icao_designator = 3;
+    }
+}
+
+// The AssignStartupClearanceInstruction message defines the information needed to assign a startup clearance to a flight record.
+message AssignStartupClearanceInstruction {
+    // Used for serializing the instruction, will always be parsed as true.
+    bool assign_startup_clearance = 1;
+}
+
+// The CancelStartupClearanceInstruction message defines the information needed to cancel startup clearance for the flight record.
+message CancelStartupClearanceInstruction {
+    // Used for serializing the instruction, will always be parsed as true.
+    bool cancel_startup_clearance = 1;
+}
+
+// The TerminateFlightRecordInstruction message defines the information needed to terminate a flight record.
+message TerminateFlightRecordInstruction {
+     bool terminate_flight_record = 1;
+}
+
+// The AcknowledgeFieldUpdateInstruction message defines the information for the instruction to acknowledge a given field update.
+message AcknowledgeFieldUpdateInstruction {
+    AcknowledgeableField field = 1;
+}
+
+// The CorrelationState enum defines the allowed states of a flight's correlation record.
+enum CorrelationState {
+    CORRELATION_STATE_NOT_SET = 0;
+    CORRELATION_STATE_NOT_CORRELATED = 1;
+    CORRELATION_STATE_CORRELATED = 2;
+    CORRELATION_STATE_DECORRELATED = 4;
+}
+
+// The CorrelationRecord as part of the FlightRecord contains the attributes related to the flight's correlation state.
+message CorrelationRecord {
+
+    // The WarningState enum defines the allowed states of a flight's correlation warning.
+    enum WarningState {
+        WARNING_STATE_NOT_SET = 0;
+        WARNING_STATE_WARNING = 1;
+        WARNING_STATE_ACKNOWLEDGED = 2;
+    }
+
+    // Defines the track number associated with the correlation
+    TrackNumber track_number = 1;
+
+    // Defines the current state of the correlation
+    CorrelationState state = 2;
+
+    // Bool identifying mismatch between callsign of flight and track
+    bool callsign_mismatch = 3 [deprecated = true];
+
+    // Bool identifying mismatch between ssr of flight and track
+    bool ssr_mismatch = 4 [deprecated = true];
+
+    // Defines the reported ModeACode as squawked by flight
+    tern.protobuf.flight.ModeACode reported_mode_a_code = 5;
+
+    // Bool identifying ambiguity in correlation, i.e. other matching candidate flight record found.
+    bool correlation_ambiguous = 6 [deprecated = true];
+
+    // Warning identifying mismatch between callsign of flight and track
+    WarningState callsign_mismatch_state = 7;
+
+    // Warning identifying mismatch between ssr of flight and track
+    WarningState ssr_mismatch_state = 8;
+
+    // Warning identifying ambiguity in correlation, i.e. other matching candidate flight record found.
+    WarningState correlation_ambiguous_state = 9;
+
+    // Bool identifying if correlation has been lost.
+    bool correlation_target_lost = 10;
+}
+
+// The LifecycleState enum defines the allowed lifecycle states of a flight record.
+enum LifecycleState
+{
+    LIFECYCLE_STATE_NOT_SET = 0;
+    LIFECYCLE_STATE_PROPOSED = 1;
+    LIFECYCLE_STATE_ACTIVE = 2;
+    LIFECYCLE_STATE_TERMINATED = 3;
+};
+
+// The LifecycleRecord as part of the FlightRecord contains the attributes related to its lifecycle state.
+message LifecycleRecord {
+    LifecycleState lifecycle_state = 1;
+    google.protobuf.Timestamp timeout = 2;
+};
+
+// The CoordinateState defines the actual authoritative state of the coordination
+enum CoordinationState {
+    CoordinationState_NOT_SET = 0;
+    CoordinationState_None = 1; // after MAC received, or MAC acknowledged
+    Notifying = 2;    // after ABI sent
+    Notified = 3;     // after at least one ABI received, or ABI acknowledged
+    Coordinating = 4; // after ACT sent
+    Coordinated = 5;  // after ACT received, or ACT acknowledged, or after manual estimate
+    Abrogating = 6;   // after MAC sent
+    Revising = 7; // after REV sent, before acknowledgement
+}
+
+// The CoordinationRecord message defines the current status of coordination with one ATS unit on one border.
+message CoordinationRecord
+{
+    // Current state of the coordination.
+    CoordinationState state = 1;
+    // Identifier of the ATS unit from (or to) which a coordination is received (or sent).
+    string external_ats_unit = 2;
+    // Used to match with received LAM message
+    uint32 last_coordination_message_number = 3;
+    // The actual coordination agreement, as provided in the OLDI message or manual input.
+    FieldType14 estimate_data = 4;
+    // Flag indicating that an outgoing message hasn't been acknowledged by a LAM within the defined timeframe.
+    bool coordination_timed_out = 5;
+    // Flag indicating that the sending of messages has been inhibited because the flight is less than a configured time/distance from the boundary.
+    bool coordination_messages_inhibited = 6;
+    // Flag indicating that the flight is manually coordinated.
+    bool manually_coordinated = 7;
+    // Number of tries to send a coordination message.
+    uint32 send_try_count = 8;
+}
+
+// The InterSectorCoordinationRecord message defines the current status of coordination between sector volumes within the AOR.
+message InterSectorCoordinationRecord
+{
+    enum CoordinationState {
+        NOT_SET = 0;
+        NONE = 1;          // initial state or after abrogation.
+        NOTIFIED = 2;      // initial state for concerned sector.
+        COORDINATING = 3;  // non-standard transfer conditions rejected by ATCO.
+        COORDINATED = 4;   // after ManualActivateInternalControlInstruction or before crossing boundary.
+        REVISING = 5;      // before acknowledgement
+        DONE = 6;          // after handover.
+    }
+    // Current state of the coordination for this sector.
+    CoordinationState state = 1;
+    // Identifier of the controlling sector.
+    ControllingSectorName controlling_sector = 2;
+}
+
+// The SsrCodeAllocationState defines the states of the SsrCodeAllocationRecord
+enum SsrCodeAllocationState {
+    SSR_CODE_NOT_SET = 0;
+    SSR_CODE_PRE_ASSIGNED = 1 [deprecated = true];
+    SSR_CODE_ALLOCATED = 2 [deprecated = true];
+    SSR_CODE_ALLOCATION_ERROR = 3; // Error allocating ssr code, no available codes.
+    SSR_CODE_MANUALLY_ALLOCATED = 4; // Ssr code is manually allocated and will override any allocation rules.
+}
+
+// The SsrCodeAllocationRecord is part of the FlightRecord. It contains the attributes related to ssr allocation
+message SsrCodeAllocationRecord
+{
+    // The current state of the ssrCode allocation
+    SsrCodeAllocationState state = 1;
+    // FIR which flight is exiting into from our AOR. Used to establish need for re-allocation of ssr-code.
+    string exit_fir = 4;
+    // SSR code currently assigned by the system.
+    tern.protobuf.flight.ModeACode assigned_ssr_code = 5 ;
+    // SSR code (previously) assigned by the adjacent FIR.
+    tern.protobuf.flight.ModeACode previously_assigned_ssr_code = 6;
+    // SSR code previously assigned by the system. Only present until correlated target squawks new assigned code.
+    tern.protobuf.flight.ModeACode system_previous_ssr_code = 7;
+
+    tern.protobuf.flight.ModeACode assigned_mode_a_code = 2 [deprecated = true];
+    tern.protobuf.flight.ModeACode previously_assigned_mode_a_code = 3 [deprecated = true];
+}
+
+// The SectorTransferLevel defines the particular sector's entry and exit levels
+message SectorTransferLevel{
+    // The name of the sector
+    ControllingSectorName controlling_sector_name = 1;
+    // The entry level of the sector
+    tern.protobuf.math.geometry.VerticalVariant sector_entry_level_or_altitude = 2;
+    // The exit level of the sector
+    tern.protobuf.math.geometry.VerticalVariant sector_exit_level_or_altitude = 3;
+    // Marks if the entry level has been manually overriden
+    bool manual_planned_entry_level = 4;
+    // Marks if the exit level has been manually overriden
+    bool manual_exit_flight_level = 5;
+}
+
+// The ControllingSectorName defines the unique identification of a controlling sector. A control
+// sector consists of a list of sub sectors.
+message ControllingSectorName {
+    string name = 1;
+}
+
+// The ControllingSectorControlState message defines the control state of the flight record in the given
+// controlling sector.
+message ControllingSectorControlState {
+
+    // The name of this controlling sector.
+    ControllingSectorName controlling_sector_name = 1;
+
+    // The control state of this controlling sector.
+    ControlState control_state = 2;
+    ControllingSectorName next_controlling_sector_name = 3  [deprecated = true];
+
+    // Tells if this controlling sector is the first one entered by the SFR.
+    bool first_controlling_sector = 4;
+
+    // The name of the accepting sector.
+    ControllingSectorName accepting_sector_name = 5;
+
+    // The selected radio frequency for this controlling sector, based on the sectorization profile.
+    string controlling_sector_frequency = 6;
+
+    // The selected radio frequency for the accepting sector, based on the sectorization profile.
+    string accepting_sector_frequency = 7;
+
+    // Indicates if this sector is in the transfer phase.
+    bool transfer_phase = 8;
+
+    // The allocated frequency for the accepting sector, from the sector allocation in the sectorization profile.
+    string accepting_sector_allocated_frequency = 9;
+}
+
+// The ControlState enum defines the accepted state values of a ControllingSectorControlState.
+enum ControlState {
+    ControlState_NOT_SET = 0;
+
+    // Flight does not enter a Controlling Sector and the Controlling Sector has not assumed control
+    // of the flight.
+    NON_CONCERNED = 1;
+
+    // Flight will enter a Controlling Sector, but the Controlling Sector has not assumed the flight yet.
+    CONCERNED = 2;
+
+    // Flight is inside a Controlling Sector, but the Controlling Sector has not assumed the flight, and
+    // the flight does not qualify as Redundant.
+    INTRUDER = 3;
+
+    // The upstream Controlling Sector (or upstream centre - in future release) has initiated transfer-of-
+    // control to the Controlling Sector. The Controlling Sector has not assumed control yet.
+    TRANSFER_IN_INITIATED = 4;
+
+    // The control state of the current Controlling Sector, when a downstream Controlling Sector has
+    // initiated transfer-of-control from the current Controlling Sector. The current Controlling Sector
+    // has not released control yet.
+    REQUEST_OUT_INITIATED = 5;
+
+    // The Controlling Sector has assumed control of the flight.
+    ASSUMED = 6;
+
+    // The Controlling Sector has initiated transfer-of-control to the next downstream Controlling Sector
+    // (or downstream centre - in future release). Downstream Controlling Sector (or centre) has not
+    // assumed control yet.
+    TRANSFER_OUT_INITIATED = 7;
+
+    // The control state of a downstream Controlling Sector, when the downstream Controlling Sector has
+    // initiated transfer-of-control from the current Controlling Sector. The current Controlling Sector
+    // has not released control yet.
+    REQUEST_IN_INITIATED = 8;
+
+    // The downstream Controlling Sector (or downstream centre - in future release) has assumed control
+    // of the flight, but the flight is still positioned in the Controlling Sector’s volume.
+    REDUNDANT = 9;
+
+    // The flight is no longer under control of the given Controlling Sector and is not positioned within
+    // its volume, and the flight does not plan to enter the Controlling Sector again.
+    COMPLETED = 10;
+}
+
+// The InitialTrajectoryPointAndTime message defines the initial airborne point and time used to calculate a
+// trajectory.
+message InitialTrajectoryPointAndTime {
+
+    tern.protobuf.trajectory.AirborneInitializationPoint airborne_initialization_point = 1;
+    google.protobuf.Timestamp initialized_at_date_time = 2;
+}
+
+// The PersistedFlightRecord message defines the flight record information that are persisted and used
+// to restore a flight record, within the polaris-flight-data-processor.
+message PersistedFlightRecord {
+
+    // Define the main information of the persisted flight record.
+    FlightRecord flight_record = 1;
+
+    // Defines the flight messages that have been associated to the flight record.
+    repeated FlightMessage flight_messages = 2;
+
+    // Defines the flight record trajectory.
+    Trajectory trajectory = 3;
+}
+
+// The FreeText message defines the assigned free text
+message FreeText {
+    string text = 1;
+}
+
+// Defines the assigned vertical rate clearance
+message VerticalRateClearance {
+     tern.protobuf.flight.VerticalRateCondition vertical_rate_condition = 1;
+     tern.protobuf.math.VerticalRate vertical_rate = 2;
+}
+
+// Defines the speed clearance
+message SpeedClearance {
+    SpeedClearanceType speed_clearance_type = 1;
+    tern.protobuf.flight.SpeedCondition speed_condition = 2;
+    tern.protobuf.math.SpeedVariant cleared_speed = 3;
+}
+
+// Defines the lateral clearance consisting of either a heading clearance or a direct-to clearance
+message LateralClearance {
+    oneof clearance {
+        HeadingClearance heading_clearance = 1;
+        DirectToClearance direct_to_clearance = 2;
+        RouteClearance route_clearance = 3;
+    }
+}
+
+// Defines the heading clearance
+message HeadingClearance{
+    tern.protobuf.math.MagneticBearing cleared_heading = 1;
+    // The relative heading instruction given, e.g. L15 ( optional )
+    string relative_heading = 2;
+}
+
+// The DirectToClearance message defines a message to assign a direct-to clearance to a flight
+// record.
+message DirectToClearance    {
+    tern.protobuf.flight.PlannedRouteElement direct_to_route_element = 1;
+}
+
+// The HeadingAndDistanceClearance message defines a message to assign a heading and distance clearance to a flight,
+// from the current (last known) position of the flight.
+message HeadingAndDistanceClearance {
+
+    // Defines the cleared heading from the current position.
+    tern.protobuf.math.MagneticBearing cleared_heading = 1;
+
+    // Defines the cleared distance from the current position.
+    tern.protobuf.math.Distance cleared_distance = 2;
+
+    // Defines the current position of the flight, from which the heading and distance clearance is applied.
+    tern.protobuf.math.LatLon current_position = 3;
+}
+
+// The RouteClearance message defines a message to assign a route clearance to a flight record.
+message RouteClearance {
+
+    // The planned route elements that make up the route clearance. The clearance is applied as follows:
+    // 1. The current route is truncated at the next waypoint (dropping the next waypoint as well).
+    // 2. Appends the given planned_route_elements to the updated route.
+    repeated tern.protobuf.flight.PlannedRouteElement planned_route_elements = 1;
+
+    // Optional heading and distance clearance from current position. The clearance is applied as follows:
+    // 1. The current route is truncated at the next waypoint (dropping the next waypoint as well).
+    // 2. Adds the provided current position (last known position) to the updated route.
+    // 3. Adds a new position point, computed based on the provided heading and distance from the current position, to the updated route.
+    // 4. Appends the given planned_route_elements to the updated route.
+    HeadingAndDistanceClearance heading_and_distance_clearance = 2;
+}
+
+// Defines the type of Speed Clearance
+enum SpeedClearanceType
+{
+    SPEED_CLEARANCE_TYPE_NOT_SET = 0;
+    // Minimum clean speed for aircraft-type and procedure.
+    SPEED_CLEARANCE_MINIMUM_CLEAN_SPEED = 1;
+    // Minimum approach speed for aircraft-type and procedure.
+    SPEED_CLEARANCE_MINIMUM_APPROACH_SPEED = 2;
+    // Maintain present speed.
+    SPEED_CLEARANCE_PRESENT_SPEED = 3;
+}
+
+// Defines the FlightLevelClearance
+message FlightLevelClearance
+{
+  tern.protobuf.math.geometry.VerticalVariant cleared_level_or_altitude = 1;
+  ApproachClearanceType approach_clearance = 2 [deprecated=true];
+  google.protobuf.Timestamp cleared_level_assigned_time = 3;
+}
+
+// Defines type of Holding pattern
+enum HoldingPatternType
+{
+    HOLDING_PATTERN_TYPE_NOT_SET = 0;
+    HOLDING_PATTERN_TYPE_PUBLISHED = 1;
+    HOLDING_PATTERN_TYPE_NON_STANDARD = 2;
+    HOLDING_PATTERN_TYPE_ORBIT = 3;
+}
+
+// Defines Holding clearance
+message HoldingClearance
+{
+    tern.protobuf.flight.PlannedRouteElement holding_point = 1;
+    HoldingPatternType holding_pattern_type = 2;
+    bool is_established_in_holding = 3;
+    google.protobuf.Timestamp holding_termination_time = 4;
+}
+
+// Defines type of Approach clearance
+enum ApproachClearanceType
+{
+    APPROACH_CLEARANCE_TYPE_NOT_SET = 0;
+    APPROACH_CLEARANCE_CLEARED_FOR_APPROACH = 1;
+    APPROACH_CLEARANCE_CLEARED_FOR_VISUAL_APPROACH = 2;
+    APPROACH_CLEARANCE_DESCEND_OUT_OF_CONTROLLED_AIRSPACE = 3;
+    APPROACH_CLEARANCE_MISSED_APPROACH = 4;
+}
+
+// Defines the Approach clearance
+message ApproachClearance
+{
+  // Defines the type of the approach clearance.
+  ApproachClearanceType type = 1;
+  // Defines the designator of the assigned approach procedure.
+  string designator = 2;
+}
+
+// The ErrorMessageQueueStream message defines the different types of messages that will be sent to
+// subscribers of error message updates.
+// Initially, when a new subscriber connects, it will receive all the previously occured error messages.
+// This is done by first sending a 'start of batch' message, followed by a set of Error messages and
+// finally, the operation is concluded with an 'end of batch' message.
+// After the initial batch of Error messages, the subscriber will receive updates of Error Message, or
+// information when an Error Message was removed.
+message ErrorMessageQueueStream {
+
+    oneof report {
+
+        // Defines a batch event on the ErrorMessageStream.
+        ErrorMessageQueueStreamBatchEvent batch_event = 1;
+
+        // Defines the updated (added or updated) ErrorMessage, along with the trigger.
+        ErrorMessage error_message_update = 2;
+
+        // Defines the removed ErrorMessage.
+        ErrorMessageRemoved error_message_removed = 3;
+    }
+
+    // Defines the service health info heartbeat message.
+    tern.protobuf.ServiceHealthInfo service_health_info = 4;
+}
+
+// The ErrorMessageQueueStreamBatchEvent enum defines the batch event for the ErrorMessageStream.
+enum ErrorMessageQueueStreamBatchEvent {
+    ERROR_MESSAGE_QUEUE_STREAM_BATCH_EVENT_NOT_SET = 0;
+    ERROR_MESSAGE_QUEUE_STREAM_BATCH_EVENT_START_OF_BATCH = 1;
+    ERROR_MESSAGE_QUEUE_STREAM_BATCH_EVENT_END_OF_BATCH = 2;
+}
+
+// The ErrorMessageRemoved message defines the notification provided when an error message is removed
+// from the error message queue.
+message ErrorMessageRemoved {
+
+    // Defines the unique id of the error message removed.
+    tern.protobuf.Uuid error_message_uuid = 1;
+}
+
+// The IncomingMessage message defines the different types of a messages that are incoming into
+// the polaris system, along with a unique id used for persistent storage purposes.
+message IncomingMessage {
+
+    // Defines the unique id of the incoming message.
+    tern.protobuf.Uuid message_id = 1;
+
+    // Defines the a processing timestamp for the message.
+    google.protobuf.Timestamp message_time_stamp = 2;
+
+    // Defines the incoming message as one of the following:
+    oneof message {
+
+        // An AFTN or FMTP message, coming into the Polaris FDP sub-system from an outside source.
+        AftnMessage aftn_message = 3;
+        FmtpMessage fmtp_message = 4;
+
+        // A flight, weather or NOTAM message, coming into the Polaris FDP sub-system (such as from the
+        // Polaris FDD) on a structured format.
+        FlightMessage flight_message = 5;
+        tern.protobuf.WeatherMessage weather_message = 6;
+        tern.protobuf.NotamMessage notam_message = 7;
+    }
+}
+
+// The OutgoingMessage message defines the different types of a messages that are outgoing from
+// the polaris system, along with a unique id used for persistent storage purposes.
+message OutgoingMessage {
+
+    // Defines the unique id of the outgoing message.
+    tern.protobuf.Uuid message_id = 1;
+
+    // Defines the a processing timestamp for the message.
+    google.protobuf.Timestamp message_time_stamp = 2;
+
+    // Defines the outgoing message as one of the following, i.e. a flight message, a weather message
+    // or a notam message.
+    oneof message {
+        FlightMessage flight_message = 3;
+        WeatherMessage weather_message = 4;
+        NotamMessage notam_message = 5;
+    }
+}
+
+// The ErrorMessage message is either an incoming our outgoing message, along with a unique id used
+// for persistent storage purposes and a description of the error associated with the message.
+message ErrorMessage {
+    // Defines the unique id of the error message.
+    tern.protobuf.Uuid message_id = 1;
+    // Defines the a processing timestamp for the message.
+    google.protobuf.Timestamp message_time_stamp = 2;
+    // Defines the error message as either an incoming or outgoing message.
+    oneof message {
+        IncomingMessage incoming_message = 3;
+        OutgoingMessage outgoing_message = 4;
+    }
+    // Defines the error description associated with the incoming or outgoing message.
+    string error_description = 5 [deprecated = true];
+    // Validation failure details.
+    FlightMessageValidationFailure validation_failure = 6;
+}
+
+// The ReportedFlightLevelAndPosition message defines the flight-level and position information stored in the
+// Flight Record resulting from a received instruction.
+// Deprecated! no longer to be used.
+message ReportedFlightLevelAndPosition {
+    tern.protobuf.math.geometry.VerticalVariant reported_level_or_altitude = 1;
+    tern.protobuf.math.LatLon reported_position = 2;
+    string icao_designator = 3;
+    google.protobuf.Timestamp assigned_time = 4;
+}
+
+enum FlightRecordFieldType {
+    FLIGHTRECORDFIELDTYPE_NOT_SET = 0;
+    AIRCRAFT_IDENTIFICATION = 1;
+    AIRCRAFT_ADDRESS = 2;
+    FLIGHT_RULES_CATEGORY = 3;
+    CURRENT_FLIGHT_RULES = 4;
+    TYPE_OF_FLIGHT = 5;
+    NUMBER_OF_AIRCRAFT = 6;
+    TYPE_OF_AIRCRAFT = 7;
+    COMMUNICATION_AND_NAVIGATION_CAPABILITIES = 8;
+    SURVEILLANCE_CAPABILITIES = 9;
+    PLANNED_DEPARTURE_AERODROME_AND_TIME = 10;
+    ACTUAL_DEPARTURE_AERODROME_AND_TIME = 11;
+    PLANNED_CRUISING_LEVEL_AND_SPEED = 12;
+    PLANNED_ROUTE_ELEMENTS = 13;
+    PLANNED_DESTINATION_AERODROME_AND_TOTAL_EET = 14;
+    PLANNED_DESTINATION_ALTERNATE_AERODROMES = 15;
+    ACTUAL_ARRIVAL_AERODROME_AND_TIME_OF_ARRIVAL = 16;
+    SPECIAL_STATUS = 17;
+    DATE_OF_FLIGHT = 18;
+    REGISTRATION = 19;
+    POINTS_FIRS_AND_ACCUMULATED_EETS = 20;
+    SEL_CAL = 21;
+    ADDITIONAL_AIRCRAFT_TYPES = 22;
+    ENROUTE_DELAY = 23;
+    AIRCRAFT_OPERATING_AGENCY = 24;
+    ORIGINATORS_ADDRESS = 25;
+    AIRCRAFT_PERFORMANCE_DATA = 26;
+    ENROUTE_ALTERNATE_AERODROMES = 27;
+    TAKEOFF_ALTERNATE_AERODROME = 28;
+    REVISED_DESTINATION_ROUTE = 29;
+    REMARKS = 30;
+    LEVEL_CLEARANCE = 31;
+    CLEARED_SECTOR_EXIT_LEVELS = 32;
+    SPEED_CLEARANCE = 33;
+    LATERAL_CLEARANCE = 34;
+    VERTICAL_RATE_CLEARANCE = 35;
+    FREE_TEXT = 36;
+    SECTOR_CONTROL_STATES = 37;
+    CORRELATION_RECORD = 38;
+    LIFECYCLE_RECORD = 39;
+    SSR_CODE_ALLOCATION_RECORD = 40;
+    CURRENT_CONTROLLING_SECTOR_NAME = 41;
+    PROPOSED_CONTROLLING_SECTOR_NAME = 42;
+    EXPANDED_ROUTE = 43;
+    TRAJECTORY = 44;
+    INCOMING_COORDINATION_RECORDS = 45;
+    OUTGOING_COORDINATION_RECORDS = 46;
+    POINTS_OF_INTEREST = 47;
+    PLANNED_DEPARTURE_DATETIME = 48;
+    PLANNED_ARRIVAL_DATETIME = 49;
+    ASSIGNED_SID_DESIGNATOR = 50;
+    ASSIGNED_STAR_DESIGNATOR = 51;
+    ASSIGNED_DEPARTURE_RUNWAY_DESIGNATOR = 52;
+    ASSIGNED_DESTINATION_RUNWAY_DESIGNATOR = 53;
+    AUTOMATIC_HANDOVER_ENABLED = 54;
+    NEXT_WAYPOINT_IN_ROUTE = 55;
+    ACTUAL_DEPARTURE_DATE_AND_TIME = 56;
+    IFP_INDICATORS = 57;
+    AOR_ENTRY_BOUNDARY_CROSSING_POINT = 58;
+    AOR_EXIT_BOUNDARY_CROSSING_POINT = 59;
+    ESTIMATED_ARRIVAL_DATETIME = 60;
+    EUR_STATUS = 61;
+    RUNWAY_VISUAL_RANGE = 62;
+    STAYINFO = 63;
+    AOWIR = 64;
+    SOURCE_INDICATOR = 65;
+    REPLACEMENT_FLIGHT_PLAN = 66;
+    STARTUP_CLEARANCE = 67;
+    SUPPLEMENTARY_INFORMATION = 68;
+    SECTOR_TRANSFER_LEVELS = 69;
+    APPROACH_SEQUENCE_NUMBER = 70;
+    NEXT_ATC_UNIT_FREQUENCY = 71;
+    INTER_SECTOR_COORDINATION = 72;
+    RVSM_EQUIPMENT_STATUS = 73;
+    INITIAL_ROUTE_TRAJECTORY = 74;
+    CURRENT_ROUTE_TRAJECTORY = 75;
+    REJOINING_POINT = 76;
+    CALCULATED_TAKE_OFF_TIME = 77;
+    ACKNOWLEDGEABLE_FIELDS_STATUS = 78;
+    UNIQUE_FLIGHT_PLAN_IDENTIFIER = 79;
+    DIVERSION_AERODROME = 80;
+    ACTUAL_ARRIVAL_DATE_AND_TIME = 81;
+}
+
+enum FlightRecordCategoryType{
+    FLIGHT_RECORD_CATEGORY_TYPE_NOT_SET = 0;
+    FULL_FLIGHT_RECORD = 1;
+    MINIMAL_FLIGHT_RECORD = 2;
+}
+
+// The message defines the runway-in-use designator and whether it is a mismatch
+// compared to the runway-in-use at the aerodrome.
+message RunwayInUse {
+    string runway_in_use_designator = 1;
+    bool runway_in_use_mismatch = 2;
+    bool runway_manually_updated = 3;
+}
+
+// Message to represent the ATC unit and frequency assigned.
+message NextAtcUnitFrequency {
+
+    // Message is deprecated, as it has been renamed.
+    option deprecated = true;
+
+    // The ICAO FIR code of the next atc unit.
+    string fir_code = 1;
+    // The name of the region within the next atc unit.
+    string region_name = 2;
+    // The name of the active profile.
+    string profile_name = 3;
+    // The flight level used for selecting the frequency.
+    string flight_level = 4;
+    // The selected frequency.
+    string frequency = 5;
+    // Flag to indicate that the frequency was manually updated by the ATCO.
+    bool manually_updated = 6;
+}
+
+// Message to represent the ATC unit and frequency assigned.
+message AtcUnitFrequency {
+    // The ICAO FIR code of the next atc unit.
+    string fir_code = 1;
+    // The name of the region within the next atc unit.
+    string region_name = 2;
+    // The name of the active profile.
+    string profile_name = 3;
+    // The flight level used for selecting the frequency.
+    string flight_level = 4;
+    // The selected frequency.
+    string frequency = 5;
+    // Flag to indicate that the frequency was manually updated by the ATCO.
+    bool manually_updated = 6;
+}
+
+
+// Enum to define all of the fields that require acknowledgement when updated.
+enum AcknowledgeableField {
+    ACKNOWLEDGEABLE_FIELD_NOT_SET = 0;
+    ACKNOWLEDGEABLE_FIELD_CALCULATED_TAKE_OFF_TIME = 1;
+}
+
+// Enum to define all possible states of an acknowledgeable field.
+enum AcknowledgementState {
+    ACKNOWLEDGEMENT_STATE_NOT_SET = 0;
+    ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED = 1;
+    ACKNOWLEDGEMENT_STATE_NOT_ACKNOWLEDGED = 2;
+}
+
+// Message that defines an ackownledgeable field and it's state.
+message AcknowledgeableFieldAndStatus {
+    AcknowledgeableField field = 1;
+    AcknowledgementState status = 2;
+}
+
+// RvsmEquipmentstatus enum defines the allowed values for the RVSM equipment status.
+enum RvsmEquipmentStatus{
+    // The RVSM equipment status is not set.
+    EQUIPMENT_STATUS_NOT_SET = 0;
+    // The APPROVED status indicates the necessary equipment is reported in messages contributing to the SFR.
+    EQUIPMENT_STATUS_APPROVED = 1;
+    // The NOT_APPROVED status indicates the necessary equipment is not reported in messages contributing to the SFR.
+    EQUIPMENT_STATUS_NOT_APPROVED = 2;
+    // The UNKNOWN status indicates the necessary equipment status is unknown.
+    EQUIPMENT_STATUS_UNKNOWN = 3;
+}
+
+// The Trajectory messages defines the content of a flight record trajectory.
+message Trajectory {
+
+    // The timestamp of the first point of the trajectory.
+    google.protobuf.Timestamp timestamp = 1;
+
+    // The trajectory points of the update. The timestamp of the point of index i is `timestamp + i seconds`.
+    repeated TrajectoryPoint points = 2;
+}
+
+// The TrajectoryRequest message defines a request for the trajectory projection
+// for a flight record.
+message TrajectoryRequest {
+    // The flight record ID to request a trajectory for.
+    tern.protobuf.Uuid flight_record_id = 1;
+}
+
+// The TrajectoryResponse message defines a response to a request for a trajectory prediction.
+message TrajectoryResponse {
+    // The timestamp of the first point of the trajectory.
+    google.protobuf.Timestamp timestamp = 1;
+    // The points of the predicted trajectory.
+    // The timestamp of the point of index i is `timestamp + i seconds`.
+    repeated TrajectoryPoint points = 2;
+}
+
+// The TrajectoryPoint message defines a point on a predicted trajectory.
+message TrajectoryPoint {
+    // The horizontal position of the flight.
+    tern.protobuf.math.LatLon position = 1;
+    // The horizontal true heading of the flight.
+    tern.protobuf.math.geometry.TrueBearing true_heading = 2;
+    // The horizontal course of the flight.
+    tern.protobuf.math.geometry.TrueBearing course = 3;
+
+    // The rate of climb (if positive) or descent (if negative) of the flight.
+    tern.protobuf.math.VerticalRate vertical_rate = 4;
+    // The vertical position of the flight.
+    tern.protobuf.math.geometry.VerticalVariant vertical_variant = 5;
+
+    // The ground speed of the flight.
+    tern.protobuf.math.GroundSpeed ground_speed = 6;
+    // The speed of the flight.
+    tern.protobuf.math.SpeedVariant speed_variant = 7;
+}

@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+import "configuration-editor-options.proto";
+import "uuid.proto";
+import "math.proto";
+
+package tern.protobuf.math.geometry;
+
+// The Altitude message defines the protobuf representation for tern::math::geometry::Altitude.
+message Altitude {
+  option (tern.protobuf.aeronautical.excludeFromTree) = true;
+  double metres = 1;
+}
+
+// The FlightLevel message defines the protobuf representation for tern::math::geometry::FlightLevel.
+message FlightLevel {
+  double value = 1;
+}
+
+// The VerticalVariant message defines the protobuf representation for tern::math::geometry::VerticalVariant.
+message VerticalVariant {
+  oneof vertical_variant {
+    Altitude altitude = 1;
+    FlightLevel flight_level = 2;
+  }
+}
+
+// The TrueBearing message defines the protobuf representation for tern::math::geometry::TrueBearing.
+message TrueBearing {
+  option (tern.protobuf.aeronautical.excludeFromTree) = true;
+  double degrees = 1 [(tern.protobuf.aeronautical.label) = "Degrees", (tern.protobuf.aeronautical.unit)="°",
+    (tern.protobuf.aeronautical.validation)="number", (tern.protobuf.aeronautical.rangeFromIncluding) = 0, (tern.protobuf.aeronautical.rangeToIncluding) = 360];
+}
+
+// The Angle message defines the protobuf representation for tern::math::geometry::Angle.
+message Angle {
+  double degrees = 1;
+}
+
+// The Circle message defines the protobuf representation for tern::math::geometry::Circle.
+message Circle {
+  tern.protobuf.math.LatLon center_location = 1 [(tern.protobuf.aeronautical.label) = "Location"];
+  double radius = 2 [(tern.protobuf.aeronautical.label) = "Radius", (tern.protobuf.aeronautical.unit) = "m"];
+}
+
+// The GreatCircleArcPath message defines the protobuf representation for tern::math::geometry::GreatCircleArcPath.
+message GreatCircleArcPath {
+  option (tern.protobuf.aeronautical.excludeFromTree) = true;
+  tern.protobuf.math.LatLon start_location = 1 [(tern.protobuf.aeronautical.label) = "Start location"];
+  tern.protobuf.math.LatLon end_location = 2 [(tern.protobuf.aeronautical.label) = "End location"];
+  TrueBearing start_location_bearing = 3 [(tern.protobuf.aeronautical.label) = "Start bearing"];
+  TrueBearing end_location_bearing = 4 [(tern.protobuf.aeronautical.label) = "End bearing"];
+  double angular_distance = 5 [(tern.protobuf.aeronautical.label) = "Angular distance", (tern.protobuf.aeronautical.unit) = "°"];
+}
+
+// The CircleArcPathDirection enum defines the protobuf representation for tern::math::geometry::CircleArcPath::Direction.
+enum CircleArcPathDirection {
+  CIRCLE_ARC_PATH_DIRECTION_NOT_SET = 0;
+  CIRCLE_ARC_PATH_DIRECTION_CLOCKWISE = 1;
+  CIRCLE_ARC_PATH_DIRECTION_ANTICLOCKWISE = 2;
+}
+
+// The CircleArcPath message defines the protobuf representation for tern::math::geometry::CircleArcPath.
+message CircleArcPath {
+  option (tern.protobuf.aeronautical.excludeFromTree) = true;
+  tern.protobuf.math.LatLon start_location = 1 [(tern.protobuf.aeronautical.label) = "Start location"];
+  tern.protobuf.math.LatLon end_location = 2 [(tern.protobuf.aeronautical.label) = "End location"];
+  tern.protobuf.math.LatLon center_location = 3 [(tern.protobuf.aeronautical.label) = "Center location"];
+  tern.protobuf.math.Distance radius = 4 [(tern.protobuf.aeronautical.label) = "Radius", (tern.protobuf.aeronautical.unit) = "m"];
+  TrueBearing start_location_bearing = 5 [(tern.protobuf.aeronautical.label) = "Start bearing"];
+  TrueBearing end_location_bearing = 6 [(tern.protobuf.aeronautical.label) = "End bearing"];
+  CircleArcPathDirection direction = 7 [(tern.protobuf.aeronautical.label) = "Direction"];
+}
+
+// The RhumbLinePath message defines the protobuf representation for tern::math::geometry::RhumbLinePath.
+message RhumbLinePath {
+  option (tern.protobuf.aeronautical.excludeFromTree) = true;
+  tern.protobuf.math.LatLon start_location = 1 [(tern.protobuf.aeronautical.label) = "Start location"];
+  tern.protobuf.math.LatLon end_location = 2 [(tern.protobuf.aeronautical.label) = "End location"];
+}
+
+// The GeoBorderPath message defines the protobuf representation for tern::math::geometry::GeoBorderPath.
+message GeoBorderPath {
+  option (tern.protobuf.aeronautical.excludeFromTree) = true;
+  tern.protobuf.math.LatLon start_location = 1 [(tern.protobuf.aeronautical.label) = "Start location"];
+  tern.protobuf.math.LatLon end_location = 2 [(tern.protobuf.aeronautical.label) = "End location"];
+  repeated tern.protobuf.math.LatLon points = 3 [(tern.protobuf.aeronautical.label) = "Points"];
+}
+
+// The PathVariant message defines the protobuf representation for tern::math::geometry::PathVariant.
+message PathVariant {
+  oneof variant {
+    GreatCircleArcPath great_circle_arc_path = 1;
+    CircleArcPath circle_arc_path = 2;
+    RhumbLinePath rhumb_line_path = 3;
+    GeoBorderPath geo_border_path = 4;
+  }
+}
+
+// The Surface message defines the protobuf representation for tern::math::geometry::Surface.
+message Surface {
+  tern.protobuf.Uuid uuid = 1 [(tern.protobuf.aeronautical.isUuid) = true];
+  repeated PathVariant path_list = 2 [(tern.protobuf.aeronautical.label) = "Path list"];
+  Circle circle = 3 [(tern.protobuf.aeronautical.label) = "Circle"];
+}

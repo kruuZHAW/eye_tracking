@@ -30,7 +30,11 @@ ENV/
 # Model logs
 lightning_logs/
 *.out
+*.ckpt
 wandb/
 GazeMouse_Classification/
 trainings/logs/
+
+# proto
+events/gen
 
