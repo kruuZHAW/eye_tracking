@@ -3,8 +3,8 @@ import sys
 from typing import Union, Dict, Tuple
 import json
 from pathlib import Path
-sys.path.append(str(Path('~/git_folder/eye_tracking/').expanduser()))
-# sys.path.append(str(Path('~/git/eye_tracking/').expanduser()))
+# sys.path.append(str(Path('~/git_folder/eye_tracking/').expanduser()))
+sys.path.append(str(Path('~/git/eye_tracking/').expanduser()))
 
 import pandas as pd
 from utils.data_processing import GazeMetricsProcessor, MouseMetricsProcessor
@@ -93,21 +93,29 @@ def sanitize_column_names(df: pd.DataFrame) -> pd.DataFrame:
 if __name__ == "__main__":
     # ------------------------- 0. PARAMETERS -------------------------
     
-    #TODO: Modify storage paths according to new organisation
-    
     # Directories
-    store_data_dir = "/store/kruu/eye_tracking/training_data"
-    jcafnet_metadata_path = "logs/jcafnet_classifier/hardy-water-3/model_metadata.json"
+    # store_data_dir = str(Path('~/store/aware/training_data_raw_inputs').expanduser())
+    store_dir = str(Path('~/store/aware').expanduser())
+    store_raw_inputs_dir = os.path.join(store_dir, "training_data_raw_inputs")
+    jcafnet_metadata_path = "logs/jcafnet_classifier/silvery-morning-8/jcafnet_metadata.json" # Change to suitable path
     save_model_path = "logs/xgboost_classifier"
-    split_data_dir = os.path.join(store_data_dir, "splits")
+    split_names = ["train", "val", "test"]
+    store_splits_dir = os.path.join(store_dir, "splits")
+    store_split_dirs = [os.path.join(store_splits_dir, split_name) for split_name in split_names]
+    
+    # Temporary storage for better I/O performance
+    temp_data_dir = "/scratch/aware"
+    temp_raw_inputs_dir = os.path.join(temp_data_dir, "training_data_raw_inputs")
+    temp_splits_dir = os.path.join(temp_data_dir, "splits")
+    temp_split_dirs = [os.path.join(temp_splits_dir, split_name) for split_name in split_names]
     
     #Features names
-    features = ['Recording timestamp [ms]', 'Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X [DACS px]', 'Mouse position Y [DACS px]', 'Event']
-    interpolate_cols = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X [DACS px]', 'Mouse position Y [DACS px]', "Blink"]
-    fill_columns = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X [DACS px]', 'Mouse position Y [DACS px]']
-    columns_to_extract = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X [DACS px]', 'Mouse position Y [DACS px]'] # Columns for TSFresh
+    features = ['Recording timestamp [ms]', 'Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X', 'Mouse position Y', 'Event']
+    interpolate_cols = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X', 'Mouse position Y', "Blink"]
+    fill_columns = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X', 'Mouse position Y']
+    columns_to_extract = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X', 'Mouse position Y'] # Columns for TSFresh
     drop_cols = ['Seconds per raw time unit_x', 'Timestamp column_x', 'Gaze X column', 'Gaze Y column', 'id', 
-             'Seconds per raw time unit_y', 'Timestamp column_y', 'Mouse X column','Mouse Y column'] # Columns to trop before XGBoost
+             'Seconds per raw time unit_y', 'Timestamp column_y', 'Mouse X column','Mouse Y column', "participant_id", "Task_id", "id"] # Columns to trop before XGBoost
     
     # Define Group K-Fold
     n_splits = 5
@@ -128,12 +136,12 @@ if __name__ == "__main__":
     # Keeping the id split for train/test/val made during the training of the JCAFNET
     
     # Loading data from scratch
-    chunks_xgboost, blinks, atco_task_map = load_and_process(root_dir=store_data_dir, 
+    chunks_xgboost, blinks, atco_task_map = load_and_process(root_dir=temp_raw_inputs_dir, 
                                                              columns=features, 
                                                              interpolate_cols=interpolate_cols, 
                                                              fill_cols=fill_columns, 
                                                              time_resampling=False,
-                                                             fixed_window_ms=12000, # Should be identical to jcafnet script
+                                                             fixed_window_ms=10000, # Should be identical to jcafnet script
                                                              window_step_ms=2000, # Should be identical to jcafnet script
                                                              min_task_presence=0.5 # Should be identical to jcafnet script
                                                              )
@@ -154,30 +162,40 @@ if __name__ == "__main__":
     val_ids = metadata["val_ids"]
     test_ids = metadata["test_ids"]
     
+    from collections import defaultdict, Counter
+    print("Number of total occurences per task for all data: ")
+    task_window_counts = Counter(int(df["Task_id"].iloc[0]) for df in chunks_xgboost.values())
+    for task_id in sorted(task_window_counts):
+        print(f"Task {task_id}: {task_window_counts[task_id]} windows")
+    
     # Optional: finding tasks that are overlapping
-    overlaps = find_overlapping_tasks(chunks_xgboost)
-    for participant, overlapping_pairs in overlaps.items():
-        print(f"Participant {participant} has overlapping tasks:")
-        for t1, t2 in overlapping_pairs:
-            print(f"  - {t1} overlaps with {t2}")
+    # overlaps = find_overlapping_tasks(chunks_xgboost)
+    # for participant, overlapping_pairs in overlaps.items():
+    #     print(f"Participant {participant} has overlapping tasks:")
+    #     for t1, t2 in overlapping_pairs:
+    #         print(f"  - {t1} overlaps with {t2}")
 
     # ------------------------- 2. MANUAL FEATURE EXTRACTION -------------------------
 
     gaze_metrics = []
     mouse_metrics = []
     
-    for task_id, chunk in chunks_xgboost.items():
+    for id, chunk in chunks_xgboost.items():
         
         # Extracting gaze metrics
         gaze_processor = GazeMetricsProcessor(chunk, timestamp_unit="ms")
         gaze_compute = gaze_processor.compute_all_metrics()
-        gaze_compute.update({"id": task_id})
+        gaze_compute.update({"id": id})
+        gaze_compute.update({"participant_id": chunk["Participant name"].iloc[0]})
+        gaze_compute.update({"Task_id": chunk["Task_id"].iloc[0]})
         gaze_metrics.append(gaze_compute)
         
         # Extracting mouse metrics
         mouse_processor = MouseMetricsProcessor(chunk, timestamp_unit="ms")
         mouse_compute = mouse_processor.compute_all_metrics()
-        mouse_compute.update({"id": task_id})
+        mouse_compute.update({"id": id})
+        mouse_compute.update({"participant_id": chunk["Participant name"].iloc[0]})
+        mouse_compute.update({"Task_id": chunk["Task_id"].iloc[0]})
         mouse_metrics.append(mouse_compute)
         
     gaze_metrics_df = pd.DataFrame(gaze_metrics)
@@ -218,8 +236,15 @@ if __name__ == "__main__":
     ### END DEBUG ###
     
     # Dropping id that have one of the features to all zeros: additional safety barrier
-    cleaned_task_chunks = drop_chunks_with_all_zero_features(chunks_xgboost, threshold=0.95)
+    cleaned_task_chunks = drop_chunks_with_all_zero_features(chunks_xgboost,
+                                                             feature_cols=columns_to_extract,
+                                                             threshold=0.5)
 
+    print("Number of total occurences per task after drop: ")
+    task_window_counts = Counter(int(df["Task_id"].iloc[0]) for df in cleaned_task_chunks.values())
+    for task_id in sorted(task_window_counts):
+        print(f"Task {task_id}: {task_window_counts[task_id]} windows")
+    
     # Run tsfresh feature extraction
     print("Extracting TSFresh features from full dataset...")
     tsfresh_data = extract_tsfresh_features_from_chunks(
@@ -230,25 +255,52 @@ if __name__ == "__main__":
 
     # ------------------------- 4. BUILD DATASET -------------------------
 
-    xgboost_data = gaze_metrics_df.merge(mouse_metrics_df, on="id")
+    xgboost_data = gaze_metrics_df.merge(mouse_metrics_df, on=["id", "participant_id", "Task_id"])
     xgboost_data = xgboost_data.merge(tsfresh_data, on="id")
+
     
     #Train/test split based on the one for JCAFNet
     train_df = xgboost_data[xgboost_data["id"].isin(train_ids)].copy()
     val_df = xgboost_data[xgboost_data["id"].isin(val_ids)].copy()
     test_df = xgboost_data[xgboost_data["id"].isin(test_ids)].copy()
     
+    # print("Number of total occurences per task for train: ")
+    # task_window_counts = Counter(int(train_df["Task_id"].iloc[0]))
+    # for task_id in sorted(task_window_counts):
+    #     print(f"Task {task_id}: {task_window_counts[task_id]} windows")
+    
+    # print("Number of total occurences per task for val: ")
+    # task_window_counts = Counter(int(val_df["Task_id"].iloc[0]))
+    # for task_id in sorted(task_window_counts):
+    #     print(f"Task {task_id}: {task_window_counts[task_id]} windows")
+    
+    # print("Number of total occurences per task for test: ")
+    # task_window_counts = Counter(int(test_df["Task_id"].iloc[0]))
+    # for task_id in sorted(task_window_counts):
+    #     print(f"Task {task_id}: {task_window_counts[task_id]} windows")
+    
     print("Saving XGboost train/test datasets")
-    train_df.to_parquet(os.path.join(store_data_dir, "train_xgboost.parquet"))
-    test_df.to_parquet(os.path.join(store_data_dir, "test_xgboost.parquet"))
-    val_df.to_parquet(os.path.join(store_data_dir, "val_xgboost.parquet"))
+    train_df.to_parquet(os.path.join(store_split_dirs[0], "train_xgboost.parquet"))
+    test_df.to_parquet(os.path.join(store_split_dirs[2], "test_xgboost.parquet"))
+    val_df.to_parquet(os.path.join(store_split_dirs[1], "val_xgboost.parquet"))
 
     # CROSS VALIDATION SPLIT BASED ON PARTICIPANT ID
     # Define features and target
     X_train = train_df.drop(columns=drop_cols)
     X_train = sanitize_column_names(X_train)
-    y_train = train_df["id"].str.extract(r'^\d+_(\d+)_\d+$')[0].astype(int) # Target variable (xgboost starts at 0)
-    groups_train = xgboost_data["id"].str.extract(r'^(\d+)_\d+_\d+$')[0].astype(int)  # Grouping variable for CV (participant name)
+    groups_train = train_df["participant_id"]
+    y_train = pd.to_numeric(train_df["Task_id"]).astype(int)
+    groups_train = train_df["participant_id"].astype(str)
+    
+    
+
+    # # Check for any parse failures
+    # bad_rows = train_df.loc[y_train.isna() | groups_train.isna(), "id"]
+    # if not bad_rows.empty:
+    #     raise ValueError(
+    #         f"{len(bad_rows)} ids don't match expected 'participant_label_exec' pattern. "
+    #         f"Examples: {bad_rows.head(10).tolist()}"
+    #     )
     
     # Can do the same for test and val if needed
 
@@ -256,8 +308,10 @@ if __name__ == "__main__":
     gkf = GroupKFold(n_splits=n_splits)
 
     # Initialize XGBoost model
+    num_class = int(pd.Series(y_train).nunique())
     xgb_model = xgb.XGBClassifier(
         objective="multi:softmax",
+        num_class=num_class,
         eval_metric="mlogloss",
         random_state=42
     )

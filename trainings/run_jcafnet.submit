@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --account=zav
-#SBATCH --partition=gpu_top
+#SBATCH --partition=gpu_ia
 #SBATCH --mem=50G  # Requesting more memory
 # #SBATCH --output=/cluster/home/kruu/log/lstm_training_%j.out
 # #SBATCH --error=/cluster/home/kruu/log/lstm_training_%j.err
@@ -15,10 +15,10 @@ env_name="aware"
 
 # load modules
 echo "Loading venv"
-module load python/3.10.14
+module load python/3.12.4
 VENV=$env_name module load uv/0.4.30
 
 echo "Copying datasets in /scratch"
-cp -r ~/store/eye_tracking /scratch
+cp -r ~/store/aware /scratch
 
-uv run python jcafnet_training.py
+uv run python 01_jcafnet_training.py

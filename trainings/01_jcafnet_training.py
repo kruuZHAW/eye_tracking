@@ -72,28 +72,29 @@ def enrich_with_gaze_mouse_metrics(task_chunks: dict[str, pd.DataFrame]) -> dict
 if __name__ == "__main__":
     
     # ------------------------- 0. PARAMETERS -------------------------
-    # TODO: Modify Storage paths according to new organisation (All participant will be together) 
     # Long term storage
-    store_dir = str(Path('~/store/eye_tracking/training_data').expanduser())
+    store_dir = str(Path('~/store/aware').expanduser())
+    store_raw_inputs_dir = os.path.join(store_dir, "training_data_raw_inputs")
     store_processed_dir = os.path.join(store_dir, "processed_inputs")
     store_splits_dir = os.path.join(store_dir, "splits")
     split_names = ["train", "val", "test"]
     store_split_dirs = [os.path.join(store_splits_dir, split_name) for split_name in split_names]
     
     # Temporary storage for better I/O performance
-    temp_data_dir = "/scratch/eye_tracking"
+    temp_data_dir = "/scratch/aware"
+    temp_raw_inputs_dir = os.path.join(temp_data_dir, "training_data_raw_inputs")
     temp_processed_dir = os.path.join(temp_data_dir, "processed_enriched_inputs")
     temp_splits_dir = os.path.join(temp_data_dir, "splits")
     temp_split_dirs = [os.path.join(temp_splits_dir, split_name) for split_name in split_names]
     
     
-    features = ['Recording timestamp [ms]', 'Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X [DACS px]', 'Mouse position Y [DACS px]', 'Event']
-    interpolate_cols = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X [DACS px]', 'Mouse position Y [DACS px]', "Blink"]
-    fill_columns = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X [DACS px]', 'Mouse position Y [DACS px]']
+    features = ['Recording timestamp [ms]', 'Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X', 'Mouse position Y', 'Event']
+    interpolate_cols = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X', 'Mouse position Y', "Blink"]
+    fill_columns = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X', 'Mouse position Y']
 
     features_group = {
         "gaze": ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]', "Gaze Velocity", "Gaze Acceleration"],
-        "mouse": ['Mouse position X [DACS px]', 'Mouse position Y [DACS px]', "Mouse Velocity", "Mouse Acceleration"],
+        "mouse": ['Mouse position X', 'Mouse position Y', "Mouse Velocity", "Mouse Acceleration"],
         "joint": ["Gaze-Mouse Distance", "Angle Between Gaze and Mouse"]
     }
     
@@ -112,15 +113,23 @@ if __name__ == "__main__":
         enriched_chunks, blinks, atco_task_map = load_processed_data(temp_processed_dir)
     else:
         print("No cached dataset found — processing from raw files...")
-        chunks_jcafnet, blinks, atco_task_map  = load_and_process(root_dir=temp_data_dir, 
+        chunks_jcafnet, blinks, atco_task_map  = load_and_process(root_dir=temp_raw_inputs_dir, 
                                                                   columns=features, 
                                                                   interpolate_cols=interpolate_cols, 
                                                                   fill_cols=fill_columns, 
                                                                   time_resampling=True, 
-                                                                  fixed_window_ms=12000, # Size of the chunk window. None if chunk per task
+                                                                  fixed_window_ms=10000, # Size of the chunk window. None if chunk per task
                                                                   window_step_ms=2000, # Time step from one window to another. None is no overlap
                                                                   min_task_presence=0.5 # Min proportion of task presence for assigning a label
                                                                   )
+        
+        # chunks_jcafnet, blinks, atco_task_map  = load_and_process(root_dir=temp_raw_inputs_dir, 
+        #                                                           columns=features, 
+        #                                                           interpolate_cols=interpolate_cols, 
+        #                                                           fill_cols=fill_columns, 
+        #                                                           time_resampling=False, 
+        #                                                           fixed_window_ms=None, # Size of the chunk window. None if chunk per task
+        #                                                           )
         
         
         enriched_chunks = enrich_with_gaze_mouse_metrics(chunks_jcafnet)
