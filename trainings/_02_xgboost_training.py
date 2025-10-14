@@ -49,16 +49,54 @@ def extract_tsfresh_features_from_chunks(
     Returns:
     - final_features: DataFrame of filtered, selected features with `id` as index
     """
+    
+    # Step 0: Build labels per chunk from the ORIGINAL dict
+    task_labels = pd.Series(
+        {uid: int(df["Task_id"].iloc[0]) for uid, df in task_chunks.items()},
+        name="Task_id"
+    )
+
+    
     # Step 1: Recombine into one DataFrame
     # Concatenate everything in one single df for TSFresh
     # Rows are dupplicated if we have overlapping tasks
+    value_cols = columns_to_extract
     full_df = pd.concat(task_chunks.values(), ignore_index=True)
     timestamp_col = detect_timestamp_column(full_df)
+    
+    # Keep only what TSFresh needs, ensure numeric dtypes, and sort per chunk
+    full_df = full_df[["id", timestamp_col] + value_cols].copy()
+    full_df[value_cols] = full_df[value_cols].apply(pd.to_numeric, errors="coerce")
+    full_df = full_df.sort_values(["id", timestamp_col])
+    
+    # If there are duplicate timestamps within an id, collapse them
+    full_df = (full_df
+            .groupby(["id", timestamp_col], as_index=False)[value_cols]
+            .mean())
+    
+    # Fill remaining NaNs per chunk (id): ffill/bfill then linear interpolate (Chunks with only missing values have been dropped before)
+    def _fill_group(g):
+        g[value_cols] = (g[value_cols]
+                        .ffill()
+                        .bfill()
+                        .interpolate(method="linear", limit_direction="both"))
+        return g
+
+    full_df = full_df.groupby("id", group_keys=False).apply(_fill_group)
+    
+    # If anything is still NaN, fill with per-id medians, then global fallback
+    medians = full_df.groupby("id")[value_cols].transform("median")
+    full_df[value_cols] = full_df[value_cols].fillna(medians)
+    full_df[value_cols] = full_df[value_cols].fillna(full_df[value_cols].median())
+    
+    # 4) Assert clean
+    leftover = full_df[value_cols].isna().sum().sum()
+    assert leftover == 0, f"Still have {leftover} NaNs after cleaning."
 
     # Step 2: Run TSFresh
     print("Extracting TSFresh features...")
     extracted_features = extract_features(
-        full_df[["id", timestamp_col] + columns_to_extract],
+        full_df,
         column_id="id",
         column_sort=timestamp_col,
         default_fc_parameters=MinimalFCParameters(), #Deactivate if full feature calculation
@@ -69,15 +107,12 @@ def extract_tsfresh_features_from_chunks(
     # Step 3: Impute missing features
     impute(extracted_features)
 
-    # Step 4: Define target variable (from original task chunks)
-    task_labels = full_df.groupby("id")["Task_id"].first()
-
-    # Step 5: Relevance filtering
+    # Step 4: Relevance filtering
     relevant_features = calculate_relevance_table(extracted_features, task_labels)
     selected_features = relevant_features[relevant_features["p_value"] < pval_threshold]["feature"]
     
-    # Step 6: Final filtered feature matrix
-    final_features = extracted_features[selected_features].reset_index(names="id")
+    # Step 5: Final filtered feature matrix
+    final_features = extracted_features.loc[task_labels.index, selected_features].reset_index(names="id")
 
     return final_features
 
@@ -114,8 +149,7 @@ if __name__ == "__main__":
     interpolate_cols = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X', 'Mouse position Y', "Blink"]
     fill_columns = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X', 'Mouse position Y']
     columns_to_extract = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X', 'Mouse position Y'] # Columns for TSFresh
-    drop_cols = ['Seconds per raw time unit_x', 'Timestamp column_x', 'Gaze X column', 'Gaze Y column', 'id', 
-             'Seconds per raw time unit_y', 'Timestamp column_y', 'Mouse X column','Mouse Y column', "participant_id", "Task_id", "id"] # Columns to trop before XGBoost
+    cols_to_drop = ["Seconds per raw time unit", "Timestamp column", "Gaze X column", "Gaze Y column", "Mouse X column", "Mouse Y column"] # Columns to trop before XGBoost
     
     # Define Group K-Fold
     n_splits = 5
@@ -174,13 +208,23 @@ if __name__ == "__main__":
     #     print(f"Participant {participant} has overlapping tasks:")
     #     for t1, t2 in overlapping_pairs:
     #         print(f"  - {t1} overlaps with {t2}")
+    
+    # Dropping id that have one of the features to all zeros: additional safety barrier
+    cleaned_chunks = drop_chunks_with_all_zero_features(chunks_xgboost,
+                                                             feature_cols=columns_to_extract,
+                                                             threshold=0.5)
+    
+    print("Number of total occurences per task after drop: ")
+    task_window_counts = Counter(int(df["Task_id"].iloc[0]) for df in cleaned_chunks.values())
+    for task_id in sorted(task_window_counts):
+        print(f"Task {task_id}: {task_window_counts[task_id]} windows")
 
     # ------------------------- 2. MANUAL FEATURE EXTRACTION -------------------------
 
     gaze_metrics = []
     mouse_metrics = []
     
-    for id, chunk in chunks_xgboost.items():
+    for id, chunk in cleaned_chunks.items():
         
         # Extracting gaze metrics
         gaze_processor = GazeMetricsProcessor(chunk, timestamp_unit="ms")
@@ -235,28 +279,20 @@ if __name__ == "__main__":
     # print(summary_df.sort_values("num_all_zeros", ascending=False))
     ### END DEBUG ###
     
-    # Dropping id that have one of the features to all zeros: additional safety barrier
-    cleaned_task_chunks = drop_chunks_with_all_zero_features(chunks_xgboost,
-                                                             feature_cols=columns_to_extract,
-                                                             threshold=0.5)
-
-    print("Number of total occurences per task after drop: ")
-    task_window_counts = Counter(int(df["Task_id"].iloc[0]) for df in cleaned_task_chunks.values())
-    for task_id in sorted(task_window_counts):
-        print(f"Task {task_id}: {task_window_counts[task_id]} windows")
-    
     # Run tsfresh feature extraction
     print("Extracting TSFresh features from full dataset...")
     tsfresh_data = extract_tsfresh_features_from_chunks(
-        cleaned_task_chunks, 
+        cleaned_chunks, 
         columns_to_extract, 
         pval_threshold=0.05, 
         n_jobs=100)
 
     # ------------------------- 4. BUILD DATASET -------------------------
-
-    xgboost_data = gaze_metrics_df.merge(mouse_metrics_df, on=["id", "participant_id", "Task_id"])
-    xgboost_data = xgboost_data.merge(tsfresh_data, on="id")
+    gaze = gaze_metrics_df.drop(columns=cols_to_drop, errors="ignore")
+    mouse = mouse_metrics_df.drop(columns=cols_to_drop, errors="ignore")
+    merge_keys = ["id", "participant_id", "Task_id"]
+    xgboost_data = gaze.merge(mouse, on=merge_keys, how="inner", suffixes=("_gaze", "_mouse"))
+    xgboost_data = xgboost_data.merge(tsfresh_data, on="id", how = "inner")
 
     
     #Train/test split based on the one for JCAFNet
@@ -283,26 +319,21 @@ if __name__ == "__main__":
     train_df.to_parquet(os.path.join(store_split_dirs[0], "train_xgboost.parquet"))
     test_df.to_parquet(os.path.join(store_split_dirs[2], "test_xgboost.parquet"))
     val_df.to_parquet(os.path.join(store_split_dirs[1], "val_xgboost.parquet"))
-
+    
     # CROSS VALIDATION SPLIT BASED ON PARTICIPANT ID
-    # Define features and target
-    X_train = train_df.drop(columns=drop_cols)
-    X_train = sanitize_column_names(X_train)
-    groups_train = train_df["participant_id"]
-    y_train = pd.to_numeric(train_df["Task_id"]).astype(int)
+    # columns that must not go into X
+    leaky = [
+        "id",               # chunk identifier
+        "participant_id",   # used as groups
+        "Task_id",          # the label
+        "Scenario_id",      # metadata
+        "Task_execution",   # metadata
+    ]
+    X_train = train_df.drop(columns=[c for c in leaky if c in train_df.columns], errors="ignore")
+    X_train = X_train.apply(pd.to_numeric, errors="coerce")
+    
+    y_train = train_df["Task_id"].astype(int)  
     groups_train = train_df["participant_id"].astype(str)
-    
-    
-
-    # # Check for any parse failures
-    # bad_rows = train_df.loc[y_train.isna() | groups_train.isna(), "id"]
-    # if not bad_rows.empty:
-    #     raise ValueError(
-    #         f"{len(bad_rows)} ids don't match expected 'participant_label_exec' pattern. "
-    #         f"Examples: {bad_rows.head(10).tolist()}"
-    #     )
-    
-    # Can do the same for test and val if needed
 
     # Define Group K-Fold
     gkf = GroupKFold(n_splits=n_splits)

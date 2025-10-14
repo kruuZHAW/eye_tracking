@@ -278,7 +278,7 @@ class EyeTrackingProcessor:
 
             # Build task ranges (per original occurrences)
             print(f"Finding tasks for participant {participant} Scenario {scenario_id}")
-            task_ranges = self.task_range_finder(df_sorted)  # {"Task N": [(start,end), ...]}
+            task_ranges, _ = self.task_range_finder(df_sorted)  # {"Task N": [(start,end), ...]}
             # Precompute a flat list with (task_name, occ_index, start, end) for quick overlap checks
             flat_ranges: list[tuple[str, int, float, float]] = []
             for task_name, periods in task_ranges.items():
@@ -354,6 +354,9 @@ class EyeTrackingProcessor:
     def detect_blinks(self, task_chunks: dict[str, pd.DataFrame], blink_threshold: int = 100):
         """
         Detect blinks in a dictionary of task-based DataFrame chunks.
+         - A blink is a contiguous run where either gaze X or Y is NaN.
+         - We mark Blink=True ONLY on rows inside runs whose duration > blink_threshold (ms).
+         - Runs > 400 ms are also flagged as Loss of Attention.
 
         Parameters:
         - task_chunks: dict where keys are task IDs and values are DataFrames
@@ -378,42 +381,90 @@ class EyeTrackingProcessor:
                 print(f"⚠️ Skipping {task_id}: Gaze columns not found.")
                 continue
 
-            # Sort to ensure temporal order
+            # Sort by time and (if needed) convert µs -> ms
             df = df.sort_values(by=self.timestamp_col).reset_index(drop=True)
+            med_diff = df[self.timestamp_col].diff().dropna().median()
+            if pd.notna(med_diff) and med_diff > 10_000:
+                df[self.timestamp_col] = df[self.timestamp_col] / 1_000.0  # µs → ms
 
-            # Normalize timestamps if needed
-            time_diff = df[self.timestamp_col].diff()
-            median_diff = time_diff.dropna().median()
-
-            if median_diff > 10000:
-                df[self.timestamp_col] = df[self.timestamp_col] / 1000  # µs → ms
-
-            # Blink detection logic
+            # Missing gaze mask
             df["Missing Gaze"] = df[x_col].isna() | df[y_col].isna()
-            df["Time Diff"] = df[self.timestamp_col].diff()
-            df["Blink Start"] = df["Missing Gaze"] & ~df["Missing Gaze"].shift(1, fill_value=False)
-            df["Blink End"] = ~df["Missing Gaze"] & df["Missing Gaze"].shift(1, fill_value=False)
-            df["Blink ID"] = df["Blink Start"].cumsum()
-
-            # Filter for actual blinks
-            blink_durations = df.groupby("Blink ID")["Time Diff"].sum().reset_index()
-            valid_blinks = blink_durations.loc[blink_durations["Time Diff"] > blink_threshold].copy()
-            # Classify blink types
-            valid_blinks["Attention State"] = valid_blinks["Time Diff"].apply(
-                lambda dur: "Blink" if dur <= 400 else "Loss of attention"
+            
+            # Run IDs: increment when Missing Gaze changes (False->True or True->False)
+            df["_run"] = df["Missing Gaze"].ne(df["Missing Gaze"].shift(fill_value=False)).cumsum()
+            
+            # Duration per run (sum of diffs) using only missing-gaze rows
+            # If a run has a single row, its diff-sum is 0 (sensible for duration).
+            dur_by_run = (
+                df.loc[df["Missing Gaze"], [self.timestamp_col, "_run"]]
+                .groupby("_run")[self.timestamp_col]
+                .apply(lambda s: (s.diff().fillna(0)).sum())
             )
-            valid_blinks["Loss of Attention"] = valid_blinks["Time Diff"] > 400
-            df["Blink"] = df["Blink ID"].isin(valid_blinks["Blink ID"]).astype(int)
-            
-            df["Loss of Attention"] = False
-            long_blink_ids = valid_blinks.loc[valid_blinks["Loss of Attention"], "Blink ID"]
-            df.loc[df["Blink ID"].isin(long_blink_ids), "Loss of Attention"] = True
-            
-            all_blinks[task_id] = valid_blinks
 
-            # Clean up intermediate columns
-            df.drop(columns=["Missing Gaze", "Time Diff", "Blink Start", "Blink End", "Blink ID"], inplace=True)
+            # Which runs count as blinks/attention loss
+            valid_runs = dur_by_run[dur_by_run > blink_threshold].index if not dur_by_run.empty else pd.Index([])
+            long_runs  = dur_by_run[dur_by_run > 400].index if not dur_by_run.empty else pd.Index([])
+
+            # Initialize flags
+            df["Blink"] = False
+            df["Loss of Attention"] = False
+
+            # Mark only the rows inside the selected runs
+            mask_missing = df["Missing Gaze"]
+            if len(valid_runs) > 0:
+                df.loc[mask_missing & df["_run"].isin(valid_runs), "Blink"] = True
+            if len(long_runs) > 0:
+                df.loc[mask_missing & df["_run"].isin(long_runs), "Loss of Attention"] = True
+
+            # Build a compact per-run summary (only for missing runs)
+            if not dur_by_run.empty:
+                run_bounds = (
+                    df.loc[df["Missing Gaze"], [self.timestamp_col, "_run"]]
+                    .groupby("_run")[self.timestamp_col]
+                    .agg(start_ts="first", end_ts="last")
+                )
+                summary = (
+                    dur_by_run.to_frame("duration_ms")
+                    .join(run_bounds, how="left")
+                    .assign(
+                        blink=lambda t: t["duration_ms"] > blink_threshold,
+                        loss_of_attention=lambda t: t["duration_ms"] > 400,
+                    )
+                    .reset_index(names="run_id")
+                )
+                all_blinks[task_id] = summary.loc[summary["blink"] | summary["loss_of_attention"]].copy()
+            else:
+                all_blinks[task_id] = pd.DataFrame(columns=["run_id", "duration_ms", "start_ts", "end_ts", "blink", "loss_of_attention"])
+
+            # Clean up helpers
+            df.drop(columns=["_run", "Missing Gaze"], inplace=True)
+
             updated_chunks[task_id] = df
+            
+            # df["Time Diff"] = df[self.timestamp_col].diff()
+            # df["Blink Start"] = df["Missing Gaze"] & ~df["Missing Gaze"].shift(1, fill_value=False)
+            # df["Blink End"] = ~df["Missing Gaze"] & df["Missing Gaze"].shift(1, fill_value=False)
+            # df["Blink ID"] = df["Blink Start"].cumsum()
+
+            # # Filter for actual blinks
+            # blink_durations = df.groupby("Blink ID")["Time Diff"].sum().reset_index()
+            # valid_blinks = blink_durations.loc[blink_durations["Time Diff"] > blink_threshold].copy()
+            # # Classify blink types
+            # valid_blinks["Attention State"] = valid_blinks["Time Diff"].apply(
+            #     lambda dur: "Blink" if dur <= 400 else "Loss of attention"
+            # )
+            # valid_blinks["Loss of Attention"] = valid_blinks["Time Diff"] > 400
+            # df["Blink"] = df["Blink ID"].isin(valid_blinks["Blink ID"]).astype(int)
+            
+            # df["Loss of Attention"] = False
+            # long_blink_ids = valid_blinks.loc[valid_blinks["Loss of Attention"], "Blink ID"]
+            # df.loc[df["Blink ID"].isin(long_blink_ids), "Loss of Attention"] = True
+            
+            # all_blinks[task_id] = valid_blinks
+
+            # # Clean up intermediate columns
+            # df.drop(columns=["Missing Gaze", "Time Diff", "Blink Start", "Blink End", "Blink ID"], inplace=True)
+            # updated_chunks[task_id] = df
 
         return updated_chunks, all_blinks
     
@@ -440,7 +491,8 @@ class EyeTrackingProcessor:
         
         # Check which interpolate_cols are non-numeric
         bad = [c for c in interpolate_cols if c in df.columns and not pd.api.types.is_numeric_dtype(df[c])]
-        print("Non-numeric columns among interpolate_cols:", bad)
+        if len(bad) > 0:
+            print("Non-numeric columns among interpolate_cols:", bad)
 
         # Normalize timestamp units if necessary
         time_diff = df[self.timestamp_col].diff().dropna().median()

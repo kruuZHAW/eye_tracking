@@ -148,7 +148,7 @@ def find_overlapping_tasks(task_chunks: dict[str, pd.DataFrame]) -> dict[int, li
 
     return overlaps_per_participant
 
-def drop_chunks_with_all_zero_features(task_chunks: dict[str, pd.DataFrame], threshold: float = 1.0) -> dict[str, pd.DataFrame]:
+def drop_chunks_with_all_zero_features(task_chunks: dict[str, pd.DataFrame], feature_cols: list[str], threshold: float = 1.0) -> dict[str, pd.DataFrame]:
     """
     Drops any DataFrame from the dict where at least one feature column has a great proportion of zero.
     
@@ -164,7 +164,6 @@ def drop_chunks_with_all_zero_features(task_chunks: dict[str, pd.DataFrame], thr
     dict[str, pd.DataFrame]
         Filtered dictionary with problematic chunks removed.
     """
-    feature_cols = ["Gaze point X", "Gaze point Y", "Mouse position X", "Mouse position Y"]
     cleaned_chunks = {}
     dropped_ids = []
     for task_id, df in task_chunks.items():
