@@ -148,7 +148,10 @@ def find_overlapping_tasks(task_chunks: dict[str, pd.DataFrame]) -> dict[int, li
 
     return overlaps_per_participant
 
-def drop_chunks_with_all_zero_features(task_chunks: dict[str, pd.DataFrame], feature_cols: list[str], threshold: float = 1.0) -> dict[str, pd.DataFrame]:
+def drop_chunks_with_all_zero_features(task_chunks: dict[str, pd.DataFrame], 
+                                       feature_cols: list[str], 
+                                       threshold: float = 1.0, 
+                                       drop_if_all_missing: bool = True) -> dict[str, pd.DataFrame]:
     """
     Drops any DataFrame from the dict where at least one feature column has a great proportion of zero.
     
@@ -166,24 +169,36 @@ def drop_chunks_with_all_zero_features(task_chunks: dict[str, pd.DataFrame], fea
     """
     cleaned_chunks = {}
     dropped_ids = []
-    for task_id, df in task_chunks.items():
-            present_cols = [col for col in feature_cols if col in df.columns]
-            drop = False
 
-            for col in present_cols:
-                zero_ratio = (df[col] == 0).mean()  # proportion of zeros
-                if zero_ratio >= threshold:
+    for task_id, df in task_chunks.items():
+        present_cols = [c for c in feature_cols if c in df.columns]
+        drop = False
+
+        for col in present_cols:
+            s = pd.to_numeric(df[col], errors="coerce")  # ensure numeric; coerce '0'/'junk' to NaN
+            valid = int(s.notna().sum())
+            if valid == 0:
+                # Column is entirely NaN in this chunk
+                if drop_if_all_missing:
                     drop = True
                     break
+                else:
+                    continue
 
-            if drop:
-                dropped_ids.append(task_id)
-            else:
-                cleaned_chunks[task_id] = df
+            zeros = int((s == 0).sum())
+            zero_ratio = zeros / valid  # plain float
+
+            if zero_ratio >= float(threshold):
+                drop = True
+                break
+
+        if drop:
+            dropped_ids.append(task_id)
+        else:
+            cleaned_chunks[task_id] = df
 
     if dropped_ids:
-        print(f"Dropped {len(dropped_ids)} chunks (threshold={threshold}):", dropped_ids)
+        print(f"Dropped {len(dropped_ids)} chunks (threshold={threshold}): {dropped_ids[:10]}{' ...' if len(dropped_ids)>10 else ''}")
     else:
         print(f"No chunks dropped (threshold={threshold}).")
-
     return cleaned_chunks
