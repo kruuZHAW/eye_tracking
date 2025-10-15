@@ -21,4 +21,4 @@ VENV=$env_name module load uv/0.4.30
 echo "Copying datasets in /scratch"
 cp -r ~/store/aware /scratch
 
-uv run python 02_xgboost_training.py
+uv run python _02_xgboost_training.py

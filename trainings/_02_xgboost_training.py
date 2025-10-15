@@ -331,6 +331,7 @@ if __name__ == "__main__":
     ]
     X_train = train_df.drop(columns=[c for c in leaky if c in train_df.columns], errors="ignore")
     X_train = X_train.apply(pd.to_numeric, errors="coerce")
+    X_train = sanitize_column_names(X_train)
     
     y_train = train_df["Task_id"].astype(int)  
     groups_train = train_df["participant_id"].astype(str)
