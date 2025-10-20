@@ -10,6 +10,7 @@ class EyeTrackingProcessor:
     
     def __init__(self):
         self.timestamp_col = None
+        self.task_map: dict[str, str] | None = None
         
     # ------------------------- 0. HELPER METHODS -------------------------
     def detect_timestamp_column(self, df: pd.DataFrame):
@@ -97,6 +98,7 @@ class EyeTrackingProcessor:
         # Build task map across all files (if Event exists)
         task_roots = self.extract_atco_task_roots(dfs)
         task_map = self.build_global_task_map(task_roots) if task_roots else {}
+        self.task_map = task_map
 
         # Apply mapping
         dfs = [self.apply_global_task_mapping(df, task_map) for df in dfs]
@@ -244,10 +246,13 @@ class EyeTrackingProcessor:
         window_ms: int = 3000,
         step_ms: int | None = None,
         min_presence: float = 0.5,
+        idle_id: int = -1,
+        label_idle: bool = True,
     ) -> dict[str, pd.DataFrame]:
         """
         Slice each participant stream into fixed-length windows and assign a task label
-        based on maximum overlap with any Task occurrence (start/end pair).
+        based on maximum overlap with task ranges found.
+        If there is no overlap (or a small), between the window and the task, it is labeled as "idling"
 
         - window_ms: window length in milliseconds (e.g., 3000 for 3s).
         - step_ms: hop size in milliseconds. Default = window_ms (no overlap).
@@ -311,43 +316,116 @@ class EyeTrackingProcessor:
                         if (best is None) or (overlap > best[0]):
                             best = (overlap, task_name, occ_idx)
 
-                if best is None:
-                    # No task overlaps this window -> skip (between tasks)
-                    continue
-
-                overlap_ms, best_task_name, best_occ_idx = best
-                if overlap_ms / window_ms < min_presence:
-                    # Not enough majority coverage -> skip
-                    continue
-
                 # Extract the window slice
                 mask = (df_sorted[self.timestamp_col] >= w_start) & (df_sorted[self.timestamp_col] < w_end)
                 window_df = df_sorted.loc[mask, features].copy()
                 if window_df.empty:
                     # No samples landed in this window (edge case) -> skip
                     continue
+                
+                if best is None or (best[0] / window_ms) < min_presence:
+                    # ---- IDLING WINDOW ----
+                    if not label_idle:
+                        continue  # If not idle libel, then windows with no tasks are discarded
+                    task_id = idle_id
+                    task_exec = -1
+                else:
+                    # ---- TASKED WINDOW ----
+                    _, best_task_name, best_occ_idx = best
+                    task_id = int(best_task_name.split()[-1])
+                    task_exec = best_occ_idx
+                    # increase per-task counter (occurences) for unique window IDs ONLY for non-idle
+                    window_occurrence = per_task_window_counter.get(task_id, 0)
+                    per_task_window_counter[task_id] = window_occurrence + 1
 
-                # Task metadata
-                task_id = int(best_task_name.split()[-1])  # "Task N" -> N
-
-                # Maintain window occurrence per task to build unique ids
-                window_occurrence = per_task_window_counter.get(task_id, 0)
-                per_task_window_counter[task_id] = window_occurrence + 1
+                if task_id == idle_id:
+                    idle_count = per_task_window_counter.get(task_id, 0)
+                    per_task_window_counter[task_id] = idle_count + 1
+                    uid = f"{participant}_{scenario_id}_{task_id}_{idle_count}"
+                else:
+                    uid = f"{participant}_{scenario_id}_{task_id}_{window_occurrence}"
 
                 # Attach metadata
                 window_df["Task_id"] = task_id
-                # IMPORTANT:
-                # - Keep Task_execution = original start/end occurrence index (stable semantics)
-                # - The ID uses the *window* occurrence counter to stay unique per window.
-                window_df["Task_execution"] = best_occ_idx
+                window_df["Task_execution"] = task_exec
                 window_df["Participant name"] = participant
                 window_df["Scenario_id"] = scenario_id
-                uid = f"{participant}_{scenario_id}_{task_id}_{window_occurrence}"
                 window_df["id"] = uid
 
                 chunks[uid] = window_df
 
         return chunks
+    
+    # ------------------------- HELPER TASKS BOUNDAIRES -------------------------
+    def collect_task_boundaries(
+        self,
+        dfs: list[pd.DataFrame],
+        *,
+        export_path: str | None = None,   # optional: write a CSV/Parquet
+    ) -> pd.DataFrame:
+        """
+        Return one row per detected task occurrence with start/end timestamps.
+
+        Columns:
+        participant_id, scenario_id, task_label, task_id, execution,
+        start_ts, end_ts, duration_ms, rows_in_range, uid
+        """
+        rows: list[dict] = []
+        inv_map = {v: k for k, v in (self.task_map or {}).items()}
+
+        for df in dfs:
+            if df.empty:
+                continue
+
+            # IDs
+            participant = df["participant_id"].iloc[0] if "participant_id" in df.columns else df["Participant name"].iloc[0]
+            scenario_id = df["scenario_id"].iloc[0]
+
+            # Make sure we know the timestamp column
+            self.detect_timestamp_column(df)
+
+            # Get ranges
+            task_ranges, _ = self.task_range_finder(df)  # dict: "Task N" -> [(start, end), ...]
+
+            # Build rows
+            for task_code, periods in task_ranges.items():
+                atco_label = inv_map.get(task_code, task_code)
+                # numeric id from "Task N"
+                try:
+                    task_id = int(task_code.split()[-1])
+                except Exception:
+                    task_id = None
+
+                for exec_idx, (start, end) in enumerate(periods):
+                    # (optional) how many rows are inside the slice
+                    mask = (df[self.timestamp_col] >= start) & (df[self.timestamp_col] <= end)
+                    rows_in_range = int(mask.sum())
+
+                    rows.append({
+                        "participant_id": str(participant),
+                        "scenario_id": str(scenario_id),
+                        "task_label": atco_label,
+                        "task_code": task_code,        # e.g., "Task 3"
+                        "task_id": task_id,              # e.g., 3
+                        "execution": exec_idx,           # occurrence index within (participant, scenario, task)
+                        "start_ts": int(start),
+                        "end_ts": int(end),
+                        "duration_ms": int(end - start),
+                        "rows_in_range": rows_in_range,
+                        "uid": f"{participant}_{scenario_id}_{task_id}_{exec_idx}",
+                    })
+
+        boundaries = pd.DataFrame(rows).sort_values(
+            ["participant_id", "scenario_id", "task_id", "execution"]
+        ).reset_index(drop=True)
+
+        if export_path:
+            if export_path.endswith(".parquet"):
+                boundaries.to_parquet(export_path, index=False)
+            else:
+                boundaries.to_csv(export_path, index=False)
+
+        return boundaries
 
     
     # ------------------------- 3. BLINK IDENTIFICATION -------------------------

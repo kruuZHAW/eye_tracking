@@ -67,7 +67,7 @@ def predict_xgboost(test_df: pd.DataFrame,
     # Keep only selected features
     ids = test_df["id"].tolist()
     y = test_df[label_column] - label_offset
-    drop_cols = ["Task_id", "Participant", "Task_execution", "id"]
+    drop_cols = ["Task_id", "participant_id", "id"]
     X = test_df.drop(columns=drop_cols)
 
     # Predict probabilities and class

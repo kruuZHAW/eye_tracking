@@ -6,6 +6,7 @@ from pathlib import Path
 # sys.path.append(str(Path('~/git_folder/eye_tracking/').expanduser()))
 sys.path.append(str(Path('~/git/eye_tracking/').expanduser()))
 
+import numpy as np
 import pandas as pd
 from utils.data_processing import GazeMetricsProcessor, MouseMetricsProcessor
 from utils.helper import load_and_process, find_overlapping_tasks, drop_chunks_with_all_zero_features
@@ -17,8 +18,10 @@ from tsfresh.feature_selection.relevance import calculate_relevance_table
 
 import xgboost as xgb
 import joblib 
-from sklearn.model_selection import GroupKFold, GridSearchCV
+from sklearn.model_selection import GroupKFold, StratifiedGroupKFold, GridSearchCV, GroupShuffleSplit
 from sklearn.metrics import accuracy_score
+from sklearn import metrics
+from sklearn.base import clone
 
 import warnings
 warnings.simplefilter(action="ignore", category=UserWarning)
@@ -124,6 +127,32 @@ def sanitize_column_names(df: pd.DataFrame) -> pd.DataFrame:
         .str.replace(r"\s+", "_", regex=True)
     )
     return df
+
+def split_by_participant(df: pd.DataFrame,
+                         group_col="participant_id",
+                         test_size=0.2,
+                         val_size=0.1,
+                         random_state=42):
+    # Split off test by participant
+    gss = GroupShuffleSplit(n_splits=1, test_size=test_size, random_state=random_state)
+    trainval_idx, test_idx = next(gss.split(df, groups=df[group_col]))
+    df_trainval = df.iloc[trainval_idx].copy()
+    df_test     = df.iloc[test_idx].copy()
+
+    # Split train vs val from the remaining participants
+    val_prop = val_size / (1.0 - test_size)
+    gss2 = GroupShuffleSplit(n_splits=1, test_size=val_prop, random_state=random_state)
+    train_idx, val_idx = next(gss2.split(df_trainval, groups=df_trainval[group_col]))
+    df_train = df_trainval.iloc[train_idx].copy()
+    df_val   = df_trainval.iloc[val_idx].copy()
+
+    # Return the participant IDs per split
+    parts = {
+        "train_parts": sorted(df_train[group_col].unique().tolist()),
+        "val_parts":   sorted(df_val[group_col].unique().tolist()),
+        "test_parts":  sorted(df_test[group_col].unique().tolist()),
+    }
+    return df_train, df_val, df_test, parts
 
 if __name__ == "__main__":
     # ------------------------- 0. PARAMETERS -------------------------
@@ -288,6 +317,8 @@ if __name__ == "__main__":
         n_jobs=100)
 
     # ------------------------- 4. BUILD DATASET -------------------------
+    # TODO: Modify task label as idling = -1 -> max(Task_id)+1 for instance
+    
     gaze = gaze_metrics_df.drop(columns=cols_to_drop, errors="ignore")
     mouse = mouse_metrics_df.drop(columns=cols_to_drop, errors="ignore")
     merge_keys = ["id", "participant_id", "Task_id"]
@@ -295,10 +326,15 @@ if __name__ == "__main__":
     xgboost_data = xgboost_data.merge(tsfresh_data, on="id", how = "inner")
 
     
-    #Train/test split based on the one for JCAFNet
-    train_df = xgboost_data[xgboost_data["id"].isin(train_ids)].copy()
-    val_df = xgboost_data[xgboost_data["id"].isin(val_ids)].copy()
-    test_df = xgboost_data[xgboost_data["id"].isin(test_ids)].copy()
+    # #Train/test split based on the one for JCAFNet
+    # train_df = xgboost_data[xgboost_data["id"].isin(train_ids)].copy()
+    # val_df = xgboost_data[xgboost_data["id"].isin(val_ids)].copy()
+    # test_df = xgboost_data[xgboost_data["id"].isin(test_ids)].copy()
+    
+    # Redo Train/test/val split as JCAFNET not implemented yet:
+    train_df, val_df, test_df, parts = split_by_participant(xgboost_data, group_col="participant_id",
+                                                        test_size=0.2, val_size=0.1, random_state=42)
+    
     
     # print("Number of total occurences per task for train: ")
     # task_window_counts = Counter(int(train_df["Task_id"].iloc[0]))
@@ -333,13 +369,14 @@ if __name__ == "__main__":
     X_train = X_train.apply(pd.to_numeric, errors="coerce")
     X_train = sanitize_column_names(X_train)
     
-    y_train = train_df["Task_id"].astype(int)  
+    y_train = train_df["Task_id"].astype(int).values + 1 # +1 to account for idle = 0  
     groups_train = train_df["participant_id"].astype(str)
 
     # Define Group K-Fold
-    gkf = GroupKFold(n_splits=n_splits)
+    cv = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
 
     # Initialize XGBoost model
+    # NB: IF this doesn't work, we can do a 2-stage detection: 1) detect active VS idling, 2) detect task if active
     num_class = int(pd.Series(y_train).nunique())
     xgb_model = xgb.XGBClassifier(
         objective="multi:softmax",
@@ -347,31 +384,124 @@ if __name__ == "__main__":
         eval_metric="mlogloss",
         random_state=42
     )
+    
+    # Sampling weights to deal with class imbalance
+    counts = pd.Series(y_train).value_counts()
+    class_w = (counts.median() / counts).to_dict()
+    sample_weight = y_train.map(class_w).values if isinstance(y_train, pd.Series) else np.array([class_w[v] for v in y_train])
 
     # Initialize GridSearchCV with Group K-Fold
+
     grid_search = GridSearchCV(
         estimator=xgb_model,
         param_grid=param_grid,
-        scoring="accuracy",
-        cv=gkf,  # Ensures group-based splitting
+        scoring="f1_macro", # instead of accuracy so all class matter
+        cv=cv.split(X_train, y_train, groups_train),  # Ensures group-based splitting
         n_jobs=-1,  # Use all available CPUs
         verbose=2
     )
 
     # Perform grid search
-    grid_search.fit(X_train, y_train, groups=groups_train)
+    grid_search.fit(X_train, y_train, sample_weight=sample_weight)
 
     # Retrieve best model and accuracy
     best_model = grid_search.best_estimator_
     best_params = grid_search.best_params_
-    best_score = grid_search.best_score_
+    best_f1_mean = grid_search.best_score_
+    best_row = (pd.DataFrame(grid_search.cv_results_)
+            .loc[grid_search.best_index_])
+    best_f1_std = float(best_row["std_test_score"])
 
     # Save the best model
     os.makedirs(save_model_path, exist_ok=True)
     joblib.dump(best_model, os.path.join(save_model_path, "best_model.pkl"))
     joblib.dump(grid_search, os.path.join(save_model_path, "full_grid_search.pkl"))
     joblib.dump(X_train.columns.tolist(), os.path.join(save_model_path, "features.pkl"))
+    try:
+        fi = getattr(best_model, "feature_importances_", None)
+        if fi is not None:
+            pd.DataFrame({"feature": X_train.columns, "importance": fi}) \
+            .sort_values("importance", ascending=False) \
+            .to_csv(os.path.join(save_model_path, "feature_importances.csv"), index=False)
+    except Exception:
+        pass
 
-    # Display results
-    print(f"\nBest Parameters: {best_params}")
-    print(f"Best Cross-Validation Accuracy: {best_score:.4f}")
+    # We do a manual CV loop so we can pass per-fold sample_weight and groups.
+    accs, f1s = [], []
+    y_true_all, y_pred_all = [], []
+
+    for train_idx, val_idx in cv.split(X_train, y_train, groups_train):
+        X_tr, X_va = X_train.iloc[train_idx], X_train.iloc[val_idx]
+        y_tr, y_va = y_train.iloc[train_idx], y_train.iloc[val_idx]
+        w_tr = sample_weight[train_idx]
+
+        m = clone(best_model)
+        m.fit(X_tr, y_tr, sample_weight=w_tr)
+        y_hat = m.predict(X_va)
+
+        accs.append(metrics.accuracy_score(y_va, y_hat))
+        f1s.append(metrics.f1_score(y_va, y_hat, average="macro"))
+        y_true_all.append(y_va)
+        y_pred_all.append(pd.Series(y_hat, index=y_va.index))
+
+    y_true_all = pd.concat(y_true_all).sort_index()
+    y_pred_all = pd.concat(y_pred_all).loc[y_true_all.index]
+
+    acc_mean, acc_std = float(np.mean(accs)), float(np.std(accs))
+    f1_cv_mean, f1_cv_std = float(np.mean(f1s)), float(np.std(f1s))
+    
+    # Reports
+    cls_report_str = metrics.classification_report(y_true_all, y_pred_all, digits=3)
+    cm = metrics.confusion_matrix(y_true_all, y_pred_all)
+    labels_sorted = np.sort(y_train.unique())
+    
+    # Print nicely
+    print("\n=== Cross-Validation (best model) ===")
+    print(f"F1-macro (from GridSearchCV): {best_f1_mean:.3f} ± {best_f1_std:.3f}")
+    print(f"F1-macro (re-evaluated):      {f1_cv_mean:.3f} ± {f1_cv_std:.3f}")
+    print(f"Accuracy:                     {acc_mean:.3f} ± {acc_std:.3f}")
+    print("\nPer-class report:\n", cls_report_str)
+    
+    # Save Artifacts
+    # 1) Grid search table
+    pd.DataFrame(grid_search.cv_results_).to_csv(os.path.join(save_model_path, "cv_results.csv"), index=False)
+    
+    # 2) params + metrics
+    with open(os.path.join(save_model_path, "best_params.json"), "w") as f:
+        json.dump(best_params, f, indent=2)
+
+    metrics_payload = {
+        "cv_f1_macro_mean_gs": best_f1_mean,
+        "cv_f1_macro_std_gs": best_f1_std,
+        "cv_f1_macro_mean_eval": f1_cv_mean,
+        "cv_f1_macro_std_eval": f1_cv_std,
+        "cv_accuracy_mean": acc_mean,
+        "cv_accuracy_std": acc_std,
+        "n_classes": int(pd.Series(y_train).nunique()),
+        "class_counts": pd.Series(y_train).value_counts().to_dict(),
+    }
+    with open(os.path.join(save_model_path, "metrics.json"), "w") as f:
+        json.dump(metrics_payload, f, indent=2)
+    
+    # 3) classification report & confusion matrix
+    with open(os.path.join(save_model_path, "classification_report.txt"), "w") as f:
+        f.write(cls_report_str)
+
+    pd.DataFrame(cm, index=labels_sorted, columns=labels_sorted).to_csv(
+        os.path.join(save_model_path, "confusion_matrix.csv")
+    )
+    
+    # Confusion matrix
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(8, 6))
+    cm_norm = cm / cm.sum(axis=1, keepdims=True)
+    im = ax.imshow(cm_norm, interpolation="nearest")
+    ax.set_title("Normalized Confusion Matrix")
+    ax.set_xlabel("Predicted"); ax.set_ylabel("True")
+    ax.set_xticks(range(len(labels_sorted))); ax.set_xticklabels(labels_sorted, rotation=45, ha="right")
+    ax.set_yticks(range(len(labels_sorted))); ax.set_yticklabels(labels_sorted)
+    plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    plt.tight_layout()
+    fig.savefig(os.path.join(save_model_path, "confusion_matrix.png"), dpi=150)
+    plt.close(fig)                                    
+                                                       

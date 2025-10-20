@@ -169,6 +169,7 @@ if __name__ == "__main__":
     print(f"Test participants: {set(key.split('_')[0] for key in test_chunks.keys())}")
     
     # ------------------------- 3. TRAINING JCAFNET -------------------------
+    # TODO: Modify task label as idling = -1 -> max(Task_id)+1 for instance
 
     model = JCAFNet(num_classes, gaze_dim, mouse_dim, joint_dim, lr)
 
