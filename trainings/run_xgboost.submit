@@ -1,14 +1,23 @@
 #!/bin/bash
-#SBATCH --job-name=run_xgboost
-#SBATCH --time=10:00:00
-#SBATCH --cpus-per-task=20
-#SBATCH --nodes=1
-#SBATCH --gres=gpu:1
-#SBATCH --account=zav
-#SBATCH --partition=gpu_ia
-#SBATCH --mem=50G  # Requesting more memory
+# # SBATCH --job-name=run_xgboost
+# # SBATCH --time=10:00:00
+# # SBATCH --cpus-per-task=20
+# # SBATCH --nodes=1
+# # SBATCH --gres=gpu:1
+# # SBATCH --account=zav
+# # SBATCH --partition=gpu_ia
+# # SBATCH --mem=80G  # Requesting more memory
 # #SBATCH --output=/cluster/home/kruu/log/lstm_training_%j.out
 # #SBATCH --error=/cluster/home/kruu/log/lstm_training_%j.err
+
+#SBATCH --account=zav
+#SBATCH --job-name=xgb_cv
+#SBATCH --partition=cpu_ia            
+#SBATCH --time=10:00:00          
+#SBATCH --cpus-per-task=32         # match XGB threads
+#SBATCH --mem=100G                 
+#SBATCH --exclude=elpaso,lubbock   
+# #SBATCH --nodelist=honolulu   
 
 # virtualenv name
 env_name="aware"
@@ -21,4 +30,4 @@ VENV=$env_name module load uv/0.4.30
 echo "Copying datasets in /scratch"
 cp -r ~/store/aware /scratch
 
-uv run python _02_xgboost_training.py
+uv run python _02_xgboost_hierarchical_training.py
