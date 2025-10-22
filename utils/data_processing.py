@@ -126,13 +126,13 @@ class EyeTrackingProcessor:
         unmatched_records: list[dict] = []
 
         for _, row in event_df.iterrows():
-            event, timestamp = row["Event"], row[self.timestamp_col]
+            event, timestamp, epoch_ms = row["Event"], row[self.timestamp_col], row["epoch_ms"]
 
             if event.endswith("end"):
                 task_type = event.replace(" end", "")
                 if task_type in task_stack and task_stack[task_type]:
-                    start_time = task_stack[task_type].pop()
-                    task_ranges.setdefault(task_type, []).append((start_time, timestamp))
+                    start_ts, start_ep = task_stack[task_type].pop()
+                    task_ranges.setdefault(task_type, []).append((start_ts, timestamp))
                 else:
                     # record unmatched end
                     unmatched_records.append({
@@ -141,21 +141,25 @@ class EyeTrackingProcessor:
                         "task": task_type,
                         "marker": "end",
                         "timestamp": timestamp,
+                        "epoch_ms": epoch_ms,
+                        "timestamp_utc": pd.to_datetime(epoch_ms, unit="ms", utc=True, errors="coerce").tz_localize(None),
                     })
                     print(f"⚠️ Unmatched 'end' for {task_type} at {timestamp}")
             else:
-                task_type = event  # e.g., "Task 3"
-                task_stack.setdefault(task_type, []).append(timestamp)
+                task_type = event  
+                task_stack.setdefault(task_type, []).append((timestamp, epoch_ms))
 
         # record unmatched starts
         for task_type, stack in task_stack.items():
-            for unmatched_start in stack:
+            for unmatched_start, unmatched_epoch in stack:
                 unmatched_records.append({
                     "participant": participant,
                     "scenario_id": scenario_id,
                     "task": task_type,
                     "marker": "start",
                     "timestamp": unmatched_start,
+                    "epoch_ms": unmatched_epoch,
+                    "timestamp_utc": pd.to_datetime(unmatched_epoch, unit="ms", utc=True, errors="coerce").tz_localize(None),
                 })
                 print(f"⚠️ Unmatched 'start' for {task_type} at {unmatched_start}")
 
@@ -210,6 +214,8 @@ class EyeTrackingProcessor:
                             "task": None,
                             "marker": None,
                             "timestamp": None,
+                            "epoch_ms": None,
+                            "timestamp_utc": None,
                             "note": "No unmatched markers",
                         }])
 
@@ -397,9 +403,11 @@ class EyeTrackingProcessor:
                     task_id = None
 
                 for exec_idx, (start, end) in enumerate(periods):
-                    # (optional) how many rows are inside the slice
                     mask = (df[self.timestamp_col] >= start) & (df[self.timestamp_col] <= end)
                     rows_in_range = int(mask.sum())
+                    
+                    start_epoch = df[df[self.timestamp_col] == start].epoch_ms.iloc[0]
+                    end_epoch = df[df[self.timestamp_col] == end].epoch_ms.iloc[0]
 
                     rows.append({
                         "participant_id": str(participant),
@@ -408,8 +416,10 @@ class EyeTrackingProcessor:
                         "task_code": task_code,        # e.g., "Task 3"
                         "task_id": task_id,              # e.g., 3
                         "execution": exec_idx,           # occurrence index within (participant, scenario, task)
-                        "start_ts": int(start),
-                        "end_ts": int(end),
+                        "start_epoch_ms": int(start_epoch),
+                        "end_epoch_ms": int(end_epoch),
+                        "start_utc": pd.to_datetime(start_epoch, unit="ms", utc=True, errors="coerce").tz_localize(None),
+                        "end_utc": pd.to_datetime(end_epoch, unit="ms", utc=True, errors="coerce").tz_localize(None),
                         "duration_ms": int(end - start),
                         "rows_in_range": rows_in_range,
                         "uid": f"{participant}_{scenario_id}_{task_id}_{exec_idx}",
