@@ -1,0 +1,3 @@
+[submodule "aware-protos"]
+	path = aware-protos
+	url = git@github.com:guiyrt/aware-protos.git
