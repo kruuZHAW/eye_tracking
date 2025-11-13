@@ -6,11 +6,7 @@ import pandas as pd
 from zoneinfo import ZoneInfo
 
 # --- imports for protobuf mouse decoding ---
-try:
-    from gen import messages_pb2  # created by events/setup.sh
-except Exception as e:
-    print("ERROR: cannot import gen.messages_pb2 – did you run ./setup.sh and activate the venv?", file=sys.stderr)
-    raise
+from aware_protos.aware.proto import messages_pb2
 
 TZ = ZoneInfo("Europe/Zagreb")
 
