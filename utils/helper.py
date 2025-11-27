@@ -7,9 +7,9 @@ import json
 import pandas as pd
 
 from utils.data_processing import EyeTrackingProcessor
-from utils.task_data_io import PARQUET_NAME, list_parquet_files
+from utils.task_data_io import PARQUET_ET_NAME, list_parquet_files
 
-def load_and_process(
+def load_and_process_et(
     root_dir: Union[str, Path],
     columns: list[str],
     interpolate_cols: list[str],
@@ -22,9 +22,9 @@ def load_and_process(
     min_task_presence: float = 0.5,
 ):
     # Get all data files
-    file_index = list_parquet_files(root_dir, participants=participants, scenarios=scenarios)
-    if not file_index:
-        raise FileNotFoundError(f"No {PARQUET_NAME} found under {root_dir}")
+    et_file_index, _ = list_parquet_files(root_dir, participants=participants, scenarios=scenarios)
+    if not et_file_index:
+        raise FileNotFoundError(f"No {PARQUET_ET_NAME} found under {root_dir}")
 
     # Option: Only download the necessary columns
     needed = set(columns) | {
@@ -33,7 +33,7 @@ def load_and_process(
     
     # Load data
     processor = EyeTrackingProcessor()
-    all_data, atco_task_map = processor.load_data(file_index, want_columns=list(needed))
+    all_data, atco_task_map = processor.load_data(et_file_index, want_columns=list(needed))
 
     ###### Chunking Strategy ######
     if fixed_window_ms is not None:

@@ -59,11 +59,12 @@ rclone sync "${REMOTE}:${REMOTE_PATH}" "${LOCAL_IN}" \
   --retries 10 --retries-sleep 10s --low-level-retries 20 \
   --contimeout 1m --timeout 10m --log-file "${PWD}/rclone_pull.log" --log-level INFO
 
-
-uv run "${PROJECT_DIR}/utils/build_raw_inputs.py" "${LOCAL_IN}"
-
 # # Sharepoint pushback (Maybe pushback the training datasets + the results after the pipeline has been run)
 # rclone copy "${LOCAL_OUT}" "${REMOTE}:${REMOTE_PATH}/results" \
 #   --checkers 8 --transfers 4 --tpslimit 8 --tpslimit-burst 16 \
 #   --retries 10 --retries-sleep 10s --low-level-retries 20 \
 #   --contimeout 1m --timeout 10m --log-file "${PWD}/rclone_push.log" --log-level INFO
+
+# uv run "${PROJECT_DIR}/utils/build_raw_inputs.py" "${LOCAL_IN}"
+uv run -m utils.build_raw_inputs "${LOCAL_IN}"
+

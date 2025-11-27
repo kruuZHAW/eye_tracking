@@ -3,7 +3,8 @@ from pathlib import Path
 import pandas as pd
 from typing import Union, Iterable, Optional
 
-PARQUET_NAME = "raw_inputs.parquet"
+PARQUET_ET_NAME = "raw_et.parquet"
+PARQUET_ASD_NAME = "raw_asd.parquet"
 
 def _parse_ids_from_path(p: Path) -> tuple[str, str]:
     """
@@ -30,9 +31,8 @@ def list_parquet_files(
     part_set = set(map(str, participants)) if participants else None
     scen_set = set(map(str, scenarios)) if scenarios else None
 
-    out = []
-    # search relative to root; no hard-coded 'training_data' string
-    for p in root.glob("*/Scenario */taskRecognition/" + PARQUET_NAME):
+    out_et = []
+    for p in root.glob("*/Scenario */taskRecognition/" + PARQUET_ET_NAME):
         try:
             pid, sid = _parse_ids_from_path(p)
         except ValueError:
@@ -41,7 +41,22 @@ def list_parquet_files(
             continue
         if scen_set and sid not in scen_set:
             continue
-        out.append({"path": p, "participant_id": pid, "scenario_id": sid})
+        out_et.append({"path": p, "participant_id": pid, "scenario_id": sid})
 
-    out.sort(key=lambda d: (str(d["participant_id"]), int(d["scenario_id"]), str(d["path"])))
-    return out
+    out_et.sort(key=lambda d: (str(d["participant_id"]), int(d["scenario_id"]), str(d["path"])))
+    
+    out_asd = []
+    for p in root.glob("*/Scenario */taskRecognition/" + PARQUET_ASD_NAME):
+        try:
+            pid, sid = _parse_ids_from_path(p)
+        except ValueError:
+            continue
+        if part_set and pid not in part_set:
+            continue
+        if scen_set and sid not in scen_set:
+            continue
+        out_asd.append({"path": p, "participant_id": pid, "scenario_id": sid})
+
+    out_asd.sort(key=lambda d: (str(d["participant_id"]), int(d["scenario_id"]), str(d["path"])))
+    
+    return out_et, out_asd

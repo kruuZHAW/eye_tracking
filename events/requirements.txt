@@ -1,2 +1,0 @@
-asterix_decoder
-protobuf

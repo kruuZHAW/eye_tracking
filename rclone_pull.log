@@ -27593,3 +27593,902 @@ Deleted:               43 (files), 18 (dirs), 110.337 GiB (freed)
 Transferred:          169 / 169, 100%
 Elapsed time:  10h43m46.3s
 
+2025/11/14 17:23:08 INFO  : Starting transaction limiter: max 8 transactions/s with burst 16
+2025/11/14 17:23:09 INFO  : 001/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 001/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 006/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 001/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 006/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 006/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 002/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 002/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 007/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 002/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 007/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 007/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 008/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 008/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 008/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 004/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 004/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 004/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 005/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 005/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 005/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 003/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 003/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 009/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 010/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 009/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 009/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 011/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 011/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 011/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 013/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 013/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 013/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 014/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 014/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 014/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 015/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 015/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 015/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 016/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 016/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:23:09 INFO  : 016/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:10 INFO  : 017/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:10 INFO  : 017/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:23:10 INFO  : 017/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:10 INFO  : 018/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:10 INFO  : 018/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:23:10 INFO  : 018/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:10 INFO  : 001/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:10 INFO  : 019/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:10 INFO  : 019/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:23:10 INFO  : 019/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:11 INFO  : 006/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:11 INFO  : 001/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:11 INFO  : 002/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:11 INFO  : 020/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:11 INFO  : 020/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:23:11 INFO  : 020/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:12 INFO  : 007/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:12 INFO  : 006/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:12 INFO  : 008/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:12 INFO  : 001/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:12 INFO  : 002/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:12 INFO  : 004/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:12 INFO  : 005/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:12 INFO  : 023/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:23:12 INFO  : 023/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:23:12 INFO  : 023/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:23:13 INFO  : 007/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:13 INFO  : 003/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:13 INFO  : 006/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:13 INFO  : 010/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:13 INFO  : 009/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:13 INFO  : 008/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:13 INFO  : 011/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:14 INFO  : 013/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:14 INFO  : 002/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:14 INFO  : 014/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:14 INFO  : 004/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:14 INFO  : 015/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:14 INFO  : 005/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:14 INFO  : 016/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:15 INFO  : 017/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:15 INFO  : 007/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:15 INFO  : 018/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:15 INFO  : 003/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:15 INFO  : 019/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:15 INFO  : 010/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:15 INFO  : 009/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:16 INFO  : 008/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:16 INFO  : 011/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:16 INFO  : 020/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:16 INFO  : 013/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:17 INFO  : 014/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:17 INFO  : 004/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:17 INFO  : 015/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:18 INFO  : 005/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:18 INFO  : 016/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:18 INFO  : 023/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:18 INFO  : 017/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:19 INFO  : 018/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:19 INFO  : 003/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:20 INFO  : 019/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:20 INFO  : 009/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:21 INFO  : 011/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:21 INFO  : 020/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:22 INFO  : 013/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:23 INFO  : 014/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:24 INFO  : 015/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:25 INFO  : 016/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:25 INFO  : 023/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:25 INFO  : 017/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:26 INFO  : 018/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:27 INFO  : 019/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:30 INFO  : 020/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:23:34 INFO  : 023/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:24:09 INFO  : 
+Transferred:   	      412 MiB / 759.395 MiB, 54%, 7.190 MiB/s, ETA 48s
+Checks:               332 / 332, 100%, Listed 1578
+Transferred:            0 / 1, 0%
+Elapsed time:       1m0.0s
+Transferring:
+ *                        Tobii - AWARE001-3.zip: 54% /759.395Mi, 7.170Mi/s, 48s
+
+2025/11/14 17:24:57 INFO  : Tobii - AWARE001-3.zip: Multi-thread Copied (new)
+2025/11/14 17:24:57 INFO  : 011/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 019/Scenario 1/simulator/109_sept_scenario_1.db: Deleted
+2025/11/14 17:24:57 INFO  : 008/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 015/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 014/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 004/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 008/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 017/Scenario 2/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 002/Scenario 1/simulator/002_sept_scenario_1.db: Deleted
+2025/11/14 17:24:57 INFO  : 018/Scenario 2/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 002/Scenario 2/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 015/Scenario 1/simulator/015_sept_scenario_1.db: Deleted
+2025/11/14 17:24:57 INFO  : 001/Scenario 2/simulator/001_sept_scenario_2.db: Deleted
+2025/11/14 17:24:57 INFO  : 007/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 018/Scenario 1/simulator/018_sept_scenario_1.db: Deleted
+2025/11/14 17:24:57 INFO  : 015/Scenario 3/simulator/015_sept_scenario_3.db: Deleted
+2025/11/14 17:24:57 INFO  : 013/Scenario 2/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 005/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 014/Scenario 2/simulator/014_sept_scenario_2.db: Deleted
+2025/11/14 17:24:57 INFO  : 001/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 008/Scenario 3/simulator/008_sept_scenario_3.db: Deleted
+2025/11/14 17:24:57 INFO  : 005/Scenario 3/simulator/005_sept_scenario_3.db: Deleted
+2025/11/14 17:24:57 INFO  : 010/Scenario 1/simulator/polaris-events-2025-09-05T14:59:38.db: Deleted
+2025/11/14 17:24:57 INFO  : 002/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 013/Scenario 1/simulator/polaris-events-2025-09-10T14:31:47.db: Deleted
+2025/11/14 17:24:57 INFO  : 005/Scenario 2/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 017/Scenario 3/simulator/017_sept_scenario_3.db: Deleted
+2025/11/14 17:24:57 INFO  : 004/Scenario 2/simulator/004_sept_scenario_1.db: Deleted
+2025/11/14 17:24:57 INFO  : 020/Scenario 1/simulator/020_sept_scenario_1.db: Deleted
+2025/11/14 17:24:57 INFO  : 016/Scenario 1/simulator/016_scenario_1.db: Deleted
+2025/11/14 17:24:57 INFO  : 019/Scenario 2/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 003/Scenario 3/simulator/003_sept_scenario_3.db: Deleted
+2025/11/14 17:24:57 INFO  : 010/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 019/Scenario 3/simulator/019_sept_scenario_3.db: Deleted
+2025/11/14 17:24:57 INFO  : 005/Scenario 2/simulator/polaris-events-2025-09-10T10:52:56.db: Deleted
+2025/11/14 17:24:57 INFO  : 016/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 018/Scenario 2/simulator/018_sept_scenario_2.db: Deleted
+2025/11/14 17:24:57 INFO  : 020/Scenario 2/simulator/020_sept_scenario_2.db: Deleted
+2025/11/14 17:24:57 INFO  : 003/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 015/Scenario 2/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 016/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 023/Scenario 2/simulator/023_sept_scenario_2.db: Deleted
+2025/11/14 17:24:57 INFO  : 006/Scenario 3/simulator/006_sept_scenario_3.db: Deleted
+2025/11/14 17:24:57 INFO  : 006/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 007/Scenario 2/simulator/007_sept_scenario_2.db: Deleted
+2025/11/14 17:24:57 INFO  : 011/Scenario 3/simulator/011_sept_scenario_3.db: Deleted
+2025/11/14 17:24:57 INFO  : 009/Scenario 2/simulator/009_sept_scenario_2.db: Deleted
+2025/11/14 17:24:57 INFO  : 003/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 003/Scenario 2/simulator/polaris-events-2025-09-26T14:43:32.db: Deleted
+2025/11/14 17:24:57 INFO  : 020/Scenario 2/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 023/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 017/Scenario 1/simulator/017_sept_scenario_1.db: Deleted
+2025/11/14 17:24:57 INFO  : 016/Scenario 3/simulator/016_scenario_2.db: Deleted
+2025/11/14 17:24:57 INFO  : 006/Scenario 2/simulator/006_sept_scenario_2.db: Deleted
+2025/11/14 17:24:57 INFO  : 015/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 011/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 018/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 020/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 020/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 006/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 005/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 009/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 009/Scenario 3/simulator/polaris-events-2025-09-10T12:39:27.db: Deleted
+2025/11/14 17:24:57 INFO  : 017/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 007/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 004/Scenario 1/simulator/polaris-events-2025-09-10T09:23:09.db: Deleted
+2025/11/14 17:24:57 INFO  : 017/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 020/Scenario 3/simulator/020_sept_scenario_3.db: Deleted
+2025/11/14 17:24:57 INFO  : 015/Scenario 2/simulator/015_sept_scenario_2.db: Deleted
+2025/11/14 17:24:57 INFO  : 001/Scenario 3/simulator/001_sept_scenario_3.db: Deleted
+2025/11/14 17:24:57 INFO  : 004/Scenario 2/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 009/Scenario 1/simulator/009_scenario_1.db: Deleted
+2025/11/14 17:24:57 INFO  : 013/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 023/Scenario 2/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 019/Scenario 2/simulator/019_sept_scenario_2.db: Deleted
+2025/11/14 17:24:57 INFO  : 002/Scenario 3/simulator/002_sept_scenario_3.db: Deleted
+2025/11/14 17:24:57 INFO  : 005/Scenario 1/simulator/005_scenario_1.db: Deleted
+2025/11/14 17:24:57 INFO  : 009/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 011/Scenario 2/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 013/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 014/Scenario 2/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 008/Scenario 2/simulator/008_sept_scenario_2.db: Deleted
+2025/11/14 17:24:57 INFO  : 011/Scenario 1/simulator/011_sept_scenario_1.db: Deleted
+2025/11/14 17:24:57 INFO  : 002/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 011/Scenario 2/simulator/011_sept_scenario_2.db: Deleted
+2025/11/14 17:24:57 INFO  : 006/Scenario 1/simulator/polaris-events-2025-09-04T09:00:27.db: Deleted
+2025/11/14 17:24:57 INFO  : 014/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 007/Scenario 1/simulator/007_sept_scenario_1.db: Deleted
+2025/11/14 17:24:57 INFO  : 007/Scenario 2/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 008/Scenario 1/simulator/008_sept_scenario_1.db: Deleted
+2025/11/14 17:24:57 INFO  : 001/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 001/Scenario 1/simulator/001_sept_scenario_1.db: Deleted
+2025/11/14 17:24:57 INFO  : 002/Scenario 2/simulator/polaris-events-2025-09-10T07:59:22.db: Deleted
+2025/11/14 17:24:57 INFO  : 014/Scenario 1/simulator/014_sept_scenario_1.db: Deleted
+2025/11/14 17:24:57 INFO  : 004/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 016/Scenario 2/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 023/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 018/Scenario 3/simulator/018_sept_scenario_3.db: Deleted
+2025/11/14 17:24:57 INFO  : 019/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 010/Scenario 2/simulator/polaris-events-2025-09-04T11:19:38.db: Deleted
+2025/11/14 17:24:57 INFO  : 023/Scenario 3/simulator/023_sept_scenario_3.db: Deleted
+2025/11/14 17:24:57 INFO  : 006/Scenario 2/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 004/Scenario 3/simulator/polaris-events-2025-09-11T08:13:02.db: Deleted
+2025/11/14 17:24:57 INFO  : 013/Scenario 2/simulator/013_sept_scenario_2.db: Deleted
+2025/11/14 17:24:57 INFO  : 013/Scenario 3/simulator/013_sept_scenario_3.db: Deleted
+2025/11/14 17:24:57 INFO  : 016/Scenario 2/simulator/016_sept_scenario_2.db: Deleted
+2025/11/14 17:24:57 INFO  : 023/Scenario 1/simulator/023_sept_scenario_1.db: Deleted
+2025/11/14 17:24:57 INFO  : 017/Scenario 2/simulator/017_sept_scenario_2.db: Deleted
+2025/11/14 17:24:57 INFO  : 001/Scenario 2/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 008/Scenario 2/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 018/Scenario 1/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 014/Scenario 3/simulator/014_sept_scenario_3_loss.db: Deleted
+2025/11/14 17:24:57 INFO  : 003/Scenario 1/simulator/003_sept_scenario_1.db: Deleted
+2025/11/14 17:24:57 INFO  : 007/Scenario 3/simulator/007_sept_scenario_3.db: Deleted
+2025/11/14 17:24:57 INFO  : 019/Scenario 3/taskRecognition/raw_inputs.parquet: Deleted
+2025/11/14 17:24:57 INFO  : 023/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 023/Scenario 2/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 023/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 020/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 020/Scenario 2/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 020/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 019/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 019/Scenario 2/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 019/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 018/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 018/Scenario 2/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 018/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 017/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 017/Scenario 2/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 017/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 016/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 016/Scenario 2/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 016/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 015/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 015/Scenario 2/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 015/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 014/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 014/Scenario 2/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 014/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 013/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 013/Scenario 2/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 013/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 011/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 011/Scenario 2/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 011/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 010/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 009/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 009/Scenario 2/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 009/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 008/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 008/Scenario 2/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 008/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 007/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 007/Scenario 2/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 007/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 006/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 006/Scenario 2/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 006/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 005/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 005/Scenario 2/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 005/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 004/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 004/Scenario 2/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 004/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 003/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 003/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 002/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 002/Scenario 2/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 002/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 001/Scenario 3/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 001/Scenario 2/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 001/Scenario 1/taskRecognition: Removing directory
+2025/11/14 17:24:57 INFO  : 
+Transferred:   	  759.395 MiB / 759.395 MiB, 100%, 7.300 MiB/s, ETA 0s
+Checks:               447 / 447, 100%, Listed 1578
+Deleted:              115 (files), 57 (dirs), 262.918 GiB (freed)
+Transferred:            1 / 1, 100%
+Elapsed time:      1m47.7s
+
+2025/11/14 17:27:32 INFO  : Starting transaction limiter: max 8 transactions/s with burst 16
+2025/11/14 17:27:33 INFO  : 005/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 005/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 005/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 008/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 008/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 008/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 002/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 002/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 002/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 004/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 004/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 004/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 001/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 001/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 001/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 003/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 003/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 006/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 006/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 006/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 007/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 007/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 007/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 009/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 009/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 009/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 010/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 011/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 011/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 011/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 013/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 013/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 013/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 014/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 014/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 014/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 015/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 015/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 015/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 016/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 016/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 016/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 017/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 017/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 017/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 018/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 018/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 018/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 005/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 019/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 019/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 019/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:33 INFO  : 008/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:34 INFO  : 005/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:34 INFO  : 002/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:34 INFO  : 020/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:34 INFO  : 020/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:27:34 INFO  : 020/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:34 INFO  : 004/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:34 INFO  : 008/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:34 INFO  : 005/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:34 INFO  : 001/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:34 INFO  : 002/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:35 INFO  : 003/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:35 INFO  : 023/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 17:27:35 INFO  : 023/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 17:27:35 INFO  : 023/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 17:27:35 INFO  : 006/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:35 INFO  : 007/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:35 INFO  : 004/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:35 INFO  : 008/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:35 INFO  : 009/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:35 INFO  : 010/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:36 INFO  : 001/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:36 INFO  : 011/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:36 INFO  : 013/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:36 INFO  : 002/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:36 INFO  : 003/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:36 INFO  : 014/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:36 INFO  : 015/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:37 INFO  : 006/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:37 INFO  : 016/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:37 INFO  : 007/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:37 INFO  : 017/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:37 INFO  : 004/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:37 INFO  : 018/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:38 INFO  : 009/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:38 INFO  : 019/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:38 INFO  : 010/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:38 INFO  : 001/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:38 INFO  : 011/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:39 INFO  : 013/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:39 INFO  : 020/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:39 INFO  : 003/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:39 INFO  : 014/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:40 INFO  : 015/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:40 INFO  : 006/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:40 INFO  : 016/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:40 INFO  : 023/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:41 INFO  : 007/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:41 INFO  : 017/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:41 INFO  : 018/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:42 INFO  : 009/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:42 INFO  : 019/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:43 INFO  : 011/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:44 INFO  : 013/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:44 INFO  : 020/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:46 INFO  : 014/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:46 INFO  : 015/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:47 INFO  : 016/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:47 INFO  : 023/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:47 INFO  : 017/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:48 INFO  : 018/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:49 INFO  : 019/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:52 INFO  : 020/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:27:55 INFO  : 023/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 17:28:24 INFO  : There was nothing to transfer
+2025/11/14 17:28:24 INFO  : 
+Transferred:   	          0 B / 0 B, -, 0 B/s, ETA -
+Checks:               333 / 333, 100%, Listed 1407
+Elapsed time:        51.4s
+
+2025/11/14 17:30:45 INFO  : Starting transaction limiter: max 8 transactions/s with burst 16
+2025/11/14 17:31:36 INFO  : There was nothing to transfer
+2025/11/14 17:31:36 INFO  : 
+Transferred:   	          0 B / 0 B, -, 0 B/s, ETA -
+Checks:               333 / 333, 100%, Listed 1407
+Elapsed time:        51.5s
+
+2025/11/14 17:46:36 INFO  : Starting transaction limiter: max 8 transactions/s with burst 16
+2025/11/14 17:47:28 INFO  : There was nothing to transfer
+2025/11/14 17:47:28 INFO  : 
+Transferred:   	          0 B / 0 B, -, 0 B/s, ETA -
+Checks:               333 / 333, 100%, Listed 1407
+Elapsed time:        51.5s
+
+2025/11/14 17:48:09 INFO  : Starting transaction limiter: max 8 transactions/s with burst 16
+2025/11/14 17:49:01 INFO  : There was nothing to transfer
+2025/11/14 17:49:01 INFO  : 
+Transferred:   	          0 B / 0 B, -, 0 B/s, ETA -
+Checks:               333 / 333, 100%, Listed 1407
+Elapsed time:        51.4s
+
+2025/11/14 17:49:35 INFO  : Starting transaction limiter: max 8 transactions/s with burst 16
+2025/11/14 17:50:27 INFO  : There was nothing to transfer
+2025/11/14 17:50:27 INFO  : 
+Transferred:   	          0 B / 0 B, -, 0 B/s, ETA -
+Checks:               333 / 333, 100%, Listed 1407
+Elapsed time:        51.4s
+
+2025/11/14 17:59:57 INFO  : Starting transaction limiter: max 8 transactions/s with burst 16
+2025/11/14 17:59:58 INFO  : 001/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 18:00:00 INFO  : 001/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 18:00:50 INFO  : 001/Scenario 1/simulator/001_sept_scenario_1.db: Deleted
+2025/11/14 18:00:50 INFO  : 001/Scenario 1/taskRecognition: Removing directory
+2025/11/14 18:00:50 INFO  : There was nothing to transfer
+2025/11/14 18:00:50 INFO  : 
+Transferred:   	          0 B / 0 B, -, 0 B/s, ETA -
+Checks:               334 / 334, 100%, Listed 1409
+Deleted:                1 (files), 1 (dirs), 4.145 GiB (freed)
+Elapsed time:        52.1s
+
+2025/11/14 18:13:23 INFO  : Starting transaction limiter: max 8 transactions/s with burst 16
+2025/11/14 18:13:24 INFO  : 003/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 18:13:24 INFO  : 001/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 18:13:24 INFO  : 001/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 18:13:24 INFO  : 001/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 18:13:24 INFO  : 002/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/14 18:13:24 INFO  : 002/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/14 18:13:24 INFO  : 002/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/14 18:13:25 INFO  : 003/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 18:13:25 INFO  : 001/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 18:13:26 INFO  : 002/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/14 18:13:27 INFO  : 003/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 18:13:27 INFO  : 001/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 18:13:28 INFO  : 002/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/14 18:13:30 INFO  : 001/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 18:13:31 INFO  : 002/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/14 18:14:15 INFO  : 003/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/14 18:14:15 INFO  : 002/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/14 18:14:15 INFO  : 001/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/14 18:14:15 INFO  : 002/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/14 18:14:15 INFO  : 001/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/14 18:14:15 INFO  : 001/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/14 18:14:15 INFO  : 002/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/14 18:14:15 INFO  : 002/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/14 18:14:15 INFO  : 001/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/14 18:14:15 INFO  : 001/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/14 18:14:15 INFO  : 002/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/14 18:14:15 INFO  : 002/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/14 18:14:17 INFO  : 003/Scenario 1/simulator/003_sept_scenario_1.db: Deleted
+2025/11/14 18:14:17 INFO  : 003/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/14 18:14:17 INFO  : 001/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/14 18:14:17 INFO  : 002/Scenario 1/simulator/002_sept_scenario_1.db: Deleted
+2025/11/14 18:14:17 INFO  : 001/Scenario 1/simulator/001_sept_scenario_1.db: Deleted
+2025/11/14 18:14:17 INFO  : 002/Scenario 3/simulator/002_sept_scenario_3.db: Deleted
+2025/11/14 18:14:17 INFO  : 001/Scenario 3/simulator/001_sept_scenario_3.db: Deleted
+2025/11/14 18:14:17 INFO  : 002/Scenario 2/simulator/polaris-events-2025-09-10T07:59:22.db: Deleted
+2025/11/14 18:14:17 INFO  : 001/Scenario 2/simulator/001_sept_scenario_2.db: Deleted
+2025/11/14 18:14:17 INFO  : 003/Scenario 2/simulator/polaris-events-2025-09-26T14:43:32.db: Deleted
+2025/11/14 18:14:17 INFO  : 003/Scenario 1/taskRecognition: Removing directory
+2025/11/14 18:14:17 INFO  : 002/Scenario 3/taskRecognition: Removing directory
+2025/11/14 18:14:17 INFO  : 002/Scenario 2/taskRecognition: Removing directory
+2025/11/14 18:14:17 INFO  : 002/Scenario 1/taskRecognition: Removing directory
+2025/11/14 18:14:17 INFO  : 001/Scenario 3/taskRecognition: Removing directory
+2025/11/14 18:14:17 INFO  : 001/Scenario 2/taskRecognition: Removing directory
+2025/11/14 18:14:17 INFO  : 001/Scenario 1/taskRecognition: Removing directory
+2025/11/14 18:14:17 INFO  : There was nothing to transfer
+2025/11/14 18:14:17 INFO  : 
+Transferred:   	          0 B / 0 B, -, 0 B/s, ETA -
+Checks:               355 / 355, 100%, Listed 1436
+Deleted:               22 (files), 7 (dirs), 36.581 GiB (freed)
+Elapsed time:        53.3s
+
+2025/11/26 10:30:08 INFO  : Starting transaction limiter: max 8 transactions/s with burst 16
+2025/11/26 10:30:10 INFO  : 001/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 001/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 001/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 004/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 004/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 004/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 008/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 008/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 008/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 006/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 006/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 006/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 005/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 005/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 005/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 002/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 002/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 002/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 007/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 007/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 007/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 009/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 009/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 009/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 010/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 013/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 013/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 013/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 011/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 011/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 011/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 014/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 014/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 014/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 016/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 016/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 016/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 015/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 015/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 015/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 003/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 003/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 017/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 017/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 017/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 018/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 018/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 018/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 001/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 019/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 019/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 019/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 004/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 001/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 008/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 020/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 020/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/26 10:30:10 INFO  : 020/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:11 INFO  : 004/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:11 INFO  : 006/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:11 INFO  : 005/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:11 INFO  : 001/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:11 INFO  : 002/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:11 INFO  : 008/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:11 INFO  : 007/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:12 INFO  : 023/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:30:12 INFO  : 023/Scenario 2: Set directory modification time (using SetModTime)
+2025/11/26 10:30:12 INFO  : 023/Scenario 3: Set directory modification time (using SetModTime)
+2025/11/26 10:30:12 INFO  : 009/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:12 INFO  : 004/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:12 INFO  : 006/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:12 INFO  : 010/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:12 INFO  : 013/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:12 INFO  : 005/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:12 INFO  : 011/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:13 INFO  : 014/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:13 INFO  : 002/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:13 INFO  : 016/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:13 INFO  : 008/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:13 INFO  : 007/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:13 INFO  : 015/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:13 INFO  : 003/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:14 INFO  : 017/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:14 INFO  : 018/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:14 INFO  : 009/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:14 INFO  : 006/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:14 INFO  : 010/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:15 INFO  : 019/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:15 INFO  : 013/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:15 INFO  : 005/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:15 INFO  : 011/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:15 INFO  : 020/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:16 INFO  : 014/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:16 INFO  : 002/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:16 INFO  : 016/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:17 INFO  : 007/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:17 INFO  : 015/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:17 INFO  : 003/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:17 INFO  : 023/Scenario 1/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:17 INFO  : 017/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:18 INFO  : 009/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:18 INFO  : 018/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:19 INFO  : 019/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:20 INFO  : 013/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:20 INFO  : 011/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:21 INFO  : 020/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:21 INFO  : 014/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:22 INFO  : 016/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:23 INFO  : 015/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:23 INFO  : 003/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:24 INFO  : 023/Scenario 2/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:24 INFO  : 017/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:25 INFO  : 018/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:26 INFO  : 019/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:28 INFO  : 020/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:30:32 INFO  : 023/Scenario 3/simulator: Set directory modification time (using SetModTime)
+2025/11/26 10:31:09 INFO  : 
+Transferred:   	  158.875 MiB / 1.150 GiB, 13%, 5.345 MiB/s, ETA 3m10s
+Checks:               332 / 332, 100%, Listed 1633
+Transferred:            0 / 1, 0%
+Elapsed time:       1m0.0s
+Transferring:
+ * 001/Scenario 1/videoRe…01_sept_scenario_1.mkv: 13% /1.150Gi, 6.091Mi/s, 2m47s
+
+2025/11/26 10:32:09 INFO  : 
+Transferred:   	  552.875 MiB / 1.150 GiB, 47%, 6.432 MiB/s, ETA 1m37s
+Checks:               332 / 332, 100%, Listed 1633
+Transferred:            0 / 1, 0%
+Elapsed time:       2m0.0s
+Transferring:
+ * 001/Scenario 1/videoRe…01_sept_scenario_1.mkv: 46% /1.150Gi, 6.352Mi/s, 1m38s
+
+2025/11/26 10:33:09 INFO  : 
+Transferred:   	  948.125 MiB / 1.150 GiB, 81%, 6.464 MiB/s, ETA 35s
+Checks:               332 / 332, 100%, Listed 1633
+Transferred:            0 / 1, 0%
+Elapsed time:       3m0.0s
+Transferring:
+ * 001/Scenario 1/videoRe…01_sept_scenario_1.mkv: 80% /1.150Gi, 6.449Mi/s, 35s
+
+2025/11/26 10:33:45 INFO  : 001/Scenario 1/videoRecordings/001_sept_scenario_1.mkv: Multi-thread Copied (new)
+2025/11/26 10:33:45 INFO  : 002/Scenario 1/simulator/002_sept_scenario_1.db: Deleted
+2025/11/26 10:33:45 INFO  : 004/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 013/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 015/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 023/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 015/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 004/Scenario 2/simulator/004_sept_scenario_1.db: Deleted
+2025/11/26 10:33:45 INFO  : 005/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 002/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 014/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 014/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 020/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 019/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 006/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 006/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 002/Scenario 3/simulator/002_sept_scenario_3.db: Deleted
+2025/11/26 10:33:45 INFO  : 014/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 019/Scenario 1/simulator/109_sept_scenario_1.db: Deleted
+2025/11/26 10:33:45 INFO  : 008/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 016/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 008/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 007/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 015/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 013/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 023/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 011/Scenario 2/simulator/011_sept_scenario_2.db: Deleted
+2025/11/26 10:33:45 INFO  : 017/Scenario 2/simulator/017_sept_scenario_2.db: Deleted
+2025/11/26 10:33:45 INFO  : 002/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 020/Scenario 1/simulator/020_sept_scenario_1.db: Deleted
+2025/11/26 10:33:45 INFO  : 008/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 009/Scenario 2/simulator/009_sept_scenario_2.db: Deleted
+2025/11/26 10:33:45 INFO  : 016/Scenario 1/simulator/016_scenario_1.db: Deleted
+2025/11/26 10:33:45 INFO  : 016/Scenario 3/simulator/016_scenario_2.db: Deleted
+2025/11/26 10:33:45 INFO  : 018/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 001/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 004/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 011/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 017/Scenario 3/simulator/017_sept_scenario_3.db: Deleted
+2025/11/26 10:33:45 INFO  : 013/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 011/Scenario 3/simulator/011_sept_scenario_3.db: Deleted
+2025/11/26 10:33:45 INFO  : 008/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 006/Scenario 2/simulator/006_sept_scenario_2.db: Deleted
+2025/11/26 10:33:45 INFO  : 007/Scenario 3/simulator/007_sept_scenario_3.db: Deleted
+2025/11/26 10:33:45 INFO  : 002/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 005/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 005/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 011/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 019/Scenario 3/simulator/019_sept_scenario_3.db: Deleted
+2025/11/26 10:33:45 INFO  : 017/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 004/Scenario 3/simulator/polaris-events-2025-09-11T08:13:02.db: Deleted
+2025/11/26 10:33:45 INFO  : 004/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 013/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 014/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 009/Scenario 3/simulator/polaris-events-2025-09-10T12:39:27.db: Deleted
+2025/11/26 10:33:45 INFO  : 007/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 018/Scenario 2/simulator/018_sept_scenario_2.db: Deleted
+2025/11/26 10:33:45 INFO  : 016/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 023/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 023/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 014/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 007/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 001/Scenario 2/simulator/001_sept_scenario_2.db: Deleted
+2025/11/26 10:33:45 INFO  : 003/Scenario 1/simulator/003_sept_scenario_1.db: Deleted
+2025/11/26 10:33:45 INFO  : 003/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 017/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 003/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 005/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 006/Scenario 1/simulator/polaris-events-2025-09-04T09:00:27.db: Deleted
+2025/11/26 10:33:45 INFO  : 023/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 005/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 004/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 011/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 005/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 002/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 001/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 001/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 008/Scenario 2/simulator/008_sept_scenario_2.db: Deleted
+2025/11/26 10:33:45 INFO  : 020/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 002/Scenario 2/simulator/polaris-events-2025-09-10T07:59:22.db: Deleted
+2025/11/26 10:33:45 INFO  : 013/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 018/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 006/Scenario 3/simulator/006_sept_scenario_3.db: Deleted
+2025/11/26 10:33:45 INFO  : 013/Scenario 3/simulator/013_sept_scenario_3.db: Deleted
+2025/11/26 10:33:45 INFO  : 004/Scenario 1/simulator/polaris-events-2025-09-10T09:23:09.db: Deleted
+2025/11/26 10:33:45 INFO  : 009/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 005/Scenario 3/simulator/005_sept_scenario_3.db: Deleted
+2025/11/26 10:33:45 INFO  : 011/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 018/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 011/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 003/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 016/Scenario 2/simulator/016_sept_scenario_2.db: Deleted
+2025/11/26 10:33:45 INFO  : 016/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 008/Scenario 3/simulator/008_sept_scenario_3.db: Deleted
+2025/11/26 10:33:45 INFO  : 006/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 009/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 018/Scenario 1/simulator/018_sept_scenario_1.db: Deleted
+2025/11/26 10:33:45 INFO  : 009/Scenario 1/simulator/009_scenario_1.db: Deleted
+2025/11/26 10:33:45 INFO  : 019/Scenario 2/simulator/019_sept_scenario_2.db: Deleted
+2025/11/26 10:33:45 INFO  : 001/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 013/Scenario 1/simulator/polaris-events-2025-09-10T14:31:47.db: Deleted
+2025/11/26 10:33:45 INFO  : 015/Scenario 2/simulator/015_sept_scenario_2.db: Deleted
+2025/11/26 10:33:45 INFO  : 001/Scenario 3/simulator/001_sept_scenario_3.db: Deleted
+2025/11/26 10:33:45 INFO  : 015/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 005/Scenario 1/simulator/005_scenario_1.db: Deleted
+2025/11/26 10:33:45 INFO  : 006/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 020/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 018/Scenario 3/simulator/018_sept_scenario_3.db: Deleted
+2025/11/26 10:33:45 INFO  : 023/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 017/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 018/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 015/Scenario 1/simulator/015_sept_scenario_1.db: Deleted
+2025/11/26 10:33:45 INFO  : 017/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 015/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 013/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 019/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 001/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 017/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 001/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 002/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 019/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 005/Scenario 2/simulator/polaris-events-2025-09-10T10:52:56.db: Deleted
+2025/11/26 10:33:45 INFO  : 018/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 010/Scenario 2/simulator/polaris-events-2025-09-04T11:19:38.db: Deleted
+2025/11/26 10:33:45 INFO  : 007/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 006/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 016/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 007/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 014/Scenario 2/simulator/014_sept_scenario_2.db: Deleted
+2025/11/26 10:33:45 INFO  : 009/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 009/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 001/Scenario 1/simulator/001_sept_scenario_1.db: Deleted
+2025/11/26 10:33:45 INFO  : 011/Scenario 1/simulator/011_sept_scenario_1.db: Deleted
+2025/11/26 10:33:45 INFO  : 003/Scenario 2/simulator/polaris-events-2025-09-26T14:43:32.db: Deleted
+2025/11/26 10:33:45 INFO  : 020/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 014/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 016/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 014/Scenario 1/simulator/014_sept_scenario_1.db: Deleted
+2025/11/26 10:33:45 INFO  : 004/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 008/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 007/Scenario 2/simulator/007_sept_scenario_2.db: Deleted
+2025/11/26 10:33:45 INFO  : 020/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 015/Scenario 3/simulator/015_sept_scenario_3.db: Deleted
+2025/11/26 10:33:45 INFO  : 015/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 008/Scenario 1/simulator/008_sept_scenario_1.db: Deleted
+2025/11/26 10:33:45 INFO  : 010/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 019/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 003/Scenario 3/simulator/003_sept_scenario_3.db: Deleted
+2025/11/26 10:33:45 INFO  : 014/Scenario 3/simulator/014_sept_scenario_3_loss.db: Deleted
+2025/11/26 10:33:45 INFO  : 007/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 017/Scenario 1/simulator/017_sept_scenario_1.db: Deleted
+2025/11/26 10:33:45 INFO  : 010/Scenario 1/simulator/polaris-events-2025-09-05T14:59:38.db: Deleted
+2025/11/26 10:33:45 INFO  : 008/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 016/Scenario 1/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 019/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 010/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 007/Scenario 1/simulator/007_sept_scenario_1.db: Deleted
+2025/11/26 10:33:45 INFO  : 001/Scenario 1/videoRecordings/001_sept_scenaio_1.mkv: Deleted
+2025/11/26 10:33:45 INFO  : 020/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 018/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 017/Scenario 1/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 011/Scenario 2/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 019/Scenario 2/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 003/Scenario 3/taskRecognition/raw_et.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 013/Scenario 2/simulator/013_sept_scenario_2.db: Deleted
+2025/11/26 10:33:45 INFO  : 002/Scenario 3/taskRecognition/raw_asd.parquet: Deleted
+2025/11/26 10:33:45 INFO  : 020/Scenario 2/simulator/020_sept_scenario_2.db: Deleted
+2025/11/26 10:33:45 INFO  : 023/Scenario 1/simulator/023_sept_scenario_1.db: Deleted
+2025/11/26 10:33:45 INFO  : 023/Scenario 3/simulator/023_sept_scenario_3.db: Deleted
+2025/11/26 10:33:45 INFO  : 020/Scenario 3/simulator/020_sept_scenario_3.db: Deleted
+2025/11/26 10:33:45 INFO  : 023/Scenario 2/simulator/023_sept_scenario_2.db: Deleted
+2025/11/26 10:33:45 INFO  : 001/Scenario 1/videoRecordings: Set directory modification time (using SetModTime)
+2025/11/26 10:33:45 INFO  : 001/Scenario 1: Set directory modification time (using SetModTime)
+2025/11/26 10:33:45 INFO  : 001: Set directory modification time (using SetModTime)
+2025/11/26 10:33:45 INFO  : 023/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 023/Scenario 2/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 023/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 020/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 020/Scenario 2/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 020/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 019/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 019/Scenario 2/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 019/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 018/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 018/Scenario 2/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 018/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 017/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 017/Scenario 2/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 017/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 016/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 016/Scenario 2/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 016/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 015/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 015/Scenario 2/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 015/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 014/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 014/Scenario 2/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 014/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 013/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 013/Scenario 2/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 013/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 011/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 011/Scenario 2/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 011/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 010/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 009/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 009/Scenario 2/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 009/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 008/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 008/Scenario 2/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 008/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 007/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 007/Scenario 2/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 007/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 006/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 006/Scenario 2/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 006/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 005/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 005/Scenario 2/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 005/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 004/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 004/Scenario 2/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 004/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 003/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 003/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 002/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 002/Scenario 2/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 002/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 001/Scenario 3/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 001/Scenario 2/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 001/Scenario 1/taskRecognition: Removing directory
+2025/11/26 10:33:45 INFO  : 
+Transferred:   	    1.150 GiB / 1.150 GiB, 100%, 6.553 MiB/s, ETA 0s
+Checks:               502 / 502, 100%, Listed 1633
+Deleted:              170 (files), 57 (dirs), 263.978 GiB (freed)
+Transferred:            1 / 1, 100%
+Elapsed time:      3m35.8s
+
