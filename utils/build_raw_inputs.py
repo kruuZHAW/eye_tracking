@@ -3,11 +3,13 @@ from pathlib import Path
 from typing import Optional, Tuple, List
 import numpy as np
 import pandas as pd
-from zoneinfo import ZoneInfo
+
+from utils.asd_events import build_asd_frame_from_db
 
 # --- imports for protobuf mouse decoding ---
 from aware_protos.aware.proto import messages_pb2
 
+from zoneinfo import ZoneInfo
 TZ = ZoneInfo("Europe/Zagreb")
 
 # ---------- helpers: discovery ----------
@@ -156,74 +158,74 @@ def build_et_frame(tsv_path: Path) -> pd.DataFrame:
     return df[cols].sort_values("Recording timestamp [ms]")
 
 # ---------- Simulator: load mouse for window ----------
-def load_mouse_positions(db_path: Path, start_ms: int, end_ms: int, batch=50_000) -> pd.DataFrame:
-    """ Return a DataFrame with epoch_ms and:
-      - 'asd_event.mouse_position.x' (Int32)
-      - 'asd_event.mouse_position.y' (Int32)
-    Only rows whose payload has the mouse_position message are populated"""
+# def load_mouse_positions(db_path: Path, start_ms: int, end_ms: int, batch=50_000) -> pd.DataFrame:
+#     """ Return a DataFrame with epoch_ms and:
+#       - 'asd_event.mouse_position.x' (Int32)
+#       - 'asd_event.mouse_position.y' (Int32)
+#     Only rows whose payload has the mouse_position message are populated"""
 
-    # Read-only, immutable: faster & avoids locks
-    con = sqlite3.connect(f"file:{db_path}?mode=ro&immutable=1", uri=True)
-    con.text_factory = bytes
-    # Read-only speed PRAGMAs (best-effort; safe if ignored)
-    con.execute("PRAGMA query_only=ON")
-    con.execute("PRAGMA mmap_size=268435456")        # 256 MiB
-    con.execute("PRAGMA temp_store=MEMORY")
+#     # Read-only, immutable: faster & avoids locks
+#     con = sqlite3.connect(f"file:{db_path}?mode=ro&immutable=1", uri=True)
+#     con.text_factory = bytes
+#     # Read-only speed PRAGMAs (best-effort; safe if ignored)
+#     con.execute("PRAGMA query_only=ON")
+#     con.execute("PRAGMA mmap_size=268435456")        # 256 MiB
+#     con.execute("PRAGMA temp_store=MEMORY")
 
-    sql = ('SELECT id, epoch_ms, payload FROM "events" '
-           'WHERE epoch_ms BETWEEN ? AND ? '
-           'ORDER BY epoch_ms')
-    cur = con.execute(sql, (start_ms, end_ms))
+#     sql = ('SELECT id, epoch_ms, payload FROM "events" '
+#            'WHERE epoch_ms BETWEEN ? AND ? '
+#            'ORDER BY epoch_ms')
+#     cur = con.execute(sql, (start_ms, end_ms))
 
-    ids, epochs, xs, ys = [], [], [], []
-    while True:
-        rows = cur.fetchmany(batch)
-        if not rows:
-            break
-        for id_, ms, blob in rows:
-            ev = messages_pb2.Event()
-            ev.ParseFromString(blob)
+#     ids, epochs, xs, ys = [], [], [], []
+#     while True:
+#         rows = cur.fetchmany(batch)
+#         if not rows:
+#             break
+#         for id_, ms, blob in rows:
+#             ev = messages_pb2.Event()
+#             ev.ParseFromString(blob)
 
-            ae = getattr(ev, "asd_event", None)
-            if ae is not None and ae.HasField("mouse_position"):
-                # proto3 scalars default to 0; we only read them when the message exists
-                x = int(ae.mouse_position.x)
-                y = int(ae.mouse_position.y)
-            else:
-                x = y = None
+#             ae = getattr(ev, "asd_event", None)
+#             if ae is not None and ae.HasField("mouse_position"):
+#                 # proto3 scalars default to 0; we only read them when the message exists
+#                 x = int(ae.mouse_position.x)
+#                 y = int(ae.mouse_position.y)
+#             else:
+#                 x = y = None
 
-            ids.append(int(id_))
-            epochs.append(int(ms))
-            xs.append(x)
-            ys.append(y)
+#             ids.append(int(id_))
+#             epochs.append(int(ms))
+#             xs.append(x)
+#             ys.append(y)
 
-    con.close()
+#     con.close()
 
-    df = pd.DataFrame({
-        "id": ids,
-        "epoch_ms": epochs,
-        "Mouse position X": pd.Series(xs, dtype="Int32"),
-        "Mouse position Y": pd.Series(ys, dtype="Int32"),
-    }).sort_values("epoch_ms").reset_index(drop=True)
+#     df = pd.DataFrame({
+#         "id": ids,
+#         "epoch_ms": epochs,
+#         "Mouse position X": pd.Series(xs, dtype="Int32"),
+#         "Mouse position Y": pd.Series(ys, dtype="Int32"),
+#     }).sort_values("epoch_ms").reset_index(drop=True)
     
-    df = df.dropna(subset=["Mouse position X", "Mouse position Y"], how="all")
-    return df.sort_values("epoch_ms")
+#     df = df.dropna(subset=["Mouse position X", "Mouse position Y"], how="all")
+#     return df.sort_values("epoch_ms")
 
-# ---------- Merge & write ----------
-def merge_and_write(et: pd.DataFrame, mouse: pd.DataFrame, out_parquet: Path, tol_ms=8): # tol = 8ms ~ 120Hz which is ET frequency
-    # Union timeline, then nearest-asof with tolerance
-    dfe = et.astype({"epoch_ms":"int64"}).sort_values("epoch_ms")
-    dfm = mouse.astype({"epoch_ms":"int64"}).sort_values("epoch_ms")[["epoch_ms","Mouse position X","Mouse position Y"]]
+# # ---------- Merge & write ----------
+# def merge_and_write(et: pd.DataFrame, mouse: pd.DataFrame, out_parquet: Path, tol_ms=8): # tol = 8ms ~ 120Hz which is ET frequency
+#     # Union timeline, then nearest-asof with tolerance
+#     dfe = et.astype({"epoch_ms":"int64"}).sort_values("epoch_ms")
+#     dfm = mouse.astype({"epoch_ms":"int64"}).sort_values("epoch_ms")[["epoch_ms","Mouse position X","Mouse position Y"]]
     
-    ### Merging ET and mouse with a tolerance -> Keep ET rows but fills mouse when close enough
-    merged = pd.merge_asof(dfe, dfm, on="epoch_ms", direction="nearest", tolerance=tol_ms)
+#     ### Merging ET and mouse with a tolerance -> Keep ET rows but fills mouse when close enough
+#     merged = pd.merge_asof(dfe, dfm, on="epoch_ms", direction="nearest", tolerance=tol_ms)
 
-    ts_utc = pd.to_datetime(merged["epoch_ms"], unit="ms", utc=True)
-    merged["ts_cet"] = ts_utc.dt.tz_convert(TZ)
+#     ts_utc = pd.to_datetime(merged["epoch_ms"], unit="ms", utc=True)
+#     merged["ts_cet"] = ts_utc.dt.tz_convert(TZ)
 
-    out_parquet.parent.mkdir(parents=True, exist_ok=True)
-    merged.to_parquet(out_parquet, index=False)
-    return merged
+#     out_parquet.parent.mkdir(parents=True, exist_ok=True)
+#     merged.to_parquet(out_parquet, index=False)
+#     return merged
 
 # ---------- Orchestrate one scenario ----------
 def process_scenario(scen_dir: Path) -> Optional[Path]:
@@ -233,20 +235,33 @@ def process_scenario(scen_dir: Path) -> Optional[Path]:
         print(f"[skip] Missing ET or DB in: {scen_dir}", file=sys.stderr)
         return None
 
-    out_parquet = taskrecognition_dir(scen_dir) / "raw_inputs.parquet"
-    if not needs_rebuild(et, db, out_parquet):
-        print(f"[ok] Up-to-date: {out_parquet}")
-        return out_parquet
+    out_et = taskrecognition_dir(scen_dir) / "raw_et.parquet"
+    # if not needs_rebuild(et, db, out_parquet):
+    #     print(f"[ok] Up-to-date: {out_parquet}")
+    #     return out_parquet
+    out_asd = taskrecognition_dir(scen_dir) / "raw_asd.parquet"
+    
 
     try:
         df_et = build_et_frame(et)
+        df_asd = build_asd_frame_from_db(db, int(df_et["epoch_ms"].min()), int(df_et["epoch_ms"].max()))
         if df_et.empty:
+            # If no ET, we stop
             print(f"[warn] ET slice empty in {et}", file=sys.stderr)
             return None
-        df_mouse = load_mouse_positions(db, int(df_et["epoch_ms"].min()), int(df_et["epoch_ms"].max()))
-        merged = merge_and_write(df_et, df_mouse, out_parquet, tol_ms=8)
-        print(f"[write] {out_parquet}  rows={len(merged)}")
-        return out_parquet
+        out_et.parent.mkdir(parents=True, exist_ok=True)
+        df_et.to_parquet(out_et, index=False)
+        if df_asd.empty:
+            # If no ASD, we warn only
+            print(f"[warn] ASD slice empty in {db}", file=sys.stderr)
+        else:
+            out_asd.parent.mkdir(parents=True, exist_ok=True)
+            df_asd.to_parquet(out_asd, index=False)
+        
+        # df_mouse = load_mouse_positions(db, int(df_et["epoch_ms"].min()), int(df_et["epoch_ms"].max()))
+        # merged = merge_and_write(df_et, df_mouse, out_parquet, tol_ms=8)
+        # print(f"[write] {out_parquet}  rows={len(merged)}")
+        return out_et, out_asd
     except Exception as e:
         print(f"[error] {scen_dir}: {e}", file=sys.stderr)
         traceback.print_exc()
@@ -272,11 +287,15 @@ def main():
     if not scenarios:
         print("[warn] No scenarios found.", file=sys.stderr)
 
-    wrote = 0
+    wrote_et = 0
+    wrote_asd = 0
     for pid, sid, scen_dir in scenarios:
         res = process_scenario(scen_dir)
-        if res: wrote += 1
-    print(f"Done. Wrote/confirmed {wrote} parquet file(s).")
+        if res:
+            if res[0]: wrote_et += 1
+            if res[1]: wrote_asd += 1
+    print(f"Done. Wrote/confirmed {wrote_et} ET parquet file(s).")
+    print(f"Done. Wrote/confirmed {wrote_asd} ASD parquet file(s).")
 
 if __name__ == "__main__":
     main()
