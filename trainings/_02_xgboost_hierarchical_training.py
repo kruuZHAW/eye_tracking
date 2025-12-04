@@ -1,16 +1,19 @@
 import os
 import sys
-from typing import Union, Dict, Tuple
 import json
 from pathlib import Path
-# sys.path.append(str(Path('~/git_folder/eye_tracking/').expanduser()))
-sys.path.append(str(Path('~/git/eye_tracking/').expanduser()))
+sys.path.append(str(Path('~/git_folder/eye_tracking/').expanduser()))
+# sys.path.append(str(Path('~/git/eye_tracking/').expanduser()))
 
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 from collections import Counter
-from utils.data_processing import GazeMetricsProcessor, MouseMetricsProcessor
-from utils.helper import load_and_process, find_overlapping_tasks, drop_chunks_with_all_zero_features
+
+from utils.data_processing_gaze_data import GazeMetricsProcessor
+from utils.data_processing_mouse_data import MouseMetricsProcessor
+from utils.data_processing_asd_events import ASDEventsMetricsProcessor
+from utils.helper import load_and_process_et, load_asd_scenario_data, drop_chunks_with_nan_et
 
 from tsfresh import extract_features
 from tsfresh.utilities.dataframe_functions import impute
@@ -122,6 +125,77 @@ def extract_tsfresh_features_from_chunks(
 
     return final_features
 
+def extract_tsfresh_features_from_multiscale_chunks(
+    multiscale_chunks: dict[str, dict[str, pd.DataFrame]],
+    columns_to_extract: list[str],
+    window_keys: tuple[str] = ("short", "mid", "long"),
+    pval_threshold: float = 0.05,
+    n_jobs: int = 4,
+) -> pd.DataFrame:
+    """
+    Extract TSFresh features from multi-scale windows.
+
+    Parameters
+    ----------
+    multiscale_chunks : dict[str, dict[str, pd.DataFrame]]
+        { id: { "short": df_short, "mid": df_mid, "long": df_long } }
+    columns_to_extract : list[str]
+        Columns to use as time series for TSFresh.
+    window_keys : tuple[str, ...]
+        Names of the scales (keys in the inner dict).
+    pval_threshold : float
+        p-value threshold for relevance filtering (per scale).
+    n_jobs : int
+        TSFresh parallel jobs (per scale).
+
+    Returns
+    -------
+    features_df : DataFrame
+        One row per id, with all selected TSFresh features from each scale,
+        columns prefixed with e.g. "short_", "mid_", "long_".
+    """
+
+    merged_features = None
+
+    for wname in window_keys:
+        # Collect all chunks for a given scale
+        scale_chunks: dict[str, pd.DataFrame] = {}
+
+        for uid, windows in multiscale_chunks.items():
+            if wname not in windows:
+                continue
+            df = windows[wname]
+            if df is None or df.empty:
+                continue  
+
+            scale_chunks[uid] = df
+
+        if not scale_chunks:
+            continue
+
+        scale_features = extract_tsfresh_features_from_chunks(
+            scale_chunks,
+            columns_to_extract=columns_to_extract,
+            pval_threshold=pval_threshold,
+            n_jobs=n_jobs,
+        )
+
+        scale_features = scale_features.copy()
+        scale_features = scale_features.rename(
+            columns={col: f"{wname}_{col}" for col in scale_features.columns if col != "id"}
+        )
+
+        if merged_features is None:
+            merged_features = scale_features
+        else:
+            merged_features = merged_features.merge(scale_features, on="id", how="outer")
+
+    if merged_features is None:
+        # No scales produced features
+        return pd.DataFrame(columns=["id"])
+
+    return merged_features
+
 def sanitize_column_names(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     df.columns = (
@@ -230,167 +304,119 @@ if __name__ == "__main__":
     # ------------------------- 0. PARAMETERS -------------------------
     
     # Directories
-    # store_data_dir = str(Path('~/store/aware/training_data_raw_inputs').expanduser())
-    store_dir = str(Path('~/store/aware').expanduser())
-    store_raw_inputs_dir = os.path.join(store_dir, "training_data_raw_inputs")
-    jcafnet_metadata_path = "logs/jcafnet_classifier/silvery-morning-8/jcafnet_metadata.json" # Change to suitable path
+    # store_dir = str(Path('~/store/aware').expanduser())
+    store_dir = "/store/kruu/eye_tracking/training_data"
     save_model_path = "logs/xgboost_hierarchical"
     split_names = ["train", "val", "test"]
     store_splits_dir = os.path.join(store_dir, "splits")
     store_split_dirs = [os.path.join(store_splits_dir, split_name) for split_name in split_names]
     
     # Temporary storage for better I/O performance
-    temp_data_dir = "/scratch/aware"
-    temp_raw_inputs_dir = os.path.join(temp_data_dir, "training_data_raw_inputs")
-    temp_splits_dir = os.path.join(temp_data_dir, "splits")
-    temp_split_dirs = [os.path.join(temp_splits_dir, split_name) for split_name in split_names]
+    # Use that to load data if on GPU cluster
+    # temp_data_dir = "/scratch/aware"
+    # temp_raw_inputs_dir = os.path.join(temp_data_dir, "training_data_raw_inputs")
+    # temp_splits_dir = os.path.join(temp_data_dir, "splits")
+    # temp_split_dirs = [os.path.join(temp_splits_dir, split_name) for split_name in split_names]
     
     #Features names
-    features = ['Recording timestamp [ms]', 'Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X', 'Mouse position Y', 'Event']
-    interpolate_cols = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X', 'Mouse position Y', "Blink"]
-    fill_columns = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X', 'Mouse position Y']
-    columns_to_extract = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Mouse position X', 'Mouse position Y'] # Columns for TSFresh
-    cols_to_drop = ["Seconds per raw time unit", "Timestamp column", "Gaze X column", "Gaze Y column", "Mouse X column", "Mouse Y column"] # Columns to trop before XGBoost
-    
-    # # Define Group K-Fold
-    # n_splits = 5
+    features = ['Recording timestamp [ms]', 'epoch_ms', 'Gaze point X [DACS px]', 'Gaze point Y [DACS px]', 'Event']
+    interpolate_cols = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]']
+    fill_columns = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]']
+    columns_to_extract = ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]'] # Columns for TSFresh
     
     # ------------------------- 1. LOADING DATASET -------------------------
     
-    # Loading data from scratch without fixed timestep resampling
-    # Keeping the id split for train/test/val made during the training of the JCAFNET
-    
     # Loading data from scratch
-    chunks_xgboost, blinks, atco_task_map = load_and_process(root_dir=temp_raw_inputs_dir, 
-                                                             columns=features, 
-                                                             interpolate_cols=interpolate_cols, 
-                                                             fill_cols=fill_columns, 
-                                                             time_resampling=False,
-                                                             fixed_window_ms=15000, # Should be identical to jcafnet script
-                                                             window_step_ms=5000, # Should be identical to jcafnet script
-                                                             min_task_presence=0.5 # Should be identical to jcafnet script
-                                                             )
+    chunks_et, blinks, atco_task_map = load_and_process_et(root_dir = store_dir,
+                                                            columns = features,
+                                                            interpolate_cols = interpolate_cols,
+                                                            fill_cols = fill_columns,
+                                                            window_short_ms = 5000,
+                                                            window_mid_ms = 10000,
+                                                            window_long_ms = 25000,
+                                                            task_margin_ms = 2000,
+                                                            step_ms = 3000,
+                                                            filter_outliers = True,
+                                                            time_resampling=False)
     
-    # Manually filling because not handled by load_and_process if time_resampling = False
-    for task_id, chunk in chunks_xgboost.items():
-        for col in fill_columns:
-            chunks_xgboost[task_id][col] = chunks_xgboost[task_id][col].ffill().bfill()
-    
-    if Path(jcafnet_metadata_path).exists():
-        print("Loading JCAFNet metadata for consistent train test split... ")
-        with open(jcafnet_metadata_path) as f:
-            metadata = json.load(f)
-    else:
-        raise FileNotFoundError(f"Metadata for train/test split do not exist in the specified path {jcafnet_metadata_path}.")
-    
-    train_ids = metadata["train_ids"]
-    val_ids = metadata["val_ids"]
-    test_ids = metadata["test_ids"]
-    
-    from collections import defaultdict, Counter
     print("Number of total occurences per task for all data: ")
-    task_window_counts = Counter(int(df["Task_id"].iloc[0]) for df in chunks_xgboost.values())
+    task_window_counts = Counter(int(key.split('_')[2]) for key in chunks_et.keys())
     for task_id in sorted(task_window_counts):
         print(f"Task {task_id}: {task_window_counts[task_id]} windows")
     
-    # Optional: finding tasks that are overlapping
-    # overlaps = find_overlapping_tasks(chunks_xgboost)
-    # for participant, overlapping_pairs in overlaps.items():
-    #     print(f"Participant {participant} has overlapping tasks:")
-    #     for t1, t2 in overlapping_pairs:
-    #         print(f"  - {t1} overlaps with {t2}")
-    
-    # Dropping id that have one of the features to all zeros: additional safety barrier
-    cleaned_chunks = drop_chunks_with_all_zero_features(chunks_xgboost,
-                                                             feature_cols=columns_to_extract,
-                                                             threshold=0.5)
+    # Dropping id that have too many nans for the gaze
+    cleaned_chunks = drop_chunks_with_nan_et(chunks_et, threshold=0.8)
     
     print("Number of total occurences per task after drop: ")
-    task_window_counts = Counter(int(df["Task_id"].iloc[0]) for df in cleaned_chunks.values())
+    task_window_counts = Counter(int(key.split('_')[2]) for key in cleaned_chunks.keys())
     for task_id in sorted(task_window_counts):
         print(f"Task {task_id}: {task_window_counts[task_id]} windows")
 
     # ------------------------- 2. MANUAL FEATURE EXTRACTION -------------------------
-
-    gaze_metrics = []
-    mouse_metrics = []
     
-    for id, chunk in cleaned_chunks.items():
+    asd_scenarios = load_asd_scenario_data(root_dir=store_dir)
+    prepared_asd = {}
+    for key, df_sc in asd_scenarios.items():
+        asd = df_sc.sort_values("epoch_ms").set_index("epoch_ms")
+        prepared_asd[key] = asd
+    
+    window_keys = ("short", "mid", "long")
+    rows = []
+    
+    print("Extracting handmade features...")
+    for uid, windows in tqdm(cleaned_chunks.items()):
+
+        row = {"id": uid}
+        row["participant_id"] = windows["short"]["Participant name"].iloc[0]
+        row["Task_id"] = windows["short"]["Task_id"].iloc[0]
         
-        # Extracting gaze metrics
-        gaze_processor = GazeMetricsProcessor(chunk, timestamp_unit="ms")
-        gaze_compute = gaze_processor.compute_all_metrics()
-        gaze_compute.update({"id": id})
-        gaze_compute.update({"participant_id": chunk["Participant name"].iloc[0]})
-        gaze_compute.update({"Task_id": chunk["Task_id"].iloc[0]})
-        gaze_metrics.append(gaze_compute)
-        
-        # Extracting mouse metrics
-        mouse_processor = MouseMetricsProcessor(chunk, timestamp_unit="ms")
-        mouse_compute = mouse_processor.compute_all_metrics()
-        mouse_compute.update({"id": id})
-        mouse_compute.update({"participant_id": chunk["Participant name"].iloc[0]})
-        mouse_compute.update({"Task_id": chunk["Task_id"].iloc[0]})
-        mouse_metrics.append(mouse_compute)
-        
-    gaze_metrics_df = pd.DataFrame(gaze_metrics)
-    mouse_metrics_df = pd.DataFrame(mouse_metrics)
+        p_s_id = "_".join(uid.split("_")[:2])
+        scenario_asd = prepared_asd.get(p_s_id)
+        if scenario_asd is None:
+            continue
+
+        for wname in window_keys:
+            chunk = windows[wname]
+            min_epoch = chunk["epoch_ms"].min()
+            max_epoch = chunk["epoch_ms"].max()
+            # fast time slice thanks to index on epoch_ms
+            window_asd = scenario_asd.loc[min_epoch:max_epoch].reset_index()
+            
+            # Gaze metrics
+            gaze_processor = GazeMetricsProcessor(chunk, timestamp_unit="ms")
+            gaze_metrics = gaze_processor.compute_all_metrics()   
+            prefixed_gaze = {f"{wname}_{k}": v for k, v in gaze_metrics.items()}
+            row.update(prefixed_gaze)
+            
+            # Mouse metrics
+            mouse_processor = MouseMetricsProcessor(window_asd, resample=False)
+            mouse_metrics = mouse_processor.compute_all_metrics()   
+            prefixed_mouse = {f"{wname}_{k}": v for k, v in mouse_metrics.items()}
+            row.update(prefixed_mouse)
+            
+            # ASD events metrics
+            asd_processor = ASDEventsMetricsProcessor(window_asd)
+            asd_metrics = asd_processor.compute_all_metrics()   
+            prefixed_asd = {f"{wname}_{k}": v.iat[0] for k, v in asd_metrics.items()}
+            row.update(prefixed_asd)
+
+        rows.append(row)
+    
+    metrics_df = pd.DataFrame(rows)
 
     # ------------------------- 3. AUTOMATIC FEATURE EXTRACTION -------------------------
     
-    ### START DEBUG ###
-    # def summarize_zero_nan_features_by_id(df, id_col="id"):
-    #     """
-    #     Returns a DataFrame summarizing the number of all-zero and all-NaN columns
-    #     per sample group (e.g., per participant/task `id`).
-    #     """
-    #     results = []
-
-    #     feature_cols = df.columns.difference([id_col])
-
-    #     for sample_id, group in df.groupby(id_col):
-    #         subset = group[feature_cols]
-
-    #         # Check for all-zero columns
-    #         all_zero_mask = (subset == 0).all(axis=0)
-
-    #         # Check for all-NaN columns
-    #         all_nan_mask = subset.isna().all(axis=0)
-
-    #         results.append({
-    #             "id": sample_id,
-    #             "num_all_zeros": all_zero_mask.sum(),
-    #             "num_all_nans": all_nan_mask.sum(),
-    #             "num_rows": len(group),
-    #             "total_features": len(feature_cols)
-    #         })
-    #     return pd.DataFrame(results)
-
-    # summary_df = summarize_zero_nan_features_by_id(data_extraction)
-    # print(summary_df.sort_values("num_all_zeros", ascending=False))
-    ### END DEBUG ###
-    
     # Run tsfresh feature extraction
-    print("Extracting TSFresh features from full dataset...")
-    tsfresh_data = extract_tsfresh_features_from_chunks(
+    print("Extracting TSFresh...")
+    tsfresh_data = extract_tsfresh_features_from_multiscale_chunks(
         cleaned_chunks, 
-        columns_to_extract, 
+        ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]'], 
         pval_threshold=0.05, 
-        n_jobs=100)
+        n_jobs=50)
 
     # ------------------------- 4. BUILD DATASET -------------------------
     
-    gaze = gaze_metrics_df.drop(columns=cols_to_drop, errors="ignore")
-    mouse = mouse_metrics_df.drop(columns=cols_to_drop, errors="ignore")
-    merge_keys = ["id", "participant_id", "Task_id"]
-    xgboost_data = gaze.merge(mouse, on=merge_keys, how="inner", suffixes=("_gaze", "_mouse"))
-    xgboost_data = xgboost_data.merge(tsfresh_data, on="id", how = "inner")
-
-    
-    # #Train/test split based on the one for JCAFNet
-    # train_df = xgboost_data[xgboost_data["id"].isin(train_ids)].copy()
-    # val_df = xgboost_data[xgboost_data["id"].isin(val_ids)].copy()
-    # test_df = xgboost_data[xgboost_data["id"].isin(test_ids)].copy()
+    xgboost_data = metrics_df.merge(tsfresh_data, on="id", how="inner")
     
     # Redo Train/test/val split as JCAFNET not implemented yet:
     train_df, val_df, test_df, parts = split_by_participant(xgboost_data, group_col="participant_id",

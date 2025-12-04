@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
+from collections import defaultdict
+
 class EyeTrackingProcessor:
     """
     A class for processing eye-tracking and mouse movement data from TSV files.
@@ -111,10 +113,16 @@ class EyeTrackingProcessor:
 
         return dfs, task_map
 
-    # ------------------------- 2. TASK IDENTIFICATION & FEATURE EXTRACTION -------------------------
+    # ------------------------- 2. TASK IDENTIFICATION & FILTERING -------------------------
     
-    def task_range_finder(self, df: pd.DataFrame) -> tuple[dict[str, list[tuple[int, int]]], pd.DataFrame]:
-        """Find start and end times of tasks within a DataFrame and record unmatched markers."""
+    def task_range_finder(self, 
+                          df: pd.DataFrame,
+                          ) -> tuple[dict[str, list[tuple[int, int]]], pd.DataFrame]:
+        """Find start and end times of tasks within a DataFrame and record unmatched markers.
+        
+        Apply filtering for extremely long or short tasks. 
+        
+        """
         self.detect_timestamp_column(df)
 
         participant = df["participant_id"].iloc[0] if "participant_id" in df.columns else df["Participant name"].iloc[0]
@@ -164,17 +172,148 @@ class EyeTrackingProcessor:
                 print(f"⚠️ Unmatched 'start' for {task_type} at {unmatched_start}")
 
         return task_ranges, pd.DataFrame(unmatched_records)
+    
+    def compute_task_duration_bounds(
+        self,
+        dfs: list[pd.DataFrame],
+        *,
+        min_duration_ms: int = 500,
+        iqr_multiplier: float = 3.0,
+        global_max_ms: int | None = None,
+    ) -> dict[int, tuple[int, int]]:
+        """
+        Compute global per-task duration bounds across all participants/scenarios.
 
-    def get_features(
+        Returns
+        -------
+        duration_bounds_by_task : dict[int, (lower_ms, upper_ms)]
+            For each task_id, a (lower, upper) duration in ms.
+
+        Steps:
+        - Step 1: enforce min_duration_ms (drop shorter durations)
+        - Step 2: per-task upper bound = Q3 + iqr_multiplier * IQR
+        - Optional: clip upper bound to global_max_ms if provided.
+        """
+        per_task_durations: dict[int, list[int]] = defaultdict(list)
+
+        # First pass: collect all durations per task_id
+        for df in dfs:
+            if df.empty:
+                continue
+
+            # Ensure timestamp column known
+            self.detect_timestamp_column(df)
+
+            task_ranges, _ = self.task_range_finder(df)
+            for task_name, periods in task_ranges.items():
+                try:
+                    task_id = int(task_name.split()[-1])
+                except Exception:
+                    # If not of the form "Task N", skip
+                    continue
+
+                for start, end in periods:
+                    dur = int(end - start)
+                    per_task_durations[task_id].append(dur)
+
+        # Second pass: compute bounds
+        duration_bounds_by_task: dict[int, tuple[int, int]] = {}
+
+        for task_id, durs in per_task_durations.items():
+            arr = np.asarray(durs, dtype=float)
+
+            # Step 1: minimal duration
+            arr = arr[arr >= min_duration_ms]
+            if arr.size == 0:
+                # no valid durations left for this task
+                continue
+
+            # Step 2: IQR-based upper cutoff
+            Q1 = np.percentile(arr, 25)
+            Q3 = np.percentile(arr, 75)
+            IQR = Q3 - Q1
+            upper = Q3 + iqr_multiplier * IQR
+
+            # Optional global hard cap
+            if global_max_ms is not None:
+                upper = min(upper, global_max_ms)
+
+            # Lower bound: at least min_duration_ms
+            lower = max(min_duration_ms, int(Q1 - 1.5 * IQR))
+            duration_bounds_by_task[task_id] = (int(lower), int(upper))
+
+        return duration_bounds_by_task
+    
+    def apply_duration_bounds_to_ranges(
+        self,
+        task_ranges: dict[str, list[tuple[int, int]]],
+        duration_bounds_by_task: dict[int, tuple[int, int]],
+    ) -> dict[str, list[tuple[int, int]]]:
+        """
+        Filter a single participant/scenario's task_ranges using global per-task
+        duration bounds.
+
+        Parameters
+        ----------
+        task_ranges : dict[str, list[(start_ms, end_ms)]]
+            Output of task_range_finder for one df.
+        duration_bounds_by_task : dict[int, (lower_ms, upper_ms)]
+            Output of compute_task_duration_bounds.
+
+        Returns
+        -------
+        filtered_task_ranges : dict[str, list[(start_ms, end_ms)]]
+        """
+        if not duration_bounds_by_task:
+            return task_ranges  
+
+        filtered_task_ranges: dict[str, list[tuple[int, int]]] = {}
+
+        for task_name, periods in task_ranges.items():
+            try:
+                task_id = int(task_name.split()[-1])
+            except Exception:
+                # Unknown naming, keep as-is
+                filtered_task_ranges[task_name] = periods
+                continue
+
+            bounds = duration_bounds_by_task.get(task_id)
+            if bounds is None:
+                # No bounds for this task_id → keep all periods
+                filtered_task_ranges[task_name] = periods
+                continue
+
+            lower, upper = bounds
+            kept: list[tuple[int, int]] = []
+            for (start, end) in periods:
+                dur = int(end - start)
+                if dur >= lower and dur <= upper:
+                    kept.append((start, end))
+
+            if kept:
+                filtered_task_ranges[task_name] = kept
+
+        return filtered_task_ranges
+
+    # ------------------------- 3. TASK WINDOWS CONSTRUCTION -------------------------
+    
+    def get_full_tasks(
         self,
         dfs: list[pd.DataFrame],
         features: list[str], 
         unmatched_excel_path: str | None = None,
+        *,
+        filter_outliers: bool = False,
+        min_duration_ms: int = 500,
+        iqr_multiplier: float = 3.0,
+        global_max_ms: int | None = None,
     ) -> dict[str, pd.DataFrame]:
         """
         Extracts per-task chunks from each DataFrame (for each participant) and returns a dict where:
         - key = "participant_task_execution" id
         - value = corresponding dataframe chunk (can overlap)
+        
+        If filter_outliers=True, apply compute_task_duration_bounds and apply_duration_bounds_to_ranges:
 
         Overlapping task intervals are handled: a row can appear in multiple chunks.
         Write an Excel file that identifies all missing markers
@@ -183,6 +322,17 @@ class EyeTrackingProcessor:
         task_chunks: dict[str, pd.DataFrame] = {}
         writer = None
         used_sheet_names: set[str] = set()
+        
+        # ---- Compute global bounds filtering once, if requested ----
+        if filter_outliers:
+            duration_bounds_by_task = self.compute_task_duration_bounds(
+                dfs,
+                min_duration_ms=min_duration_ms,
+                iqr_multiplier=iqr_multiplier,
+                global_max_ms=global_max_ms,
+            )
+        else:
+            duration_bounds_by_task = {}
 
         if unmatched_excel_path:
             Path(unmatched_excel_path).parent.mkdir(parents=True, exist_ok=True)
@@ -195,6 +345,12 @@ class EyeTrackingProcessor:
                 print(f"Finding tasks for participant {participant} Scenario {scenario_id}")
 
                 task_ranges, unmatched_df = self.task_range_finder(df)
+                # Apply filtering if required
+                if filter_outliers and duration_bounds_by_task:
+                    task_ranges = self.apply_duration_bounds_to_ranges(
+                        task_ranges,
+                        duration_bounds_by_task,
+                    )
 
                 # --- Write unmatched markers sheet (INSIDE the loop) ---
                 if writer is not None:
@@ -245,38 +401,61 @@ class EyeTrackingProcessor:
         return task_chunks
     
     
-    def get_fixed_window_chunks(
+    def get_multiscale_window_chunks(
         self,
         dfs: list[pd.DataFrame],
         features: list[str],
-        window_ms: int = 3000,
-        step_ms: int | None = None,
-        min_presence: float = 0.5,
+        window_short_ms: int = 3000,
+        window_mid_ms: int = 10000,
+        window_long_ms: int = 25000,
+        task_margin_ms: int = 2000,
+        step_ms: int = 3000,
         idle_id: int = -1,
         label_idle: bool = True,
-    ) -> dict[str, pd.DataFrame]:
+        *,
+        filter_outliers: bool = False,
+        min_duration_ms: int = 500,
+        iqr_multiplier: float = 3.0,
+        global_max_ms: int | None = None,
+    ) -> dict[str, dict[str, pd.DataFrame]]:
         """
-        Slice each participant stream into fixed-length windows and assign a task label
-        based on maximum overlap with task ranges found.
-        If there is no overlap (or a small), between the window and the task, it is labeled as "idling"
+        Slice each participant stream into *multi-scale*, end-anchored windows.
+        For each anchor time t (discretized every `step_ms`), we build:
+        - short window: [t - short_ms, t)
+        - mid   window: [t - mid_ms,   t)
+        - long  window: [t - long_ms,  t)
+        All three windows share the same label, determined from the task
+        *active at time t* (if any), else idle.
 
-        - window_ms: window length in milliseconds (e.g., 3000 for 3s).
-        - step_ms: hop size in milliseconds. Default = window_ms (no overlap).
-        - min_presence: minimum fraction of the window that must be covered by the winning task
-        to be accepted (0.5 = majority). Windows below this are dropped.
+        - window_sort_ms: short window length in milliseconds (e.g., 3000 for 3s).
+        - window_mid_ms: medium window length in milliseconds.
+        - window_long_ms: long window length in milliseconds.
+        - task_margin_ms: margin in milliseconds for the assignement of the task
+        - step_ms: hop size in milliseconds.
 
         Output format:
-        dict[id] -> DataFrame slice with columns `features` plus the metadata
-        ["Task_id", "Task_execution", "Participant name", "id"]
+        chunks[sample_id] = {
+            "short": df_short,
+            "mid":   df_mid,
+            "long":  df_long,
+        }
+        where each df_* has the selected `features` + metadata columns ["Task_id", "Task_execution", "Participant name", "id", "Task_*_proportion"]
         """
-        chunks: dict[str, pd.DataFrame] = {}
-        step_ms = step_ms or window_ms
+        chunks: dict[str, dict[str, pd.DataFrame]] = {}
+        
+        if filter_outliers:
+            duration_bounds_by_task = self.compute_task_duration_bounds(
+                dfs,
+                min_duration_ms=min_duration_ms,
+                iqr_multiplier=iqr_multiplier,
+                global_max_ms=global_max_ms,
+            )
+        else:
+            duration_bounds_by_task = {}
 
         for df in dfs:
-            # Participant id/name
+            # Participant id,  Scenario id
             participant = df["participant_id"].iloc[0] if "participant_id" in df.columns else df["Participant name"].iloc[0]
-            
-            # Scenario id
             scenario_id = df["scenario_id"].iloc[0]
 
             # Timestamp detection + normalization (ms)
@@ -287,9 +466,15 @@ class EyeTrackingProcessor:
                 # µs -> ms
                 df_sorted[self.timestamp_col] = df_sorted[self.timestamp_col] / 1000.0
 
-            # Build task ranges (per original occurrences)
+            # Build task ranges
             print(f"Finding tasks for participant {participant} Scenario {scenario_id}")
             task_ranges, _ = self.task_range_finder(df_sorted)  # {"Task N": [(start,end), ...]}
+            if filter_outliers and duration_bounds_by_task:
+                task_ranges = self.apply_duration_bounds_to_ranges(
+                    task_ranges,
+                    duration_bounds_by_task,
+                )
+            
             # Precompute a flat list with (task_name, occ_index, start, end) for quick overlap checks
             flat_ranges: list[tuple[str, int, float, float]] = []
             for task_name, periods in task_ranges.items():
@@ -300,65 +485,83 @@ class EyeTrackingProcessor:
                 # No tasks found -> skip this participant entirely
                 continue
 
-            # Time domain and window anchors
+            # Time domain and anchor times
             t_min = float(df_sorted[self.timestamp_col].min())
             t_max = float(df_sorted[self.timestamp_col].max())
             if not np.isfinite(t_min) or not np.isfinite(t_max) or t_max <= t_min:
                 continue
+            
+            anchor_start = t_min + window_long_ms #the longest window fit entirely in [t_min, t_max]
+            if anchor_start > t_max:
+                continue
+            anchor_times = np.arange(anchor_start, t_max + 1e-9, step_ms)
+            
+            # Occurrence counter to give unique ids per (participant, scenario, task_id).
+            per_task_sample_counter: dict[int, int] = {}
+            
+            ts_col = self.timestamp_col
 
-            window_starts = np.arange(t_min, t_max - window_ms + 1e-9, step_ms)
-            # Per-task counters to keep ID uniqueness: participant_task_occurrence
-            # Occurrence here counts windows per Task_id (not original start/end index).
-            per_task_window_counter: dict[int, int] = {}
-
-            for w_start in window_starts:
-                w_end = w_start + window_ms
-
-                # Find the overlapping task occurrence with the largest overlap
-                best = None  # (overlap_ms, task_name, occ_idx)
-                for task_name, occ_idx, st, en in flat_ranges:
-                    overlap = max(0.0, min(w_end, en) - max(w_start, st))
-                    if overlap > 0.0:
-                        if (best is None) or (overlap > best[0]):
-                            best = (overlap, task_name, occ_idx)
-
-                # Extract the window slice
-                mask = (df_sorted[self.timestamp_col] >= w_start) & (df_sorted[self.timestamp_col] < w_end)
-                window_df = df_sorted.loc[mask, features].copy()
-                if window_df.empty:
-                    # No samples landed in this window (edge case) -> skip
-                    continue
+            for t_anchor in anchor_times:
+                t_label = t_anchor
                 
-                if best is None or (best[0] / window_ms) < min_presence:
-                    # ---- IDLING WINDOW ----
+                # 1) Determine label from active task at t_label
+                task_name_at_t = None
+                occ_idx_at_t = None
+                
+                # Find first task interval containing t_label
+                for task_name, occ_idx, start, end in flat_ranges:
+                    # Apply task_margin to avoid labelling windows with tasks that just began
+                    if start <= t_label - task_margin_ms < end:
+                        task_name_at_t = task_name
+                        occ_idx_at_t = occ_idx
+                        break
+                    
+                if task_name_at_t is None:
                     if not label_idle:
-                        continue  # If not idle libel, then windows with no tasks are discarded
+                        continue
                     task_id = idle_id
                     task_exec = -1
                 else:
-                    # ---- TASKED WINDOW ----
-                    _, best_task_name, best_occ_idx = best
-                    task_id = int(best_task_name.split()[-1])
-                    task_exec = best_occ_idx
-                    # increase per-task counter (occurences) for unique window IDs ONLY for non-idle
-                    window_occurrence = per_task_window_counter.get(task_id, 0)
-                    per_task_window_counter[task_id] = window_occurrence + 1
+                    task_id = int(task_name_at_t.split()[-1])
+                    task_exec = occ_idx_at_t
+                    
+                # 2) build short / mid / long windows ending at t_anchor
+                def slice_window(length_ms:int) -> pd.DataFrame:
+                    start = t_anchor - length_ms
+                    mask = (df_sorted[ts_col] >= start) & (df_sorted[ts_col] < t_anchor) #exlusive end
+                    return df_sorted.loc[mask, features].copy()
+                short_df = slice_window(window_short_ms)
+                mid_df = slice_window(window_mid_ms)
+                long_df = slice_window(window_long_ms)
+                # If one of them is empty, discard
+                if short_df.empty or mid_df.empty or long_df.empty:
+                    continue
+                
+                # 3) Build a unique sample ID
+                sample_index = per_task_sample_counter.get(task_id, 0)
+                per_task_sample_counter[task_id] = sample_index + 1
+                uid = f"{participant}_{scenario_id}_{task_id}_{sample_index}"
 
-                if task_id == idle_id:
-                    idle_count = per_task_window_counter.get(task_id, 0)
-                    per_task_window_counter[task_id] = idle_count + 1
-                    uid = f"{participant}_{scenario_id}_{task_id}_{idle_count}"
-                else:
-                    uid = f"{participant}_{scenario_id}_{task_id}_{window_occurrence}"
+                # 4) Attach metadata to each window
+                # OPTIONAL TODO: ADD THE PROPORTION OF EACH TASK PRESENT IN THE WINDOW
+                for wdf in (short_df, mid_df, long_df):
+                    if wdf.empty:
+                        continue
+                    wdf["Task_id"] = task_id
+                    wdf["Task_execution"] = task_exec
+                    wdf["Participant name"] = participant
+                    wdf["Scenario_id"] = scenario_id
+                    wdf["id"] = uid
+                    # Optional: store anchor time or label time for later
+                    wdf["anchor_time"] = t_anchor
+                    wdf["label_time"] = t_label
 
-                # Attach metadata
-                window_df["Task_id"] = task_id
-                window_df["Task_execution"] = task_exec
-                window_df["Participant name"] = participant
-                window_df["Scenario_id"] = scenario_id
-                window_df["id"] = uid
+                chunks[uid] = {
+                    "short": short_df,
+                    "mid":   mid_df,
+                    "long":  long_df,
+                }
 
-                chunks[uid] = window_df
 
         return chunks
     
@@ -438,123 +641,159 @@ class EyeTrackingProcessor:
         return boundaries
 
     
-    # ------------------------- 3. BLINK IDENTIFICATION -------------------------
-    def detect_blinks(self, task_chunks: dict[str, pd.DataFrame], blink_threshold: int = 100):
+    # ------------------------- 4. HELPERS BLINK IDENTIFICATION -------------------------
+    
+    def _detect_blinks_in_scenario(self, df: pd.DataFrame, blink_threshold: int = 100):
         """
-        Detect blinks in a dictionary of task-based DataFrame chunks.
-         - A blink is a contiguous run where either gaze X or Y is NaN.
-         - We mark Blink=True ONLY on rows inside runs whose duration > blink_threshold (ms).
-         - Runs > 400 ms are also flagged as Loss of Attention.
+        Detect blinks in a single continuous DataFrame: Aimed to be applied on full scenario DF.
 
-        Parameters:
-        - task_chunks: dict where keys are task IDs and values are DataFrames
-        - blink_threshold: duration threshold in milliseconds
+        - A blink is a contiguous run where either gaze X or Y is NaN.
+        - We mark Blink=True ONLY on rows inside runs whose duration > blink_threshold (ms).
+        - Runs > 400 ms are also flagged as Loss of Attention.
 
-        Returns:
-        - updated_chunks: dict with "Blink" column added to each DataFrame
-        - all_blinks: DataFrame summarizing detected blinks across all tasks
+        Returns
+        -------
+        updated_df : pd.DataFrame
+            Same as input but with 'Blink' and 'Loss of Attention' columns added.
+        summary_df : pd.DataFrame
+            One row per missing-gaze run (that is blink or loss_of_attention).
         """
-
-        updated_chunks = {}
-        all_blinks = {}
-
-        for task_id, df in task_chunks.items():
+        if df.empty:
+            # return empty summary but with columns
             df = df.copy()
-
-            # Detect gaze columns
-            x_col = next((col for col in df.columns if "Gaze point X" in col), None)
-            y_col = next((col for col in df.columns if "Gaze point Y" in col), None)
-
-            if not x_col or not y_col:
-                print(f"⚠️ Skipping {task_id}: Gaze columns not found.")
-                continue
-
-            # Sort by time and (if needed) convert µs -> ms
-            df = df.sort_values(by=self.timestamp_col).reset_index(drop=True)
-            med_diff = df[self.timestamp_col].diff().dropna().median()
-            if pd.notna(med_diff) and med_diff > 10_000:
-                df[self.timestamp_col] = df[self.timestamp_col] / 1_000.0  # µs → ms
-
-            # Missing gaze mask
-            df["Missing Gaze"] = df[x_col].isna() | df[y_col].isna()
-            
-            # Run IDs: increment when Missing Gaze changes (False->True or True->False)
-            df["_run"] = df["Missing Gaze"].ne(df["Missing Gaze"].shift(fill_value=False)).cumsum()
-            
-            # Duration per run (sum of diffs) using only missing-gaze rows
-            # If a run has a single row, its diff-sum is 0 (sensible for duration).
-            dur_by_run = (
-                df.loc[df["Missing Gaze"], [self.timestamp_col, "_run"]]
-                .groupby("_run")[self.timestamp_col]
-                .apply(lambda s: (s.diff().fillna(0)).sum())
-            )
-
-            # Which runs count as blinks/attention loss
-            valid_runs = dur_by_run[dur_by_run > blink_threshold].index if not dur_by_run.empty else pd.Index([])
-            long_runs  = dur_by_run[dur_by_run > 400].index if not dur_by_run.empty else pd.Index([])
-
-            # Initialize flags
             df["Blink"] = False
             df["Loss of Attention"] = False
+            summary = pd.DataFrame(
+                columns=["run_id", "duration_ms", "start_ts", "end_ts", "blink", "loss_of_attention"]
+            )
+            return df, summary
 
-            # Mark only the rows inside the selected runs
-            mask_missing = df["Missing Gaze"]
-            if len(valid_runs) > 0:
-                df.loc[mask_missing & df["_run"].isin(valid_runs), "Blink"] = True
-            if len(long_runs) > 0:
-                df.loc[mask_missing & df["_run"].isin(long_runs), "Loss of Attention"] = True
+        df = df.copy()
 
-            # Build a compact per-run summary (only for missing runs)
-            if not dur_by_run.empty:
-                run_bounds = (
-                    df.loc[df["Missing Gaze"], [self.timestamp_col, "_run"]]
-                    .groupby("_run")[self.timestamp_col]
-                    .agg(start_ts="first", end_ts="last")
+        # Detect gaze columns
+        x_col = next((col for col in df.columns if "Gaze point X" in col), None)
+        y_col = next((col for col in df.columns if "Gaze point Y" in col), None)
+
+        if not x_col or not y_col:
+            # No gaze columns: just add flags as False and empty summary
+            df["Blink"] = False
+            df["Loss of Attention"] = False
+            summary = pd.DataFrame(
+                columns=["run_id", "duration_ms", "start_ts", "end_ts", "blink", "loss_of_attention"]
+            )
+            return df, summary
+
+        self.detect_timestamp_column(df)
+        df = df.sort_values(by=self.timestamp_col).reset_index(drop=True)
+        med_diff = df[self.timestamp_col].diff().dropna().median()
+        if pd.notna(med_diff) and med_diff > 10_000:
+            df[self.timestamp_col] = df[self.timestamp_col] / 1_000.0  # µs → ms
+
+        # Missing gaze mask
+        df["Missing Gaze"] = df[x_col].isna() | df[y_col].isna()
+
+        # Blink run IDs: increment when Missing Gaze changes (False->True or True->False)
+        df["_run"] = df["Missing Gaze"].ne(df["Missing Gaze"].shift(fill_value=False)).cumsum()
+
+        # Duration per run (sum of diffs) using only missing-gaze rows
+        dur_by_run = (
+            df.loc[df["Missing Gaze"], [self.timestamp_col, "_run"]]
+            .groupby("_run")[self.timestamp_col]
+            .apply(lambda s: (s.diff().fillna(0)).sum())
+        )
+
+        # Which runs count as blinks/attention loss
+        if dur_by_run.empty:
+            valid_runs = pd.Index([])
+            long_runs = pd.Index([])
+        else:
+            valid_runs = dur_by_run[dur_by_run > blink_threshold].index
+            long_runs  = dur_by_run[dur_by_run > 400].index
+
+        # Initialize flags
+        df["Blink"] = False
+        df["Loss of Attention"] = False
+
+        # Mark only rows inside the selected runs
+        mask_missing = df["Missing Gaze"]
+        if len(valid_runs) > 0:
+            df.loc[mask_missing & df["_run"].isin(valid_runs), "Blink"] = True
+        if len(long_runs) > 0:
+            df.loc[mask_missing & df["_run"].isin(long_runs), "Loss of Attention"] = True
+
+        # Build a compact per-run summary (only for missing runs)
+        if not dur_by_run.empty:
+            run_bounds = (
+                df.loc[df["Missing Gaze"], [self.timestamp_col, "_run"]]
+                .groupby("_run")[self.timestamp_col]
+                .agg(start_ts="first", end_ts="last")
+            )
+            summary = (
+                dur_by_run.to_frame("duration_ms")
+                .join(run_bounds, how="left")
+                .assign(
+                    blink=lambda t: t["duration_ms"] > blink_threshold,
+                    loss_of_attention=lambda t: t["duration_ms"] > 400,
                 )
-                summary = (
-                    dur_by_run.to_frame("duration_ms")
-                    .join(run_bounds, how="left")
-                    .assign(
-                        blink=lambda t: t["duration_ms"] > blink_threshold,
-                        loss_of_attention=lambda t: t["duration_ms"] > 400,
+                .reset_index(names="run_id")
+            )
+            summary = summary.loc[summary["blink"] | summary["loss_of_attention"]].copy()
+        else:
+            summary = pd.DataFrame(
+                columns=["run_id", "duration_ms", "start_ts", "end_ts", "blink", "loss_of_attention"]
+            )
+
+        # Clean up helpers
+        df.drop(columns=["_run", "Missing Gaze"], inplace=True)
+
+        return df, summary
+    
+    def detect_blinks_in_streams(
+        self,
+        dfs: list[pd.DataFrame],
+        blink_threshold: int = 100,
+    ) -> tuple[list[pd.DataFrame], dict[str, pd.DataFrame]]:
+            """
+            Detect blinks on a list of continuous scenario/participant DataFrames.
+
+            This is intended for use *before* windowing (e.g. before get_multiscale_window_chunks or get_full_tasks),
+            so that the Blink/Loss of Attention flags are present in the raw streams and
+            automatically carried into any windows/chunks.
+
+            Returns
+            -------
+            updated_dfs : list[pd.DataFrame]
+                Same structure as input `dfs`, each df with Blink/Loss of Attention columns.
+            all_blinks : dict[str, pd.DataFrame]
+                Mapping from a scenario key to its blink summary DataFrame.
+                Key format: "<participant>_<scenario>" if those columns exist, else "stream_i".
+            """
+            updated_dfs: list[pd.DataFrame] = []
+            all_blinks: dict[str, pd.DataFrame] = {}
+
+            for i, df in enumerate(dfs):
+                if df.empty:
+                    updated_dfs.append(df)
+                    all_blinks[f"stream_{i}"] = pd.DataFrame(
+                        columns=["run_id", "duration_ms", "start_ts", "end_ts", "blink", "loss_of_attention"]
                     )
-                    .reset_index(names="run_id")
-                )
-                all_blinks[task_id] = summary.loc[summary["blink"] | summary["loss_of_attention"]].copy()
-            else:
-                all_blinks[task_id] = pd.DataFrame(columns=["run_id", "duration_ms", "start_ts", "end_ts", "blink", "loss_of_attention"])
+                    continue
 
-            # Clean up helpers
-            df.drop(columns=["_run", "Missing Gaze"], inplace=True)
+                # Build a readable key
+                if "participant_id" in df.columns:
+                    participant = str(df["participant_id"].iloc[0])
+                else:
+                    participant = str(df.get("Participant name", pd.Series(["unknown"])).iloc[0])
 
-            updated_chunks[task_id] = df
-            
-            # df["Time Diff"] = df[self.timestamp_col].diff()
-            # df["Blink Start"] = df["Missing Gaze"] & ~df["Missing Gaze"].shift(1, fill_value=False)
-            # df["Blink End"] = ~df["Missing Gaze"] & df["Missing Gaze"].shift(1, fill_value=False)
-            # df["Blink ID"] = df["Blink Start"].cumsum()
+                scenario_id = str(df.get("scenario_id", pd.Series(["unknown"])).iloc[0])
+                key = f"{participant}_{scenario_id}"
 
-            # # Filter for actual blinks
-            # blink_durations = df.groupby("Blink ID")["Time Diff"].sum().reset_index()
-            # valid_blinks = blink_durations.loc[blink_durations["Time Diff"] > blink_threshold].copy()
-            # # Classify blink types
-            # valid_blinks["Attention State"] = valid_blinks["Time Diff"].apply(
-            #     lambda dur: "Blink" if dur <= 400 else "Loss of attention"
-            # )
-            # valid_blinks["Loss of Attention"] = valid_blinks["Time Diff"] > 400
-            # df["Blink"] = df["Blink ID"].isin(valid_blinks["Blink ID"]).astype(int)
-            
-            # df["Loss of Attention"] = False
-            # long_blink_ids = valid_blinks.loc[valid_blinks["Loss of Attention"], "Blink ID"]
-            # df.loc[df["Blink ID"].isin(long_blink_ids), "Loss of Attention"] = True
-            
-            # all_blinks[task_id] = valid_blinks
+                updated_df, summary_df = self._detect_blinks_in_scenario(df, blink_threshold=blink_threshold)
+                updated_dfs.append(updated_df)
+                all_blinks[key] = summary_df
 
-            # # Clean up intermediate columns
-            # df.drop(columns=["Missing Gaze", "Time Diff", "Blink Start", "Blink End", "Blink ID"], inplace=True)
-            # updated_chunks[task_id] = df
+            return updated_dfs, all_blinks
 
-        return updated_chunks, all_blinks
     
     # ------------------------- 4. DATA RESAMPLING -------------------------
     
@@ -721,6 +960,10 @@ class GazeMetricsProcessor:
 
         # Work on a copy sorted by timestamp
         self.df = df.sort_values(by=self.ts_col).reset_index(drop=True).copy()
+        
+        # Not necessary as the resolution is at most 120HZ wich maks one nan already a blink (above 0.1s)
+        # if interpolate_short_gaps:
+        #     self._interpolate_short_gaps(max_gap_len=2)
 
     # ------------------------- HELPERS FUCNTIONS -------------------------
     @staticmethod
@@ -777,6 +1020,18 @@ class GazeMetricsProcessor:
 
     def _time_diff_seconds(self) -> pd.Series:
         return self._to_seconds(self.df[self.ts_col].diff().fillna(0))
+    
+    def _interpolate_short_gaps(self, max_gap_len: int = 2):
+        # Only interpolate very small runs of NaNs in gaze, not longer ones which are blinks
+        for col in [self.gx_col, self.gy_col]:
+            s = self.df[col]
+
+            # limit = max number of consecutive NaNs we allow interpolation over
+            self.df[col] = s.interpolate(
+                method="linear",
+                limit=max_gap_len,
+                limit_direction="both"
+        )
 
     # ------------------------- FIXATION COMPUTATION -------------------------
     
@@ -923,153 +1178,8 @@ class GazeMetricsProcessor:
             "Avg Gaze Acceleration (px/s²)": acc_s2.mean(),
             "Blink Rate (blinks/s)": blink_rate,
             "Gaze Dispersion (area_px²)": dispersion,
-            "Seconds per raw time unit": self.seconds_per_unit,
-            "Timestamp column": self.ts_col,
-            "Gaze X column": self.gx_col,
-            "Gaze Y column": self.gy_col,
-        }
-
-class MouseMetricsProcessor:
-    """
-    Computes mouse movement-related metrics from a DataFrame with a single task execution.
-    Automatically handles variations in column names (with/without units) and timestamp units.
-    """
-
-    def __init__(self, df: pd.DataFrame, timestamp_unit: str = "auto"):
-        self.original_df = df
-        self.timestamp_unit_arg = timestamp_unit
-
-        self.ts_col = self._find_col(df, "Recording timestamp")
-        self.mx_col = self._find_col(df, "Mouse position X")
-        self.my_col = self._find_col(df, "Mouse position Y")
-
-        self.seconds_per_unit = self._infer_time_scale(df[self.ts_col], timestamp_unit)
-        self.df = df.sort_values(by=self.ts_col).reset_index(drop=True).copy()
-
-    def _find_col(self, df: pd.DataFrame, prefix: str):
-        for col in df.columns:
-            if col.startswith(prefix):
-                return col
-        raise ValueError(f"Required column starting with '{prefix}' not found.")
-
-    def _infer_time_scale(self, ts: pd.Series, unit_arg: str) -> float:
-        name = ts.name or ""
-        name_lower = name.lower()
-
-        if unit_arg == "ms":
-            return 1e-3
-        if unit_arg in ("us", "µs", "μs"):
-            return 1e-6
-        if unit_arg == "s":
-            return 1.0
-
-        if "[ms" in name_lower:
-            return 1e-3
-        if "[us" in name_lower or "[µs" in name_lower or "[μs" in name_lower:
-            return 1e-6
-
-        diffs = ts.sort_values().diff().dropna()
-        if diffs.empty:
-            return 1e-3  # fallback
-        med = float(diffs.median())
-        if med > 5000:
-            return 1e-6
-        elif med > 0.5:
-            return 1e-3
-        else:
-            return 1.0
-
-    def _to_seconds(self, s: pd.Series) -> pd.Series:
-        return s * self.seconds_per_unit
-
-    def _time_diff_seconds(self) -> pd.Series:
-        return self._to_seconds(self.df[self.ts_col].diff().fillna(0))
-
-    # ------------------------- VELOCITY & ACCELERATION -------------------------
-    def compute_velocity_acceleration(self):
-        dx = self.df[self.mx_col].diff().fillna(0)
-        dy = self.df[self.my_col].diff().fillna(0)
-        disp = np.sqrt(dx**2 + dy**2)
-        dt = self._time_diff_seconds().replace(0, np.nan)
-        velocity = disp / dt
-        acceleration = velocity.diff().fillna(0) / dt
-        return velocity, acceleration
-
-    # ------------------------- MOVEMENT FREQUENCY & IDLE TIMES -------------------------
-    def compute_movement_frequency_idle_time(self, idle_threshold=0.5):
-        dt = self._time_diff_seconds()
-        moved = (self.df[self.mx_col].diff().abs() > 0) | (self.df[self.my_col].diff().abs() > 0)
-        movement_frequency = moved.sum() / dt.sum()
-        idle_periods = dt[~moved]
-        total_idle_time = idle_periods[idle_periods >= idle_threshold].sum()
-        return movement_frequency, total_idle_time
-
-    # ------------------------- CLICK & KEYBOARD EVENT COUNTS -------------------------
-    def compute_click_count(self):
-        if "Event" in self.df.columns:
-            return int((self.df["Event"] == "MouseEvent").sum())
-        return 0
-
-    def compute_keyboard_count(self):
-        if "Event" in self.df.columns:
-            return int((self.df["Event"] == "KeyboardEvent").sum())
-        return 0
-
-    # ------------------------- DIRECTION CHANGES -------------------------
-    def compute_path_patterns(self, angle_threshold=30):
-        dx = self.df[self.mx_col].diff().fillna(0)
-        dy = self.df[self.my_col].diff().fillna(0)
-        angles = np.arctan2(dy, dx)
-        angle_diff = np.abs(np.diff(angles))
-        changes = np.sum(angle_diff > np.radians(angle_threshold))
-        return int(changes)
-
-    # ------------------------- DISTANCE & STOPS -------------------------
-    def compute_total_distance_and_stops(self, stop_threshold=5):
-        dx = self.df[self.mx_col].diff().fillna(0)
-        dy = self.df[self.my_col].diff().fillna(0)
-        disp = np.sqrt(dx**2 + dy**2)
-        dt = self._time_diff_seconds().replace(0, np.nan)
-        velocity = disp / dt
-        total_distance = disp.sum()
-        num_stops = (velocity < stop_threshold).sum()
-        return total_distance, int(num_stops)
-
-    # ------------------------- MOVEMENT BURSTS & STILLNESS -------------------------
-    def compute_movement_bursts(self, burst_threshold=50, stillness_threshold=5):
-        dx = self.df[self.mx_col].diff().fillna(0)
-        dy = self.df[self.my_col].diff().fillna(0)
-        disp = np.sqrt(dx**2 + dy**2)
-        dt = self._time_diff_seconds().replace(0, np.nan)
-        velocity = disp / dt
-        bursts = (velocity > burst_threshold).sum()
-        stillness = (velocity < stillness_threshold).sum()
-        return int(bursts), int(stillness)
-
-    # ------------------------- AGGREGATE -------------------------
-    def compute_all_metrics(self):
-        velocity, acceleration = self.compute_velocity_acceleration()
-        movement_freq, idle_time = self.compute_movement_frequency_idle_time()
-        click_count = self.compute_click_count()
-        keyboard_count = self.compute_keyboard_count()
-        direction_changes = self.compute_path_patterns()
-        total_distance, num_stops = self.compute_total_distance_and_stops()
-        bursts, stillness = self.compute_movement_bursts()
-
-        return {
-            "Avg Mouse Velocity (px/s)": velocity.mean(),
-            "Avg Mouse Acceleration (px/s²)": acceleration.mean(),
-            "Movement Frequency (movements/s)": movement_freq,
-            "Total Idle Time (s)": idle_time,
-            "Click Count": click_count,
-            "Keyboard Count": keyboard_count,
-            "Path Direction Changes": direction_changes,
-            "Total Distance Traveled (px)": total_distance,
-            "Number of Stops": num_stops,
-            "Movement Bursts": bursts,
-            "Stillness Periods": stillness,
-            "Seconds per raw time unit": self.seconds_per_unit,
-            "Timestamp column": self.ts_col,
-            "Mouse X column": self.mx_col,
-            "Mouse Y column": self.my_col,
+            # "Seconds per raw time unit": self.seconds_per_unit,
+            # "Timestamp column": self.ts_col,
+            # "Gaze X column": self.gx_col,
+            # "Gaze Y column": self.gy_col,
         }

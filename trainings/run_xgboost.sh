@@ -48,4 +48,4 @@ echo "I am running with job id $SLURM_JOB_ID"
 
 # run python script in the activated environment
 # -> make sure that the path matches your setup
-uv run ${APP_ROOT}/trainings/xgboost_training.py #--max-workers=$SLURM_CPUS_PER_TASK
+uv run ${APP_ROOT}/trainings/_02_xgboost_hierarchical_training.py #--max-workers=$SLURM_CPUS_PER_TASK
