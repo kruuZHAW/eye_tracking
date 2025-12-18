@@ -7,6 +7,7 @@ sys.path.append(str(Path('~/git_folder/eye_tracking/').expanduser()))
 
 import numpy as np
 import pandas as pd
+from scipy.stats import randint, uniform
 from tqdm import tqdm
 from collections import Counter
 
@@ -22,7 +23,7 @@ from tsfresh.feature_selection.relevance import calculate_relevance_table
 
 import xgboost as xgb
 import joblib 
-from sklearn.model_selection import GroupKFold, StratifiedGroupKFold, GridSearchCV, GroupShuffleSplit
+from sklearn.model_selection import StratifiedGroupKFold, GridSearchCV, GroupShuffleSplit, RandomizedSearchCV
 from sklearn.metrics import classification_report, confusion_matrix, f1_score, accuracy_score
 from sklearn import metrics
 from sklearn.base import clone
@@ -267,11 +268,39 @@ def make_xgb_multi(num_class, n_jobs=8, random_state=42):
         random_state=random_state,
     )
 
-def class_weight_series(y, cap=8.0):
-    # Sampling weights for imbalance
-    counts = pd.Series(y).value_counts()
-    w = (counts.median() / counts).clip(upper=cap)
-    return pd.Series(y).map(w).values
+def class_weight_series(y, cap=8.0, gamma=1, min_weight=0.5):
+    """
+    Compute per-sample weights to handle class imbalance.
+
+    Parameters
+    ----------
+    y : array-like
+        Class labels.
+    cap : float
+        Maximum weight (upper clip).
+    gamma : float
+        Exponent for non-linear scaling. 
+        - gamma=1.0 -> classic inverse-frequency.
+        - gamma<1.0 -> softer weighting.
+        - gamma>1.0 -> more aggressive for rare classes but can makes training unstable.
+    min_weight : float
+        Minimum weight (lower clip), to avoid pushing frequent classes too close to zero.
+
+    Returns
+    -------
+    weights : np.ndarray
+        Per-sample weights.
+    """
+    y_series = pd.Series(y)
+    counts = y_series.value_counts()
+
+    ratio = counts.median() / counts
+
+    w = ratio ** gamma
+
+    w = w.clip(lower=min_weight, upper=cap)
+
+    return y_series.map(w).values
 
 def rolling_mode(series, k=5):
     # odd k recommended
@@ -305,11 +334,15 @@ if __name__ == "__main__":
     
     # Directories
     # store_dir = str(Path('~/store/aware').expanduser())
-    store_dir = "/store/kruu/eye_tracking/training_data"
-    save_model_path = "logs/xgboost_hierarchical"
+    store_dir = "/store/kruu/eye_tracking"
+    data_dir = os.path.join(store_dir, "training_data")
+    
+    save_model_path = "/home/kruu/git_folder/eye_tracking/trainings/logs/xgboost_hierarchical_v3"
+    os.makedirs(save_model_path, exist_ok=True)
+    
     split_names = ["train", "val", "test"]
-    store_splits_dir = os.path.join(store_dir, "splits")
-    store_split_dirs = [os.path.join(store_splits_dir, split_name) for split_name in split_names]
+    save_splits_dir = os.path.join(store_dir, "splits")
+    save_split_dirs = [os.path.join(save_splits_dir, split_name) for split_name in split_names]
     
     # Temporary storage for better I/O performance
     # Use that to load data if on GPU cluster
@@ -327,7 +360,7 @@ if __name__ == "__main__":
     # ------------------------- 1. LOADING DATASET -------------------------
     
     # Loading data from scratch
-    chunks_et, blinks, atco_task_map = load_and_process_et(root_dir = store_dir,
+    chunks_et, blinks, atco_task_map = load_and_process_et(root_dir = data_dir,
                                                             columns = features,
                                                             interpolate_cols = interpolate_cols,
                                                             fill_cols = fill_columns,
@@ -337,6 +370,7 @@ if __name__ == "__main__":
                                                             task_margin_ms = 2000,
                                                             step_ms = 3000,
                                                             filter_outliers = True,
+                                                            # participants=["001", "002", "003", "004", "005"],
                                                             time_resampling=False)
     
     print("Number of total occurences per task for all data: ")
@@ -354,7 +388,7 @@ if __name__ == "__main__":
 
     # ------------------------- 2. MANUAL FEATURE EXTRACTION -------------------------
     
-    asd_scenarios = load_asd_scenario_data(root_dir=store_dir)
+    asd_scenarios = load_asd_scenario_data(root_dir=data_dir)
     prepared_asd = {}
     for key, df_sc in asd_scenarios.items():
         asd = df_sc.sort_values("epoch_ms").set_index("epoch_ms")
@@ -413,7 +447,6 @@ if __name__ == "__main__":
         ['Gaze point X [DACS px]', 'Gaze point Y [DACS px]'], 
         pval_threshold=0.05, 
         n_jobs=50)
-
     # ------------------------- 4. BUILD DATASET -------------------------
     
     xgboost_data = metrics_df.merge(tsfresh_data, on="id", how="inner")
@@ -422,10 +455,13 @@ if __name__ == "__main__":
     train_df, val_df, test_df, parts = split_by_participant(xgboost_data, group_col="participant_id",
                                                         test_size=0.2, val_size=0.1, random_state=42)
     
+    for d in save_split_dirs:
+        os.makedirs(d, exist_ok=True)
+    
     print("Saving XGboost train/test datasets")
-    train_df.to_parquet(os.path.join(store_split_dirs[0], "train_xgboost.parquet"))
-    test_df.to_parquet(os.path.join(store_split_dirs[2], "test_xgboost.parquet"))
-    val_df.to_parquet(os.path.join(store_split_dirs[1], "val_xgboost.parquet"))
+    train_df.to_parquet(os.path.join(save_split_dirs[0], "train_xgboost.parquet"))
+    test_df.to_parquet(os.path.join(save_split_dirs[2], "test_xgboost.parquet"))
+    val_df.to_parquet(os.path.join(save_split_dirs[1], "val_xgboost.parquet"))
     
     # CROSS VALIDATION SPLIT BASED ON PARTICIPANT ID
     # columns that must not go into X
@@ -448,26 +484,27 @@ if __name__ == "__main__":
     cv = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
     
     # ------------------------- 5. MODEL A: IDLE VS ACTIVE TASK -------------------------
-    
-    grid_A = {
-    "n_estimators": [300, 500, 800],
-    "max_depth": [4, 6, 8],
-    "learning_rate": [0.05, 0.1, 0.2],
-    "subsample": [0.8, 1.0],
-    "colsample_bytree": [0.8, 1.0],
-    }
-    
     clf_A = make_xgb_binary(n_jobs=16)
-    w_A = class_weight_series(is_active, cap=6.0)
+    w_A = class_weight_series(is_active, cap=6.0, gamma = 1)
     
-    gs_A = GridSearchCV(
-    estimator=clf_A,
-    param_grid=grid_A,
-    scoring="f1",                 # positive class = 1 (active)
-    cv=cv,
-    n_jobs=-1,
-    verbose=2,
-    return_train_score=False
+    param_dist_A = {
+        "n_estimators": randint(300, 900),      
+        "max_depth": randint(3, 9),             
+        "learning_rate": uniform(0.03, 0.2),   
+        "subsample": uniform(0.5, 0.1),         
+        "colsample_bytree": uniform(0.5, 0.1), 
+    }
+
+    gs_A = RandomizedSearchCV(
+        estimator=clf_A,
+        param_distributions=param_dist_A,
+        n_iter=100,                   
+        scoring="f1",                 
+        cv=cv,
+        n_jobs=-1,
+        verbose=2,
+        random_state=42,
+        return_train_score=False,
     )
     
     gs_A.fit(X_train, is_active, groups=groups_train, sample_weight=w_A)
@@ -508,30 +545,33 @@ if __name__ == "__main__":
 
     num_classes_B = y_train_B.nunique()
     clf_B = make_xgb_multi(num_class=num_classes_B, n_jobs=8)
-    w_B = class_weight_series(y_train_B, cap=8.0)
-
-    grid_B = {
-        "n_estimators": [500, 800, 1000],
-        "max_depth": [4, 6, 8],
-        "learning_rate": [0.05, 0.1, 0.2],
-        "subsample": [0.8, 1.0],
-        "colsample_bytree": [0.8, 1.0],
-        "gamma": [0, 0.1, 0.3],
-    }
-
+    w_B = class_weight_series(y_train_B, cap=8.0, gamma= 1.2)
+    
     # We need a CV that respects same groups but only for active rows:
     groups_train_B = groups_train.loc[mask_active_tr]
     cv_B = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
+    
+    param_dist_B = {
+        "n_estimators": randint(500, 1200),
+        "max_depth": randint(3, 9),
+        "learning_rate": uniform(0.03, 0.2),
+        "subsample": uniform(0.5, 1),
+        "colsample_bytree": uniform(0.5, 1),
+        "gamma": uniform(0.0, 0.4),  
+    }
 
-    gs_B = GridSearchCV(
+    gs_B = RandomizedSearchCV(
         estimator=clf_B,
-        param_grid=grid_B,
+        param_distributions=param_dist_B,
+        n_iter=100,              
         scoring="f1_macro",
         cv=cv_B,
         n_jobs=-1,
         verbose=2,
-        return_train_score=False
+        random_state=42,
+        return_train_score=False,
     )
+
     gs_B.fit(X_train_B, y_train_B, groups=groups_train_B, sample_weight=w_B)
 
     best_B = gs_B.best_estimator_
@@ -564,9 +604,19 @@ if __name__ == "__main__":
     
     # ------------------------- 7. COMBINED REPORTS -------------------------
     
-    # Combined hierarchical CV (same outer CV as Stage A)
+    # Combined hierarchical CV
+    # Computes the true probability of each observation of being eahc task.
     accs_comb, f1_macro_comb, f1_macro_active_comb = [], [], []
-    yt_all, yp_all = [], []
+    
+    all_classes = np.sort(y_train_tasks.unique())   
+    active_classes = all_classes[all_classes != IDLE]
+    
+    P_all_unsmoothed = []  # list of DataFrames of combined probabilities for each fold
+    Y_all = []  # true labels for each fold
+    
+    # Store stage A and stage B probabilities for each fold
+    pA_list = [] # P(active | x)
+    pB_list = [] # P(task = c | active, x) for active + 1 only
 
     for tr, va in cv.split(X_train, is_active, groups_train):
         X_tr, X_va = X_train.iloc[tr], X_train.iloc[va]
@@ -575,57 +625,88 @@ if __name__ == "__main__":
 
         # --- Stage A ---
         mA = clone(best_A).fit(X_tr, is_active.iloc[tr], sample_weight=wA_tr)
-        pA = pd.Series(mA.predict_proba(X_va)[:, 1], index=X_va.index)  
-        pred_active = pA > 0.5                                         
+        pA = pd.Series(mA.predict_proba(X_va)[:, 1], index=X_va.index)                                        
         
         # --- Stage B (train only on active rows in this fold) ---
         tr_active_mask = (is_active.iloc[tr] == 1)
         mB = clone(best_B).fit(
             X_tr.loc[tr_active_mask],
             y_tasks_tr.loc[tr_active_mask],
-            sample_weight=class_weight_series(y_tasks_tr.loc[tr_active_mask], cap=8.0)
+            sample_weight=class_weight_series(
+                y_tasks_tr.loc[tr_active_mask], 
+                cap=8.0, 
+                gamma=1.2
+            )
         )
+        
+        # Predict probabilities for all val rows for active classes (not only active)
+        prob_B_all = mB.predict_proba(X_va)      # shape [N_va, C_B]
+        classes_B = mB.classes_                 # labels corresponding to columns in prob_B_all
+        
+        # Build full conditional P(task = c | active, x) over all active classes
+        pB_fold = pd.DataFrame(
+            0.0,
+            index=X_va.index,
+            columns=active_classes
+        )
+        for j, c in enumerate(classes_B):
+            pB_fold[c] = prob_B_all[:, j]
 
         # --- Combine ---
-        y_hat_comb = pd.Series(IDLE, index=X_va.index, dtype=int)      # default to IDLE=-1
+        P_fold = pd.DataFrame(
+            0.0,
+            index=X_va.index,
+            columns=all_classes
+        )
+        
+        # Idle probability for each row
+        P_fold[IDLE] = 1.0 - pA
 
-        if pred_active.any():
-            prob_B   = mB.predict_proba(X_va.loc[pred_active])
-            yB_idx   = np.argmax(prob_B, axis=1)
-            classesB = mB.classes_                                     # actual task labels seen by B
-            yB_tasks = classesB[yB_idx]                                # map back to true task ids
-            y_hat_comb.loc[pred_active] = yB_tasks
-
-        yt = y_tasks_va
-        yp = y_hat_comb
-
-        accs_comb.append(accuracy_score(yt, yp))
-        f1_macro_comb.append(f1_score(yt, yp, average="macro"))
-
-        # active-only metrics: compare to IDLE, not 0
-        act_mask = (yt != IDLE)
+        # P(task=c | x) = P(active | x) * P(task=c | active, x) (stage B = marginalization over active r.v.)
+        for c in active_classes:
+            P_fold[c] = pA * pB_fold[c]
+            
+        # Numerical safety: renormalize so rows sum to 1
+        P_fold = P_fold.div(P_fold.sum(axis=1), axis=0)
+        
+        # Computing metrics per fold
+        yp_fold = P_fold.idxmax(axis=1)
+        yt_fold = y_tasks_va
+        accs_comb.append(accuracy_score(yt_fold, yp_fold))
+        f1_macro_comb.append(f1_score(yt_fold, yp_fold, average="macro"))
+        act_mask = (yt_fold != IDLE)
         if act_mask.any():
-            f1_macro_active_comb.append(f1_score(yt[act_mask], yp[act_mask], average="macro"))
+            f1_macro_active_comb.append(
+                f1_score(yt_fold[act_mask], yp_fold[act_mask], average="macro")
+            )
+            
 
-        yt_all.append(yt); yp_all.append(yp)
-
-    yt_all = pd.concat(yt_all).sort_index()
-    yp_all = pd.concat(yp_all).loc[yt_all.index]
-    rep_comb = classification_report(yt_all, yp_all, digits=3)
-    cm_comb  = confusion_matrix(yt_all, yp_all)
+        P_all_unsmoothed.append(P_fold)
+        Y_all.append(yt_fold)
+        pA_list.append(pA)
+        pB_list.append(pB_fold)
+        
+    P_all_unsmoothed = pd.concat(P_all_unsmoothed).sort_index()
+    yt_all = pd.concat(Y_all).sort_index()
+    pA_all = pd.concat(pA_list).sort_index()
+    pB_all = pd.concat(pB_list).sort_index()
     
-    assert (yp == IDLE).any(), "No idle predicted — mapping/default bug."
+    # Global unsmoothed predictions
+    yp_all_unsmoothed = P_all_unsmoothed.idxmax(axis=1)
     
-    print("\n=== Hierarchical CV (Combined) ===")
-    print("Final pred counts:", yp.value_counts().sort_index())
+    rep_comb = classification_report(yt_all, yp_all_unsmoothed, digits=3)
+    cm_comb  = confusion_matrix(yt_all, yp_all_unsmoothed, labels=all_classes)
+    
+    print("\n=== Hierarchical CV (Combined unsmoothed) ===")
+    print("Final pred counts:", yp_all_unsmoothed.value_counts().sort_index())
     print(f"Accuracy:                 {np.mean(accs_comb):.3f} ± {np.std(accs_comb):.3f}")
     print(f"Macro-F1 (all classes):   {np.mean(f1_macro_comb):.3f} ± {np.std(f1_macro_comb):.3f}")
     print(f"Macro-F1 (active only):   {np.mean(f1_macro_active_comb):.3f} ± {np.std(f1_macro_active_comb):.3f}")
     print("\nPer-class report:\n", rep_comb)
 
-    with open(os.path.join(save_model_path, "report_combined.txt"), "w") as f:
+    with open(os.path.join(save_model_path, "report_combined_unsmoothed.txt"), "w") as f:
         f.write(rep_comb)
-    pd.DataFrame(cm_comb).to_csv(os.path.join(save_model_path, "cm_combined.csv"))
+    pd.DataFrame(cm_comb).to_csv(os.path.join(save_model_path, "cm_combined_unsmoothed.csv"))
     
     
     # Confusion matrix
@@ -635,7 +716,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=(8, 6))
     cm_norm = cm_comb / cm_comb.sum(axis=1, keepdims=True)
     im = ax.imshow(cm_norm, interpolation="nearest")
-    ax.set_title("Normalized Confusion Matrix (Combined)")
+    ax.set_title("Normalized Confusion Matrix (Combined unsmothed)")
     ax.set_xlabel("Predicted"); ax.set_ylabel("True")
     ax.set_xticks(np.arange(len(labels_sorted)))
     ax.set_xticklabels(disp_labels, rotation=45, ha="right")
@@ -643,26 +724,56 @@ if __name__ == "__main__":
     ax.set_yticklabels(disp_labels)
     plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
     plt.tight_layout()
-    fig.savefig(os.path.join(save_model_path, "confusion_matrix_combined.png"), dpi=150)
+    fig.savefig(os.path.join(save_model_path, "confusion_matrix_combined_unsmoothed.png"), dpi=150)
     plt.close(fig)
     
     # ------------------------- 8. TEMPORAL SMOOTHING APPLIED TO COMBINED PREDICTIONS ------------------------- 
     
     # Apply per participant:
-    # - Smooth Stage-A probabilities with EMA before thresholding.
+    # - Don't smooth stage A as Idle is the majority class and smoothing might discard some active tasks
     # - Smooth Stage-B probabilities with EMA, then argmax.
-    # - Finally majority-vote on the combined labels.   
-    # Apparently, a probability-level smoothin is better -> store pA and prob_B per fold, and replace the labell block in the combined CV with EMA on those arrays per participant before thresholding/argmax.
+    # - Rebuild probablilities:
+    #   - p(idle | x_t) = 1 - pA
+    #   - p(task + c | x_t) = pA*pB_smooth  
     
-    yp_smooth = []
+    alpha_B = 0.6 # smoothing factor for Stabe B only
+    
+    P_all_smooth = pd.DataFrame(
+        0.0,
+        index=yt_all.index,
+        columns=all_classes
+    )
+    
+    
     for pid, idx in participant_sequences(train_df.loc[yt_all.index], sort_key="id"):
-        yp_seq = yp_all.loc[idx]
-        yp_mv  = rolling_mode(yp_seq, k=5)        # majority vote window
-        yp_smooth.append(yp_mv)
-    yp_smooth = pd.concat(yp_smooth).loc[yt_all.index]
+        idx = idx.sort_values()
+        
+        pA_seq = pA_all.loc[idx].values          
+        pB_seq = pB_all.loc[idx].values 
+        
+        pB_seq_smooth = ema_probs(pB_seq, alpha=alpha_B)
+        
+        # Rebuild full probabilities for this participant
+        P_pid = pd.DataFrame(
+            0.0,
+            index=idx,
+            columns=all_classes
+        )
+        
+        P_pid[IDLE] = 1.0 - pA_seq
+        
+        for j, c in enumerate(active_classes):
+            P_pid[c] = pA_seq * pB_seq_smooth[:, j]
+        
+        # Renormalize (small numerical safety)
+        P_pid = P_pid.div(P_pid.sum(axis=1), axis=0)
+        
+        P_all_smooth.loc[idx] = P_pid
+        
+    yp_all_smooth = P_all_smooth.idxmax(axis=1)
 
-    rep_smooth = classification_report(yt_all, yp_smooth, digits=3)
-    cm_smooth  = confusion_matrix(yt_all, yp_smooth)
+    rep_smooth = classification_report(yt_all, yp_all_smooth, digits=3)
+    cm_smooth  = confusion_matrix(yt_all, yp_all_smooth, labels=all_classes)
     
     labels_sorted = np.sort(np.unique(yt_all))
     disp_labels   = ["idle" if c == -1 else str(c) for c in labels_sorted]

@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 
+# TODO: Maybe modify IDLE time as the time between consecutive mouse positions and they are transmitted only when the mouse is moving
 
 class MouseMetricsProcessor:
     """

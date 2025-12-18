@@ -1,17 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name=mp_py_benchmark
-# SBATCH --output=/home/%u/.out/%j.out       ## this is where print() etc. go -> $HOME/.out
-# SBATCH --error=/home/%u/.out/%j.err        ## this is where errors go       -> $HOME/.out
+#SBATCH --job-name=xg_boost_aware
 #SBATCH --time=0-24:00:00                   ## max. time in format d-hh:mm:ss
 #SBATCH --nodes=1                           ## number of nodes, usually 1 in python
 #SBATCH --mem-per-cpu=500MB                 ## specify the memory per core
-# #SBATCH --mem=500MB                       ## alternatively, specify the memory (commented)
 #SBATCH --ntasks=1                          ## number of tasks, usually 1 in python
 #SBATCH --cpus-per-task=100                  ## number of cores
 #SBATCH --partition=defq                    ## queue (partition) to run the job in
-# #SBATCH --partition=qjupyter              ## alternative queue (commented)
-# #SBATCH --nodelist=srv-lab-t-251          ## run on a specific worker (commented)exit
-# #SBATCH --account=my_special_project      ## account to charge the job to (commented)
+# SBATCH --nodelist=srv-lab-t-262          ## run on a specific worker (commented)exit
 
 # create output directory (doesn't do anything if it already exists)
 mkdir -p ${HOME}/.out
