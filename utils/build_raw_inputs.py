@@ -67,12 +67,21 @@ def find_scenarios(root: Path) -> List[Tuple[str, str, Path]]:
 
 def find_et_tsv(scen_dir: Path) -> Optional[Path]:
     et_dir = scen_dir / "ET"
-    if not et_dir.is_dir(): return None
-    # Prefer fusion TSVs if present, else any TSV
+    if not et_dir.is_dir():
+        return None
+
+    # 1) Prefer reviewed ET if present
+    reviewed = et_dir / "reviewed_gaze_data_fusion.tsv"
+    if reviewed.exists():
+        return reviewed
+
+    # 2) Otherwise prefer fusion TSVs (acquired in ZAGREB), else any TSV
     cand = list(et_dir.glob("*gaze*fusion*.tsv"))
     if not cand:
         cand = list(et_dir.glob("*.tsv"))
-    return sorted(cand)[0] if cand else None
+
+    # Prefer newest, not sorted()[0]
+    return max(cand, key=lambda p: p.stat().st_mtime) if cand else None
 
 def find_sim_db(scen_dir: Path) -> Path | None:
     """
@@ -125,7 +134,14 @@ def slice_between_events(df: pd.DataFrame, start="ScreenRecordingStart", end="Sc
 
 def build_et_frame(tsv_path: Path) -> pd.DataFrame:
     df = pd.read_csv(tsv_path, sep="\t")
-    df = slice_between_events(df, include_bounds=False)
+    # Try to slice between; otherwise keep full DF
+    if "Event" in df.columns:
+        try:
+            df = slice_between_events(df, include_bounds=False)
+        except Exception:
+            # reviewed files may not have those markers
+            pass
+
 
     # Clean up ET columns (drop ET mouse if present; we’ll use simulator mouse)
     for c in ["Mouse position X [DACS px]", "Mouse position Y [DACS px]"]:

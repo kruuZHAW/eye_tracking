@@ -28492,3 +28492,379 @@ Deleted:              170 (files), 57 (dirs), 263.978 GiB (freed)
 Transferred:            1 / 1, 100%
 Elapsed time:      3m35.8s
 
+2025/12/19 08:10:55 INFO  : Starting transaction limiter: max 8 transactions/s with burst 16
+2025/12/19 08:10:57 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:10:57 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:10:57 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:10:57 ERROR : Attempt 1/10 failed with 1 errors and: directory not found
+2025/12/19 08:11:07 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:11:07 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:11:07 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:11:07 ERROR : Attempt 2/10 failed with 1 errors and: directory not found
+2025/12/19 08:11:17 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:11:17 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:11:17 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:11:17 ERROR : Attempt 3/10 failed with 1 errors and: directory not found
+2025/12/19 08:11:27 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:11:27 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:11:27 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:11:27 ERROR : Attempt 4/10 failed with 1 errors and: directory not found
+2025/12/19 08:11:37 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:11:37 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:11:37 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:11:37 ERROR : Attempt 5/10 failed with 1 errors and: directory not found
+2025/12/19 08:11:47 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:11:47 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:11:47 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:11:47 ERROR : Attempt 6/10 failed with 1 errors and: directory not found
+2025/12/19 08:11:57 INFO  : 
+Transferred:   	          0 B / 0 B, -, 0 B/s, ETA -
+Checks:                 0 / 0, -, Listed 126
+Elapsed time:       1m0.0s
+
+2025/12/19 08:11:58 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:11:58 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:11:58 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:11:58 ERROR : Attempt 7/10 failed with 1 errors and: directory not found
+2025/12/19 08:12:08 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:12:08 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:12:08 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:12:08 ERROR : Attempt 8/10 failed with 1 errors and: directory not found
+2025/12/19 08:12:18 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:12:18 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:12:18 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:12:18 ERROR : Attempt 9/10 failed with 1 errors and: directory not found
+2025/12/19 08:12:28 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:12:28 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:12:28 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:12:28 ERROR : Attempt 10/10 failed with 1 errors and: directory not found
+2025/12/19 08:12:38 INFO  : 
+Transferred:   	          0 B / 0 B, -, 0 B/s, ETA -
+Errors:                 1 (retrying may help)
+Checks:                 0 / 0, -, Listed 210
+Elapsed time:      1m40.8s
+
+2025/12/19 08:12:38 NOTICE: Failed to sync: directory not found
+2025/12/19 08:23:36 INFO  : Starting transaction limiter: max 8 transactions/s with burst 16
+2025/12/19 08:23:36 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:23:36 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting files as there were IO errors
+2025/12/19 08:23:36 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting directories as there were IO errors
+2025/12/19 08:23:36 ERROR : Attempt 1/10 failed with 1 errors and: directory not found
+2025/12/19 08:23:46 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:23:46 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting files as there were IO errors
+2025/12/19 08:23:46 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting directories as there were IO errors
+2025/12/19 08:23:46 ERROR : Attempt 2/10 failed with 1 errors and: directory not found
+2025/12/19 08:23:56 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:23:56 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting files as there were IO errors
+2025/12/19 08:23:56 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting directories as there were IO errors
+2025/12/19 08:23:56 ERROR : Attempt 3/10 failed with 1 errors and: directory not found
+2025/12/19 08:24:06 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:24:06 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting files as there were IO errors
+2025/12/19 08:24:06 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting directories as there were IO errors
+2025/12/19 08:24:06 ERROR : Attempt 4/10 failed with 1 errors and: directory not found
+2025/12/19 08:24:17 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:24:17 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting files as there were IO errors
+2025/12/19 08:24:17 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting directories as there were IO errors
+2025/12/19 08:24:17 ERROR : Attempt 5/10 failed with 1 errors and: directory not found
+2025/12/19 08:24:27 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:24:27 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting files as there were IO errors
+2025/12/19 08:24:27 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting directories as there were IO errors
+2025/12/19 08:24:27 ERROR : Attempt 6/10 failed with 1 errors and: directory not found
+2025/12/19 08:24:36 INFO  : 
+Transferred:   	          0 B / 0 B, -, 0 B/s, ETA -
+Elapsed time:       1m0.0s
+
+2025/12/19 08:24:37 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:24:37 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting files as there were IO errors
+2025/12/19 08:24:37 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting directories as there were IO errors
+2025/12/19 08:24:37 ERROR : Attempt 7/10 failed with 1 errors and: directory not found
+2025/12/19 08:24:47 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:24:47 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting files as there were IO errors
+2025/12/19 08:24:47 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting directories as there were IO errors
+2025/12/19 08:24:47 ERROR : Attempt 8/10 failed with 1 errors and: directory not found
+2025/12/19 08:24:57 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:24:57 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting files as there were IO errors
+2025/12/19 08:24:57 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting directories as there were IO errors
+2025/12/19 08:24:57 ERROR : Attempt 9/10 failed with 1 errors and: directory not found
+2025/12/19 08:25:07 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:25:07 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting files as there were IO errors
+2025/12/19 08:25:07 ERROR : Local file system at /store/kruu/eye_tracking/training_data_after_review: not deleting directories as there were IO errors
+2025/12/19 08:25:07 ERROR : Attempt 10/10 failed with 1 errors and: directory not found
+2025/12/19 08:25:17 INFO  : 
+Transferred:   	          0 B / 0 B, -, 0 B/s, ETA -
+Errors:                 1 (retrying may help)
+Elapsed time:      1m41.2s
+
+2025/12/19 08:25:17 NOTICE: Failed to sync: directory not found
+2025/12/19 08:31:23 INFO  : Starting transaction limiter: max 8 transactions/s with burst 16
+2025/12/19 08:31:24 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:31:24 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:31:24 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:31:24 ERROR : Attempt 1/10 failed with 1 errors and: directory not found
+2025/12/19 08:31:34 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:31:34 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:31:34 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:31:34 ERROR : Attempt 2/10 failed with 1 errors and: directory not found
+2025/12/19 08:31:44 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:31:44 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:31:44 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:31:44 ERROR : Attempt 3/10 failed with 1 errors and: directory not found
+2025/12/19 08:31:54 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:31:54 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:31:54 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:31:54 ERROR : Attempt 4/10 failed with 1 errors and: directory not found
+2025/12/19 08:32:04 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:32:04 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:32:04 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:32:04 ERROR : Attempt 5/10 failed with 1 errors and: directory not found
+2025/12/19 08:32:14 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:32:14 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:32:14 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:32:14 ERROR : Attempt 6/10 failed with 1 errors and: directory not found
+2025/12/19 08:32:23 INFO  : 
+Transferred:   	          0 B / 0 B, -, 0 B/s, ETA -
+Elapsed time:       1m0.0s
+
+2025/12/19 08:32:24 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:32:24 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:32:24 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:32:24 ERROR : Attempt 7/10 failed with 1 errors and: directory not found
+2025/12/19 08:32:34 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:32:34 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:32:34 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:32:34 ERROR : Attempt 8/10 failed with 1 errors and: directory not found
+2025/12/19 08:32:44 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:32:44 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:32:44 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:32:44 ERROR : Attempt 9/10 failed with 1 errors and: directory not found
+2025/12/19 08:32:54 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 08:32:54 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 08:32:54 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 08:32:54 ERROR : Attempt 10/10 failed with 1 errors and: directory not found
+2025/12/19 08:33:04 INFO  : 
+Transferred:   	          0 B / 0 B, -, 0 B/s, ETA -
+Errors:                 1 (retrying may help)
+Elapsed time:      1m40.9s
+
+2025/12/19 08:33:04 NOTICE: Failed to sync: directory not found
+2025/12/19 10:01:24 INFO  : Starting transaction limiter: max 8 transactions/s with burst 16
+2025/12/19 10:01:24 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:01:24 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:01:24 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:01:24 ERROR : Attempt 1/10 failed with 1 errors and: directory not found
+2025/12/19 10:01:35 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:01:35 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:01:35 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:01:35 ERROR : Attempt 2/10 failed with 1 errors and: directory not found
+2025/12/19 10:01:45 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:01:45 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:01:45 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:01:45 ERROR : Attempt 3/10 failed with 1 errors and: directory not found
+2025/12/19 10:01:55 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:01:55 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:01:55 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:01:55 ERROR : Attempt 4/10 failed with 1 errors and: directory not found
+2025/12/19 10:02:05 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:02:05 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:02:05 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:02:05 ERROR : Attempt 5/10 failed with 1 errors and: directory not found
+2025/12/19 10:02:15 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:02:15 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:02:15 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:02:15 ERROR : Attempt 6/10 failed with 1 errors and: directory not found
+2025/12/19 10:02:24 INFO  : 
+Transferred:   	          0 B / 0 B, -, 0 B/s, ETA -
+Elapsed time:       1m0.0s
+
+2025/12/19 10:02:25 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:02:25 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:02:25 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:02:25 ERROR : Attempt 7/10 failed with 1 errors and: directory not found
+2025/12/19 10:02:35 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:02:35 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:02:35 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:02:35 ERROR : Attempt 8/10 failed with 1 errors and: directory not found
+2025/12/19 10:02:45 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:02:45 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:02:45 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:02:45 ERROR : Attempt 9/10 failed with 1 errors and: directory not found
+2025/12/19 10:02:55 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:02:55 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:02:55 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:02:55 ERROR : Attempt 10/10 failed with 1 errors and: directory not found
+2025/12/19 10:03:05 INFO  : 
+Transferred:   	          0 B / 0 B, -, 0 B/s, ETA -
+Errors:                 1 (retrying may help)
+Elapsed time:      1m40.9s
+
+2025/12/19 10:03:05 NOTICE: Failed to sync: directory not found
+2025/12/19 10:04:42 INFO  : Starting transaction limiter: max 8 transactions/s with burst 16
+2025/12/19 10:04:42 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:04:42 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:04:42 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:04:42 ERROR : Attempt 1/10 failed with 1 errors and: directory not found
+2025/12/19 10:04:52 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:04:52 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:04:52 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:04:52 ERROR : Attempt 2/10 failed with 1 errors and: directory not found
+2025/12/19 10:05:03 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:05:03 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:05:03 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:05:03 ERROR : Attempt 3/10 failed with 1 errors and: directory not found
+2025/12/19 10:05:13 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:05:13 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:05:13 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:05:13 ERROR : Attempt 4/10 failed with 1 errors and: directory not found
+2025/12/19 10:05:23 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:05:23 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:05:23 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:05:23 ERROR : Attempt 5/10 failed with 1 errors and: directory not found
+2025/12/19 10:05:33 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:05:33 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:05:33 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:05:33 ERROR : Attempt 6/10 failed with 1 errors and: directory not found
+2025/12/19 10:05:42 INFO  : 
+Transferred:   	          0 B / 0 B, -, 0 B/s, ETA -
+Elapsed time:       1m0.0s
+
+2025/12/19 10:05:43 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:05:43 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:05:43 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:05:43 ERROR : Attempt 7/10 failed with 1 errors and: directory not found
+2025/12/19 10:05:53 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:05:53 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:05:53 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:05:53 ERROR : Attempt 8/10 failed with 1 errors and: directory not found
+2025/12/19 10:06:03 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:06:03 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:06:03 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:06:03 ERROR : Attempt 9/10 failed with 1 errors and: directory not found
+2025/12/19 10:06:13 ERROR : OneDrive root 'Data Sept 2025': error reading source root directory: directory not found
+2025/12/19 10:06:13 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting files as there were IO errors
+2025/12/19 10:06:13 ERROR : Local file system at /store/kruu/eye_tracking/training_data: not deleting directories as there were IO errors
+2025/12/19 10:06:13 ERROR : Attempt 10/10 failed with 1 errors and: directory not found
+2025/12/19 10:06:23 INFO  : 
+Transferred:   	          0 B / 0 B, -, 0 B/s, ETA -
+Errors:                 1 (retrying may help)
+Elapsed time:      1m40.9s
+
+2025/12/19 10:06:23 NOTICE: Failed to sync: directory not found
+2025/12/19 10:17:49 INFO  : Starting transaction limiter: max 8 transactions/s with burst 16
+2025/12/19 10:17:56 INFO  : 002_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:18:02 INFO  : 001_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:18:08 INFO  : 001_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:18:13 INFO  : 001_scenario_2_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:18:18 INFO  : 002_scenario_2_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:18:24 INFO  : 002_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:18:28 INFO  : 003_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:18:34 INFO  : 003_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:18:39 INFO  : 004_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:18:44 INFO  : 004_scenario_2_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:18:48 INFO  : 004_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:18:50 INFO  : 
+Transferred:   	  970.939 MiB / 4.815 GiB, 20%, 15.821 MiB/s, ETA 4m10s
+Checks:                 0 / 0, -, Listed 57
+Transferred:           11 / 57, 19%
+Elapsed time:       1m0.0s
+Transferring:
+ *           005_scenario_1_gaze_data_fusion.tsv: 27% /89.579Mi, 3.000Mi/s, 21s
+ *           005_scenario_2_gaze_data_fusion.tsv:  2% /94.823Mi, 255.500Ki/s, 6m12s
+ *           005_scenario_3_gaze_data_fusion.tsv: transferring
+ *           006_scenario_1_gaze_data_fusion.tsv: transferring
+
+2025/12/19 10:18:55 INFO  : 005_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:19:01 INFO  : 005_scenario_2_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:19:06 INFO  : 005_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:19:11 INFO  : 006_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:19:18 INFO  : 006_scenario_2_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:19:24 INFO  : 006_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:19:31 INFO  : 007_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:19:35 INFO  : 007_scenario_2_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:19:43 INFO  : 007_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:19:49 INFO  : 008_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:19:50 INFO  : 
+Transferred:   	    1.808 GiB / 4.814 GiB, 38%, 14.127 MiB/s, ETA 3m37s
+Checks:                 0 / 0, -, Listed 57
+Transferred:           21 / 57, 37%
+Elapsed time:       2m0.0s
+Transferring:
+ *           008_scenario_2_gaze_data_fusion.tsv: 19% /96.126Mi, 1.300Mi/s, 59s
+ *           008_scenario_3_gaze_data_fusion.tsv:  1% /95.432Mi, 0/s, -
+ *           009_scenario_1_gaze_data_fusion.tsv: transferring
+ *           009_scenario_2_gaze_data_fusion.tsv: transferring
+
+2025/12/19 10:19:56 INFO  : 008_scenario_2_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:20:04 INFO  : 008_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:20:10 INFO  : 009_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:20:16 INFO  : 009_scenario_2_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:20:22 INFO  : 009_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:20:28 INFO  : 010_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:20:34 INFO  : 011_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:20:41 INFO  : 011_scenario_2_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:20:47 INFO  : 011_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:20:50 INFO  : 
+Transferred:   	    2.621 GiB / 4.897 GiB, 54%, 13.983 MiB/s, ETA 2m46s
+Checks:                 0 / 0, -, Listed 57
+Transferred:           30 / 57, 53%
+Elapsed time:       3m0.0s
+Transferring:
+ *           013_scenario_1_gaze_data_fusion.tsv: 37% /95.255Mi, 3.625Mi/s, 16s
+ *           013_scenario_2_gaze_data_fusion.tsv:  4% /96.245Mi, 1021.985Ki/s, 1m32s
+ *           013_scenario_3_gaze_data_fusion.tsv:  0% /86.405Mi, 0/s, -
+ *           014_scenario_1_gaze_data_fusion.tsv: transferring
+
+2025/12/19 10:20:55 INFO  : 013_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:21:02 INFO  : 013_scenario_2_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:21:07 INFO  : 013_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:21:14 INFO  : 014_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:21:21 INFO  : 014_scenario_2_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:21:24 INFO  : 014_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:21:29 INFO  : 015_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:21:35 INFO  : 015_scenario_2_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:21:40 INFO  : 015_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:21:47 INFO  : 016_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:21:50 INFO  : 
+Transferred:   	    3.514 GiB / 4.895 GiB, 72%, 15.597 MiB/s, ETA 1m30s
+Checks:                 0 / 0, -, Listed 57
+Transferred:           40 / 57, 70%
+Elapsed time:       4m0.0s
+Transferring:
+ *           016_scenario_2_gaze_data_fusion.tsv: 49% /100.947Mi, 4.888Mi/s, 10s
+ *           016_scenario_3_gaze_data_fusion.tsv:  8% /101.038Mi, 1.749Mi/s, 52s
+ *           017_scenario_1_gaze_data_fusion.tsv:  0% /94.764Mi, 13.999Ki/s, 1h55m29s
+ *           017_scenario_2_gaze_data_fusion.tsv: transferring
+
+2025/12/19 10:21:54 INFO  : 016_scenario_2_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:22:00 INFO  : 016_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:22:06 INFO  : 017_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:22:13 INFO  : 017_scenario_2_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:22:19 INFO  : 017_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:22:24 INFO  : 018_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:22:28 INFO  : 018_scenario_2_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:22:34 INFO  : 018_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:22:40 INFO  : 019_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:22:47 INFO  : 019_scenario_2_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:22:50 INFO  : 
+Transferred:   	    4.399 GiB / 4.802 GiB, 92%, 14.756 MiB/s, ETA 27s
+Checks:                 0 / 0, -, Listed 57
+Transferred:           50 / 57, 88%
+Elapsed time:       5m0.0s
+Transferring:
+ *           019_scenario_3_gaze_data_fusion.tsv: 58% /87.856Mi, 4.888Mi/s, 7s
+ *           020_scenario_1_gaze_data_fusion.tsv:  6% /93.480Mi, 1.999Mi/s, 43s
+ *           020_scenario_2_gaze_data_fusion.tsv: transferring
+ *           020_scenario_3_gaze_data_fusion.tsv: transferring
+
+2025/12/19 10:22:54 INFO  : 019_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:23:00 INFO  : 020_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:23:06 INFO  : 020_scenario_2_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:23:12 INFO  : 020_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:23:19 INFO  : 023_scenario_1_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:23:26 INFO  : 023_scenario_2_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:23:31 INFO  : 023_scenario_3_gaze_data_fusion.tsv: Copied (new)
+2025/12/19 10:23:31 INFO  : 
+Transferred:   	    4.985 GiB / 4.985 GiB, 100%, 14.984 MiB/s, ETA 0s
+Checks:                 0 / 0, -, Listed 57
+Transferred:           57 / 57, 100%
+Elapsed time:      5m41.4s
+
