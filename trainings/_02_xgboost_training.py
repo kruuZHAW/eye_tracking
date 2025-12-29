@@ -8,7 +8,7 @@ sys.path.append(str(Path('~/git/eye_tracking/').expanduser()))
 
 import numpy as np
 import pandas as pd
-from utils.data_processing import GazeMetricsProcessor, MouseMetricsProcessor
+from utils.data_processing_gaze_data import GazeMetricsProcessor, MouseMetricsProcessor
 from utils.helper import load_and_process, find_overlapping_tasks, drop_chunks_with_all_zero_features
 
 from tsfresh import extract_features

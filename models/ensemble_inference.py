@@ -18,7 +18,7 @@ from models.jcafnet import JCAFNet
 from utils.dataset import GazeMouseDatasetJCAFNet
 from utils.train import collate_jcafnet
 from torch.utils.data import DataLoader
-from utils.data_processing import EyeTrackingProcessor, GazeMetricsProcessor, MouseMetricsProcessor
+from utils.data_processing_gaze_data import EyeTrackingProcessor, GazeMetricsProcessor, MouseMetricsProcessor
 
 from tqdm import tqdm
 import joblib

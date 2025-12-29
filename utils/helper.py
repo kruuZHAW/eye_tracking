@@ -6,20 +6,23 @@ import json
 
 import pandas as pd
 
-from utils.data_processing import EyeTrackingProcessor
+from utils.data_processing_gaze_data import EyeTrackingProcessor
 from utils.task_data_io import PARQUET_ET_NAME, list_parquet_files
 
 def load_and_process_et(
     root_dir: Union[str, Path],
     columns: list[str],
+    filter_outliers: bool,
     interpolate_cols: list[str],
     fill_cols: list[str],
+    window_short_ms: int = None,
+    window_mid_ms: int = None,
+    window_long_ms: int = None,
+    task_margin_ms: int = None,
+    step_ms: int = None, 
     participants: Optional[Iterable[str]] = None,
     scenarios: Optional[Iterable[Union[str, int]]] = None,
-    time_resampling: bool = True,
-    fixed_window_ms: int | None = 3000,
-    window_step_ms: int | None = None,
-    min_task_presence: float = 0.5,
+    time_resampling: bool = False,
 ):
     # Get all data files
     et_file_index, _ = list_parquet_files(root_dir, participants=participants, scenarios=scenarios)
@@ -33,36 +36,65 @@ def load_and_process_et(
     
     # Load data
     processor = EyeTrackingProcessor()
-    all_data, atco_task_map = processor.load_data(et_file_index, want_columns=list(needed))
+    scenarios, atco_task_map = processor.load_data(et_file_index, want_columns=list(needed))
+    
+    # Blink detection
+    scenarios_with_blinks, blink_summaries = processor.detect_blinks_in_streams(scenarios)
 
     ###### Chunking Strategy ######
-    if fixed_window_ms is not None:
-        chunks = processor.get_fixed_window_chunks(
-            all_data,
-            features=columns,
-            window_ms=fixed_window_ms,
-            step_ms=window_step_ms,
-            min_presence=min_task_presence,
+    if (window_short_ms is not None) & (window_mid_ms is not None) & (window_long_ms is not None):
+        chunks = processor.get_multiscale_window_chunks(
+            scenarios_with_blinks,
+            features=columns + ["Blink", "Loss of Attention"],
+            window_short_ms = window_short_ms,
+            window_mid_ms = window_mid_ms,
+            window_long_ms = window_long_ms,
+            task_margin_ms=task_margin_ms,
+            step_ms=step_ms,
+            filter_outliers=filter_outliers,
         )
     else:
-        chunks = processor.get_features(all_data, columns, unmatched_excel_path="unmatched_markers.xlsx")
-
-    # Blink detection
-    chunks, blinks = processor.detect_blinks(chunks)
+        chunks = processor.get_full_tasks(scenarios_with_blinks, 
+                                          columns + ["Blink", "Loss of Attention"], 
+                                          unmatched_excel_path="unmatched_markers.xlsx", 
+                                          filter_outliers=filter_outliers)
 
     # Time-step resampling
-    if time_resampling:
-        resampled_chunks_time = processor.resample_task_chunks(
-            chunks, interpolate_cols, mode="time", param=10
-        )
-        # post-process: Blink back to bool + fill others
-        for task_id, chunk in resampled_chunks_time.items():
-            chunk["Blink"] = chunk["Blink"] > 0.5
-            for col in fill_cols:
-                chunk[col] = chunk[col].ffill().bfill()
-        return resampled_chunks_time, blinks, atco_task_map
+    # TODO: debug resampling 'dict' object has no attribute 'sort_values'
+    # if time_resampling:
+    #     resampled_chunks_time = processor.resample_task_chunks(
+    #         chunks, interpolate_cols, mode="time", param=10
+    #     )
+    #     # post-process: Blink back to bool + fill others
+    #     for task_id, chunk in resampled_chunks_time.items():
+    #         chunk["Blink"] = chunk["Blink"] > 0.5
+    #         for col in fill_cols:
+    #             chunk[col] = chunk[col].ffill().bfill()
+    #     return resampled_chunks_time, blink_summaries, atco_task_map
 
-    return chunks, blinks, atco_task_map
+    return chunks,blink_summaries, atco_task_map
+
+def load_asd_scenario_data(root_dir: Union[str, Path]) -> dict[str, pd.DataFrame]:
+    """
+    Load ASD events parquet files on the scenario level
+    """
+    
+    dfs: dict[str, pd.DataFrame] = {}
+    
+    _, asd_files = list_parquet_files(root_dir)
+        
+    for item in asd_files:
+        p = item["path"]
+        df = pd.read_parquet(p)
+
+        df = df.copy()
+        df["participant_id"] = str(item["participant_id"])
+        df["scenario_id"] = str(item["scenario_id"])
+        id = f"{df["participant_id"].iloc[0]}_{df["scenario_id"].iloc[0]}"
+
+        dfs[id] = df
+
+    return dfs
 
 def save_processed_data(save_dir: Union[str, Path], 
                         chunks: dict, 
@@ -148,57 +180,59 @@ def find_overlapping_tasks(task_chunks: dict[str, pd.DataFrame]) -> dict[int, li
 
     return overlaps_per_participant
 
-def drop_chunks_with_all_zero_features(task_chunks: dict[str, pd.DataFrame], 
-                                       feature_cols: list[str], 
-                                       threshold: float = 1.0, 
-                                       drop_if_all_missing: bool = True) -> dict[str, pd.DataFrame]:
+def drop_chunks_with_nan_et(multiscale_chunks: dict[str, dict[str, pd.DataFrame]], 
+                                threshold: float = 1.0, 
+                                drop_if_all_missing: bool = True
+                                ) -> dict[str, dict[str, pd.DataFrame]]:
     """
-    Drops any DataFrame from the dict where at least one feature column has a great proportion of zero.
-    
-    Parameters
-    ----------
-    task_chunks : dict[str, pd.DataFrame]
-        Dictionary with task ID as key and task data as value.
-    threshold: float
-        Proportion of zeros required to drop a feature
-    
-    Returns
-    -------
-    dict[str, pd.DataFrame]
-        Filtered dictionary with problematic chunks removed.
-    """
-    cleaned_chunks = {}
-    dropped_ids = []
+    For a multi-level dict of windows:
+        { uid: {"short": df_short, "mid": df_mid, "long": df_long} }
 
-    for task_id, df in task_chunks.items():
-        present_cols = [c for c in feature_cols if c in df.columns]
+    Drop a uid if *any* of its windows ("short", "mid", or "long") has
+    a proportion of Nan values greater than *thresolhod* in the eye tracking data.
+
+    Notes
+    -----
+    - Zeros are treated as valid values (only NaNs matter).
+    - If a window DataFrame is empty, it is treated as invalid -> sample dropped.
+    - If none of `feature_cols` are present in a window, that window is ignored
+      for the all-NaN check (you can tighten this if you want).
+    """
+    cleaned_chunks: dict[str, dict[str, pd.DataFrame]] = {}
+    dropped_ids: list[str] = []
+
+    window_keys = ("short", "mid", "long")
+
+    for uid, windows in multiscale_chunks.items():
         drop = False
-
-        for col in present_cols:
-            s = pd.to_numeric(df[col], errors="coerce")  # ensure numeric; coerce '0'/'junk' to NaN
-            valid = int(s.notna().sum())
-            if valid == 0:
-                # Column is entirely NaN in this chunk
-                if drop_if_all_missing:
-                    drop = True
-                    break
-                else:
-                    continue
-
-            zeros = int((s == 0).sum())
-            zero_ratio = zeros / valid  # plain float
-
-            if zero_ratio >= float(threshold):
+        
+        for wname in window_keys:
+            df = windows.get(wname)
+            
+            # Already checked during built, but safe proof
+            if df is None or df.empty:
                 drop = True
                 break
-
+            
+            sub = df[['Gaze point X [DACS px]', 'Gaze point Y [DACS px]']]
+            
+            # Proportion where both gaze X and Y are nans
+            joint_nan = (sub.isna().all(axis=1)).mean()
+            if joint_nan > threshold:
+                drop = True
+                break
+        
         if drop:
-            dropped_ids.append(task_id)
+            dropped_ids.append(uid)
         else:
-            cleaned_chunks[task_id] = df
-
+            cleaned_chunks[uid] = windows
+        
     if dropped_ids:
-        print(f"Dropped {len(dropped_ids)} chunks (threshold={threshold}): {dropped_ids[:10]}{' ...' if len(dropped_ids)>10 else ''}")
+        print(
+        f"Dropped {len(dropped_ids)} multi-scale samples due to a proportion of Nans greater than {threshold} in eye-tracking window(s): "
+        f"{dropped_ids[:10]}{' ...' if len(dropped_ids) > 10 else ''}"
+    )
     else:
-        print(f"No chunks dropped (threshold={threshold}).")
+        print("No multi-scale samples dropped (threshold={threshold}).")
+        
     return cleaned_chunks
