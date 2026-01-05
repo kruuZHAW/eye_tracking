@@ -10,7 +10,27 @@ from sync.models import SyncPair
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.StreamHandler().setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s")))
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+logger.addHandler(handler)
+# logger.addHandler(logging.StreamHandler().setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s")))
+
+_ET_START_FMTS = (
+    "%d.%m.%Y. %H:%M:%S.%f",  # original Tobii: 11.09.2025. 09:11:42.459
+    "%d.%m.%Y %H:%M:%S.%f",   # reviewed:       11.09.2025  09:11:42.459
+)
+
+def parse_et_start_datetime(date_str: str, time_str: str, timezone: str) -> datetime:
+    raw = f"{str(date_str).strip()} {str(time_str).strip()}"
+    tz = ZoneInfo(timezone)
+
+    for fmt in _ET_START_FMTS:
+        try:
+            return datetime.strptime(raw, fmt).replace(tzinfo=tz)
+        except ValueError:
+            pass
+
+    raise ValueError(f"Unrecognized ET datetime format: {raw!r}")
 
 class TimeSynchronizer:
     # Variables for interpolation
@@ -70,10 +90,16 @@ class TimeSynchronizer:
         start_event = df[df["Event"].eq("RecordingStart")].iloc[0]
         
         # Parse date and time to datetime with timezone
-        start_dt = datetime.strptime(
-            f"{start_event['Recording date']} {start_event['Recording start time']}",
-            "%d.%m.%Y. %H:%M:%S.%f"
-        ).replace(tzinfo=ZoneInfo(timezone)) - timedelta(milliseconds=int(start_event["Recording timestamp [ms]"]))
+        # start_dt = datetime.strptime(
+        #     f"{start_event['Recording date']} {start_event['Recording start time']}",
+        #     "%d.%m.%Y. %H:%M:%S.%f"
+        # ).replace(tzinfo=ZoneInfo(timezone)) - timedelta(milliseconds=int(start_event["Recording timestamp [ms]"]))
+        
+        start_dt = parse_et_start_datetime(
+        start_event["Recording date"],
+        start_event["Recording start time"],
+        timezone,
+        ) - timedelta(milliseconds=int(start_event["Recording timestamp [ms]"]))
         
         # Convert start datetime to UTC ms timestamp
         start_ms = start_dt.timestamp() * 1000

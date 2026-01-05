@@ -337,7 +337,7 @@ if __name__ == "__main__":
     store_dir = "/store/kruu/eye_tracking"
     data_dir = os.path.join(store_dir, "training_data")
     
-    save_model_path = "/home/kruu/git_folder/eye_tracking/trainings/logs/xgboost_hierarchical_v3"
+    save_model_path = "/home/kruu/git_folder/eye_tracking/trainings/logs/xgboost_hierarchical_v4"
     os.makedirs(save_model_path, exist_ok=True)
     
     split_names = ["train", "val", "test"]
@@ -490,9 +490,9 @@ if __name__ == "__main__":
     param_dist_A = {
         "n_estimators": randint(300, 900),      
         "max_depth": randint(3, 9),             
-        "learning_rate": uniform(0.03, 0.2),   
-        "subsample": uniform(0.5, 0.1),         
-        "colsample_bytree": uniform(0.5, 0.1), 
+        "learning_rate": uniform(0.03, 0.2),  # WARNING: Uniform(a,b) samples in [a, a+b)
+        "subsample": uniform(0.5, 0.3),         
+        "colsample_bytree": uniform(0.5, 0.3), 
     }
 
     gs_A = RandomizedSearchCV(
@@ -555,8 +555,8 @@ if __name__ == "__main__":
         "n_estimators": randint(500, 1200),
         "max_depth": randint(3, 9),
         "learning_rate": uniform(0.03, 0.2),
-        "subsample": uniform(0.5, 1),
-        "colsample_bytree": uniform(0.5, 1),
+        "subsample": uniform(0.5, 0.3),
+        "colsample_bytree": uniform(0.5, 0.3),
         "gamma": uniform(0.0, 0.4),  
     }
 

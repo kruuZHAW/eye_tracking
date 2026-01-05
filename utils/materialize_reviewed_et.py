@@ -28,7 +28,8 @@ def materialize(flat_dir: Path, dest_root: Path, mode: str = "symlink"):
         et_dir = dest_root / pid / f"Scenario {sid}" / "ET"
         et_dir.mkdir(parents=True, exist_ok=True)
 
-        out = et_dir / "reviewed_gaze_data_fusion.tsv"
+        out_name = tsv.stem + "_reviewed.tsv"
+        out = et_dir / out_name
         if out.exists():
             continue
 

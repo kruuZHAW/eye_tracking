@@ -9,8 +9,13 @@ from utils.asd_events import build_asd_frame_from_db
 # --- imports for protobuf mouse decoding ---
 from aware_protos.aware.proto import messages_pb2
 
+# --- imports for ET/ASD timestamp sync ---
+from sync.synchronizer import TimeSynchronizer
+
 from zoneinfo import ZoneInfo
-TZ = ZoneInfo("Europe/Zagreb")
+TZ = "Europe/Zagreb"
+
+import warnings
 
 # ---------- helpers: discovery ----------
 
@@ -71,9 +76,9 @@ def find_et_tsv(scen_dir: Path) -> Optional[Path]:
         return None
 
     # 1) Prefer reviewed ET if present
-    reviewed = et_dir / "reviewed_gaze_data_fusion.tsv"
-    if reviewed.exists():
-        return reviewed
+    reviewed = list(et_dir.glob("*_reviewed.tsv"))
+    if reviewed:
+        return reviewed[0]
 
     # 2) Otherwise prefer fusion TSVs (acquired in ZAGREB), else any TSV
     cand = list(et_dir.glob("*gaze*fusion*.tsv"))
@@ -132,45 +137,59 @@ def slice_between_events(df: pd.DataFrame, start="ScreenRecordingStart", end="Sc
         raise ValueError(f"'{end}' occurs before '{start}'")
     return df.iloc[i:j+1] if include_bounds else df.iloc[i+1:j]
 
-def build_et_frame(tsv_path: Path) -> pd.DataFrame:
+def build_et_frame(tsv_path: Path, sync_json: Path | None = None) -> pd.DataFrame:
     df = pd.read_csv(tsv_path, sep="\t")
-    # Try to slice between; otherwise keep full DF
-    if "Event" in df.columns:
-        try:
-            df = slice_between_events(df, include_bounds=False)
-        except Exception:
-            # reviewed files may not have those markers
-            pass
 
-
-    # Clean up ET columns (drop ET mouse if present; we’ll use simulator mouse)
-    for c in ["Mouse position X [DACS px]", "Mouse position Y [DACS px]"]:
-        if c in df.columns:
-            df = df.drop(columns=[c])
-
-    # CET absolute timestamp then UNIX epoch (UTC ms)
+    ### CET absolute timestamp then UNIX epoch (UTC ms) (Eye Tracking computer clock)
     date_str = df["Recording date"].astype(str).str.replace(r"\.$", "", regex=True)
     base_start = pd.to_datetime(
         date_str + " " + df["Recording start time"].astype(str),
         format="%d.%m.%Y %H:%M:%S.%f",
         errors="coerce",
-    ).dt.tz_localize(TZ, ambiguous="infer", nonexistent="shift_forward")
+    ).dt.tz_localize(ZoneInfo(TZ), ambiguous="infer", nonexistent="shift_forward")
     
     offset = pd.to_timedelta(pd.to_numeric(df["Recording timestamp [ms]"], errors="coerce"), unit="ms")
     
-    df["epoch_ms"] = (
+    df["epoch_ms_raw"] = (
     (base_start + offset)
       .dt.tz_convert("UTC")
       .dt.tz_localize(None)
       .astype("int64") // 1_000_000
     ).astype("Int64")
 
-    # keep only what we need from ET; can be adapted
+    ### Synced epoch_ms on participant clock
+    df["epoch_ms_synced"] = pd.Series(pd.NA, index=df.index, dtype="Int64")
+
+    if sync_json is not None:
+        try:
+            syncer = TimeSynchronizer(sync_json)
+            synced = syncer(df, timezone=TZ)  
+            df["epoch_ms_synced"] = pd.Series(synced, index=df.index).round().astype("Int64")
+        except Exception as e:
+            warnings.warn(f"[sync] Failed to apply time sync for {tsv_path.name}: {e}")
+    else:
+        print(f"[sync] No sync points file found for {tsv_path}")
+    
+    if df["epoch_ms_synced"].notna().any():
+        df["epoch_ms"] = df["epoch_ms_synced"]
+    else:
+        df["epoch_ms"] = df["epoch_ms_raw"]
+    
     keep = [
-        "Participant name", "epoch_ms", "Recording date", "Recording timestamp [ms]", "Event",
+        "Participant name", "epoch_ms", "epoch_ms_raw", "epoch_ms_synced", "Recording date", "Recording timestamp [ms]", "Event",
         "Gaze point X [DACS px]", "Gaze point Y [DACS px]",
     ]
     cols = [c for c in keep if c in df.columns]
+    
+    # Only keep during screen recording to get rid of calibration
+    # NOTE: After ts sync because it requires the cfull recordings. 
+    # NOTE: Might manually check the videos to introduce the startPolaris and endPolaris events
+    if "Event" in df.columns:
+        try:
+            df = slice_between_events(df, include_bounds=False, start="ScreenRecordingStart", end="ScreenRecordingEnd")
+        except Exception:
+            pass
+    
     return df[cols].sort_values("Recording timestamp [ms]")
 
 # ---------- Simulator: load mouse for window ----------
@@ -244,22 +263,20 @@ def build_et_frame(tsv_path: Path) -> pd.DataFrame:
 #     return merged
 
 # ---------- Orchestrate one scenario ----------
-def process_scenario(scen_dir: Path) -> Optional[Path]:
+def process_scenario(scen_dir: Path, pid: str, sid: str | int, sync_root: str | Path) -> Optional[Path]:
     et = find_et_tsv(scen_dir)
     db = find_sim_db(scen_dir)
     if not et or not db:
         print(f"[skip] Missing ET or DB in: {scen_dir}", file=sys.stderr)
         return None
+    sync_point_path = Path(sync_root) / f"{pid}_scenario_{sid}_sync_points.json"
 
     out_et = taskrecognition_dir(scen_dir) / "raw_et.parquet"
-    # if not needs_rebuild(et, db, out_parquet):
-    #     print(f"[ok] Up-to-date: {out_parquet}")
-    #     return out_parquet
     out_asd = taskrecognition_dir(scen_dir) / "raw_asd.parquet"
     
 
     try:
-        df_et = build_et_frame(et)
+        df_et = build_et_frame(tsv_path=et, sync_json= sync_point_path)
         df_asd = build_asd_frame_from_db(db, int(df_et["epoch_ms"].min()), int(df_et["epoch_ms"].max()))
         if df_et.empty:
             # If no ET, we stop
@@ -306,7 +323,7 @@ def main():
     wrote_et = 0
     wrote_asd = 0
     for pid, sid, scen_dir in scenarios:
-        res = process_scenario(scen_dir)
+        res = process_scenario(scen_dir, pid, sid, sync_root="/store/regd/sync_points")
         if res:
             if res[0]: wrote_et += 1
             if res[1]: wrote_asd += 1
