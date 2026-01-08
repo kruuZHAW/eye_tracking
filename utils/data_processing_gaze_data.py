@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from pathlib import Path
+import pymovements as pm
 
 from collections import defaultdict
 
@@ -891,14 +892,6 @@ class EyeTrackingProcessor:
             for col in [f"Gaze point {axis}", f"Mouse position {axis}"]:
                 df.loc[(df[col] < limits[0]) | (df[col] > limits[1]), col] = placeholder_value
         return df
-
-    # def pad_tasks(self, df: pd.DataFrame, pad_value=np.nan) -> pd.DataFrame:
-    #     """Pad tasks to match the longest task length."""
-    #     max_len = df.groupby(["Participant name", "Task_id", "Task_execution"]).size().max()
-    #     padded_data = df.groupby(["Participant name", "Task_id", "Task_execution"]).apply(
-    #         lambda group: group.reindex(range(max_len), fill_value=pad_value)
-    #     ).reset_index(drop=True)
-    #     return padded_data
     
     def pad_tasks(self, df: pd.DataFrame, pad_value=np.nan) -> pd.DataFrame:
         """Pad tasks to match the longest task length while keeping metadata."""
@@ -1021,6 +1014,18 @@ class GazeMetricsProcessor:
     def _time_diff_seconds(self) -> pd.Series:
         return self._to_seconds(self.df[self.ts_col].diff().fillna(0))
     
+    def _estimate_sampling_rate_hz(self) -> float:
+        ts_s = self._to_seconds(self.df[self.ts_col])
+        dt = ts_s.diff().dropna()
+        dt = dt[dt > 0]
+        if dt.empty:
+            return 120.0
+        return float(1.0 / dt.median())
+    
+    def _ms_to_samples(self, ms: float) -> int:
+        sr = self._estimate_sampling_rate_hz()
+        return max(1, int(np.ceil((ms / 1000.0) * sr)))
+    
     def _interpolate_short_gaps(self, max_gap_len: int = 2):
         # Only interpolate very small runs of NaNs in gaze, not longer ones which are blinks
         for col in [self.gx_col, self.gy_col]:
@@ -1032,6 +1037,19 @@ class GazeMetricsProcessor:
                 limit=max_gap_len,
                 limit_direction="both"
         )
+    
+    def _valid_segments(self):
+        """Yield (start_idx, segment_df) where gx/gy are both not nans."""
+        valid = self.df[self.gx_col].notna() & self.df[self.gy_col].notna()
+
+        if not valid.any():
+            return
+
+        # contiguous runs
+        run_id = valid.ne(valid.shift(fill_value=False)).cumsum()
+        for _, chunk in self.df[valid].groupby(run_id[valid]):
+            start_idx = int(chunk.index[0])
+            yield start_idx, chunk
 
     # ------------------------- FIXATION COMPUTATION -------------------------
     
@@ -1077,6 +1095,42 @@ class GazeMetricsProcessor:
             avg_fix_dur_s = total_fix_dur_s / fixation_count if fixation_count else 0.0
 
             return fixation_count, total_fix_dur_s, avg_fix_dur_s
+        
+    def compute_fixation_statistics_pm_idt(self, time_threshold=100, dispersion_threshold_px=50):
+        """
+        I-DT via pymovements. Thresholds:
+          - time_threshold in ms 
+          - dispersion_threshold_px in px 
+        """
+
+        dur_samples = self._ms_to_samples(time_threshold)
+        sr_hz = self._estimate_sampling_rate_hz()
+
+        fix_durations_s = []
+
+        for start_idx, seg in self._valid_segments():
+            
+            if len(seg) < max(2, dur_samples):
+                continue
+            
+            positions = seg[[self.gx_col, self.gy_col]].to_numpy(dtype=float)
+
+            # Run I-DT on this contiguous valid segment
+            res = pm.events.idt(
+                positions=positions,
+                dispersion_threshold=float(dispersion_threshold_px),
+                minimum_duration=int(dur_samples),
+            )
+
+            # Each fixation has onset/offset in *sample indices* relative to this segment
+            for fix_dur in res.fixations["duration"]:
+                fix_durations_s.append(fix_dur / sr_hz)
+
+        fixation_count = len(fix_durations_s)
+        total_fix_dur_s = float(np.sum(fix_durations_s)) if fixation_count else 0.0
+        avg_fix_dur_s = total_fix_dur_s / fixation_count if fixation_count else 0.0
+
+        return fixation_count, total_fix_dur_s, avg_fix_dur_s
 
     # ------------------------- SACCADE COMPUTATION -------------------------
 
@@ -1106,6 +1160,106 @@ class GazeMetricsProcessor:
             vel = 0.0
 
         return saccade_count, amp, vel
+
+    def compute_saccade_statistics_pm(
+        self,
+        radius_threshold: float = 50,
+        min_duration_ms: float = 20,
+        threshold_factor: float = 6.0,
+        min_vel_std: float = 1e-8,   # variance gate for pm
+    ):
+        """
+        If velocity variance looks good -> use pymovements microsaccades detector.
+        Otherwise -> fall back to the simple displacement-threshold method.
+
+        Returns
+        -------
+        saccade_count, avg_saccade_amplitude_px, avg_saccade_velocity_px_per_s
+        """
+        sr_hz = self._estimate_sampling_rate_hz()
+        min_samples = max(2, int(np.ceil((min_duration_ms / 1000.0) * sr_hz)))
+
+        # --------- quick global variance gate ----------
+        # Build a velocity array from all valid points (ignoring NaNs).
+        valid = self.df[self.gx_col].notna() & self.df[self.gy_col].notna()
+        if valid.sum() < (min_samples + 1):
+            return self.compute_saccade_statistics(radius_threshold=radius_threshold)
+
+        pos_all = self.df.loc[valid, [self.gx_col, self.gy_col]].to_numpy(dtype=float)
+        v_all = np.diff(pos_all, axis=0) * sr_hz
+
+        # If either axis has ~zero variance, pm microsaccades will often fail
+        if (np.nanstd(v_all[:, 0]) < min_vel_std) or (np.nanstd(v_all[:, 1]) < min_vel_std):
+            return self.compute_saccade_statistics(radius_threshold=radius_threshold)
+
+        # --------- run pymovements on segments ----------
+        amps = []
+        mean_vels = []
+
+        for _, seg in self._valid_segments():
+            if len(seg) < (min_samples + 1):
+                continue
+
+            pos = seg[[self.gx_col, self.gy_col]].to_numpy(dtype=float)
+            v = np.diff(pos, axis=0) * sr_hz
+
+            # segment-level gate (prevents the [0, 500] kind of error)
+            if (np.nanstd(v[:, 0]) < min_vel_std) or (np.nanstd(v[:, 1]) < min_vel_std):
+                # if ANY segment is degenerate, just use the simple method for consistency
+                return self.compute_saccade_statistics(radius_threshold=radius_threshold)
+
+            try:
+                sacc = pm.events.microsaccades(
+                    velocities=v,
+                    threshold="engbert2015",
+                    threshold_factor=float(threshold_factor),
+                    minimum_duration=int(min_samples),
+                )
+            except ValueError:
+                # pm refused (usually due to variance/threshold issues) -> simple fallback
+                return self.compute_saccade_statistics(radius_threshold=radius_threshold)
+
+            # Extract events (handle both output shapes)
+            if hasattr(sacc, "saccades"):
+                onsets = np.asarray(sacc.saccades["onset"], dtype=int)
+                durs   = np.asarray(sacc.saccades["duration"], dtype=int)
+                for onset_v, dur in zip(onsets, durs):
+                    if dur < min_samples:
+                        continue
+                    offset_v = onset_v + dur
+
+                    onset_p = onset_v
+                    offset_p = min(offset_v, len(pos) - 1)
+
+                    amp = float(np.linalg.norm(pos[offset_p] - pos[onset_p]))
+                    speed = np.linalg.norm(v[onset_v:offset_v], axis=1)
+                    mean_speed = float(np.nanmean(speed)) if speed.size else 0.0
+
+                    amps.append(amp)
+                    mean_vels.append(mean_speed)
+            else:
+                for ev in sacc:
+                    onset_v = int(ev.onset)
+                    offset_v = int(ev.offset)
+                    if (offset_v - onset_v) < min_samples:
+                        continue
+
+                    onset_p = onset_v
+                    offset_p = min(offset_v + 1, len(pos) - 1)
+
+                    amp = float(np.linalg.norm(pos[offset_p] - pos[onset_p]))
+                    speed = np.linalg.norm(v[onset_v:offset_v], axis=1)
+                    mean_speed = float(np.nanmean(speed)) if speed.size else 0.0
+
+                    amps.append(amp)
+                    mean_vels.append(mean_speed)
+
+        # If pm found nothing, return zeros (don't fall back; that would mix definitions)
+        saccade_count = len(amps)
+        avg_amp = float(np.mean(amps)) if saccade_count else 0.0
+        avg_vel = float(np.mean(mean_vels)) if saccade_count else 0.0
+        return saccade_count, avg_amp, avg_vel
+
 
     # ------------------------- VELOCITY & ACCELERATION COMPUTATION -------------------------
 
@@ -1161,8 +1315,10 @@ class GazeMetricsProcessor:
     # ------------------------- COMPUTE ALL METRICS PER TASK -------------------------
 
     def compute_all_metrics(self):
-        fix_n, fix_tot_s, fix_avg_s = self.compute_fixation_statistics()
-        sac_n, sac_amp_px, sac_vel = self.compute_saccade_statistics()
+        # fix_n, fix_tot_s, fix_avg_s = self.compute_fixation_statistics()
+        fix_n, fix_tot_s, fix_avg_s = self.compute_fixation_statistics_pm_idt()
+        # sac_n, sac_amp_px, sac_vel = self.compute_saccade_statistics()
+        sac_n, sac_amp_px, sac_vel = self.compute_saccade_statistics_pm()
         vel_s, acc_s2 = self.compute_velocity_acceleration()
         blink_rate = self.compute_blink_rate()
         dispersion = self.compute_gaze_dispersion()

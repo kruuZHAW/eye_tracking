@@ -427,7 +427,7 @@ def compute_popup_features_window(asd_window: pd.DataFrame) -> pd.DataFrame:
 
     # Approximate popup overlap: cumulative open minus close
     # Replace close (0) by -1, open (1) by +1, then cumsum
-    open_close = df_p["popup_opened"].replace({0: -1, 1: 1})
+    open_close = df_p["popup_opened"].map({0: -1, 1: 1})
     overlap = (open_close.cumsum() > 2).any()
     features["popup_overlap"] = int(overlap)
 

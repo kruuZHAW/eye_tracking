@@ -217,20 +217,29 @@ def split_by_participant(df: pd.DataFrame,
     df_trainval = df.iloc[trainval_idx].copy()
     df_test     = df.iloc[test_idx].copy()
 
-    # Split train vs val from the remaining participants
-    val_prop = val_size / (1.0 - test_size)
-    gss2 = GroupShuffleSplit(n_splits=1, test_size=val_prop, random_state=random_state)
-    train_idx, val_idx = next(gss2.split(df_trainval, groups=df_trainval[group_col]))
-    df_train = df_trainval.iloc[train_idx].copy()
-    df_val   = df_trainval.iloc[val_idx].copy()
-
-    # Return the participant IDs per split
+    if val_size > 0:
+        # Split train vs val from the remaining participants
+        val_prop = val_size / (1.0 - test_size)
+        gss2 = GroupShuffleSplit(n_splits=1, test_size=val_prop, random_state=random_state)
+        train_idx, val_idx = next(gss2.split(df_trainval, groups=df_trainval[group_col]))
+        df_train = df_trainval.iloc[train_idx].copy()
+        df_val   = df_trainval.iloc[val_idx].copy()
+        
+        parts = {
+            "train_parts": sorted(df_train[group_col].unique().tolist()),
+            "val_parts": sorted(df_val[group_col].unique().tolist()),
+            "test_parts":  sorted(df_test[group_col].unique().tolist()),
+        }
+        return df_train, df_val, df_test, parts
+    
     parts = {
-        "train_parts": sorted(df_train[group_col].unique().tolist()),
-        "val_parts":   sorted(df_val[group_col].unique().tolist()),
-        "test_parts":  sorted(df_test[group_col].unique().tolist()),
-    }
-    return df_train, df_val, df_test, parts
+            "train_parts": sorted(df_trainval[group_col].unique().tolist()),
+            "test_parts":  sorted(df_test[group_col].unique().tolist()),
+        }
+    
+    return df_trainval, df_test, parts
+    
+    
 
 def make_xgb_binary(n_jobs=8, random_state=42):
     # First stage: detect idle VS active tasks
@@ -314,13 +323,16 @@ def rolling_mode(series, k=5):
         vals.append(Counter(s[a:b]).most_common(1)[0][0])
     return pd.Series(vals, index=series.index)
 
-def ema_probs(P, alpha=0.6):
-    """Exponential smoothing on class-probabilities row-wise per sequence.
-       P: np.array shape [T, C] -> smoothed same shape."""
-    out = np.empty_like(P)
-    out[0] = P[0]
-    for t in range(1, len(P)):
-        out[t] = alpha * P[t] + (1 - alpha) * out[t-1]
+def ema_probs(probs, alpha=0.6):
+    """
+    probs: np.ndarray shape [T, C]
+    EMA smoothing along time axis.
+    """
+    probs = np.asarray(probs, dtype=float)
+    out = np.zeros_like(probs)
+    out[0] = probs[0]
+    for t in range(1, len(probs)):
+        out[t] = alpha * probs[t] + (1 - alpha) * out[t - 1]
     return out
 
 def participant_sequences(df, sort_key="id"):
@@ -328,6 +340,196 @@ def participant_sequences(df, sort_key="id"):
     for pid, sub in df.groupby("participant_id"):
         idx = sub.sort_values(sort_key).index
         yield pid, idx
+
+def oof_pred_stageA(estimator, X, y, groups, sample_weight, cv):
+    """Out-of-fold predicted probabilities for the positive class."""
+    oof = np.zeros(len(y), dtype=float)
+    for tr, va in cv.split(X, y, groups):
+        m = clone(estimator)
+        m.fit(X.iloc[tr], y.iloc[tr], sample_weight=sample_weight[tr])
+        oof[va] = m.predict_proba(X.iloc[va])[:, 1]
+    return oof
+
+def oof_pred_stageB(estimator, X, y, groups, sample_weight, cv):
+    """
+    Out-of-fold predicted labels for multiclass (or binary) classification.
+    Returns a Series indexed like y.
+    """
+    oof = pd.Series(index=y.index, dtype=int)
+    for tr, va in cv.split(X, y, groups):
+        m = clone(estimator)
+        m.fit(X.iloc[tr], y.iloc[tr], sample_weight=sample_weight[tr])
+        oof.iloc[va] = m.predict(X.iloc[va]).astype(int)
+    return oof
+
+def best_threshold_by_f1(y_true, proba, grid=None):
+    """Pick threshold maximizing F1 on (y_true, proba)."""
+    if grid is None:
+        grid = np.linspace(0.01, 0.99, 99)
+    f1s = [f1_score(y_true, (proba >= t).astype(int)) for t in grid]
+    best_idx = int(np.argmax(f1s))
+    return float(grid[best_idx]), float(f1s[best_idx])
+
+def metrics_block(
+    title,
+    y_true,
+    y_pred,
+    labels=None,
+    average=None,
+    idle_label=None,
+    compute_active_f1=False,
+):
+    """
+    Unified metrics block for:
+      - Stage A (binary): default average='binary'
+      - Stage B (multiclass): default average='macro'
+      - Combined (multiclass with idle): set idle_label=-1 and compute_active_f1=True
+
+    Parameters
+    ----------
+    title : str
+    y_true, y_pred : array-like or Series
+    labels : list/array or None
+        Class order for report/confusion matrix.
+    average : str or None
+        F1 averaging. If None, chooses 'binary' when 2 classes else 'macro'.
+    idle_label : int/str or None
+        Label to exclude for "active-only" metrics (e.g., -1).
+    compute_active_f1 : bool
+        If True and idle_label is not None, also compute macro-F1 on y_true != idle_label.
+
+    Returns
+    -------
+    dict with:
+      acc, f1, rep, cm, text
+      and optionally f1_active when compute_active_f1=True
+    """
+    # Align as Series to avoid index mismatches
+    y_true = pd.Series(y_true)
+    if isinstance(y_pred, pd.Series):
+        y_pred = y_pred.reindex(y_true.index)
+    else:
+        y_pred = pd.Series(np.asarray(y_pred), index=y_true.index)
+    
+    if y_pred.isna().any():
+        raise ValueError(f"{title}: y_pred contains NaNs after alignment. Index mismatch likely.")
+
+    # Choose default F1 averaging
+    n_classes = y_true.nunique(dropna=False)
+    if average is None:
+        average = "binary" if n_classes == 2 else "macro"
+
+    acc = accuracy_score(y_true, y_pred)
+    f1_main = f1_score(y_true, y_pred, average=average)
+
+    rep = classification_report(y_true, y_pred, digits=3, labels=labels)
+    cm = confusion_matrix(y_true, y_pred, labels=labels)
+
+    out = {"acc": acc, "f1": f1_main, "rep": rep, "cm": cm}
+
+    f1_active = None
+    if compute_active_f1:
+        if idle_label is None:
+            raise ValueError("compute_active_f1=True requires idle_label to be set (e.g., -1).")
+        act_mask = (y_true != idle_label)
+        if act_mask.any():
+            f1_active = f1_score(y_true[act_mask], y_pred[act_mask], average="macro")
+        else:
+            f1_active = np.nan
+        out["f1_active"] = f1_active
+
+    block = []
+    block.append(f"=== {title} ===")
+    block.append(f"Accuracy: {acc:.3f}")
+
+    if compute_active_f1:
+        block.append(f"Macro-F1 (all classes): {f1_main:.3f}")
+        block.append(
+            f"Macro-F1 (active only): {f1_active:.3f}"
+            if f1_active is not None and not np.isnan(f1_active)
+            else "Macro-F1 (active only): NaN (no active samples)"
+        )
+    else:
+        # Stage A / Stage B
+        block.append(f"F1-score ({average}): {f1_main:.3f}")
+
+    block.append("")
+    block.append("Per-class report:")
+    block.append(rep)
+    block.append("Confusion matrix:")
+    block.append(str(cm))
+    block.append("")
+    out["text"] = "\n".join(block)
+
+    return out
+
+def build_xy(df, leaky_cols, task_col="Task_id", group_col="participant_id"):
+    X = df.drop(columns=[c for c in leaky_cols if c in df.columns], errors="ignore")
+    X = X.apply(pd.to_numeric, errors="coerce")
+    X = sanitize_column_names(X).astype("float32")
+
+    y_tasks = df[task_col].astype(int)          # idle == -1
+    y_active = (y_tasks != -1).astype(int)      # Stage A label
+    groups = df[group_col].astype(str)
+
+    return X, y_tasks, y_active, groups
+
+def combined_probabilities_from_models(X, mA, mB, all_classes, active_classes, idle_label=-1):
+    """
+    P(idle|x) = 1 - P(active|x)
+    P(task=c|x) = P(active|x) * P(task=c|active,x)
+    """
+    idx = X.index
+
+    pA = pd.Series(mA.predict_proba(X)[:, 1], index=idx)  # P(active|x)
+
+    prob_B = mB.predict_proba(X)     # [N, Cb]
+    classes_B = mB.classes_          # task labels per column (your Task_id values)
+
+    pB = pd.DataFrame(0.0, index=idx, columns=active_classes)
+    for j, c in enumerate(classes_B):
+        if c in pB.columns:
+            pB[c] = prob_B[:, j]
+
+    P = pd.DataFrame(0.0, index=idx, columns=all_classes)
+    P[idle_label] = 1.0 - pA
+    for c in active_classes:
+        P[c] = pA * pB[c]
+
+    # numerical safety
+    s = P.sum(axis=1).replace(0.0, np.nan)
+    P = P.div(s, axis=0).fillna(0.0)
+
+    return P
+
+def smooth_stageB_and_rebuild_P(pA, pB_df, meta_df, all_classes, active_classes, idle_label=-1, alpha_B=0.6, sort_key="id"):
+    """
+    pA: Series indexed by samples (P(active|x))
+    pB_df: DataFrame indexed by samples, columns=active_classes (P(task=c|active,x))
+    meta_df: DataFrame indexed by samples with at least ["participant_id", sort_key]
+    returns: P_smooth DataFrame indexed by samples, columns=all_classes
+    """
+    P_smooth = pd.DataFrame(0.0, index=pA.index, columns=all_classes)
+
+    # Apply per participant
+    for pid, g in meta_df.loc[pA.index].groupby("participant_id"):
+        idx = g.sort_values(sort_key).index
+
+        pA_seq = pA.loc[idx].values
+        pB_seq = pB_df.loc[idx, active_classes].values  # [T, C]
+
+        pB_seq_smooth = ema_probs(pB_seq, alpha=alpha_B)
+
+        P_pid = pd.DataFrame(0.0, index=idx, columns=all_classes)
+        P_pid[idle_label] = 1.0 - pA_seq
+        for j, c in enumerate(active_classes):
+            P_pid[c] = pA_seq * pB_seq_smooth[:, j]
+
+        # Renormalize
+        P_pid = P_pid.div(P_pid.sum(axis=1), axis=0).fillna(0.0)
+        P_smooth.loc[idx] = P_pid
+
+    return P_smooth
 
 if __name__ == "__main__":
     # ------------------------- 0. PARAMETERS -------------------------
@@ -337,7 +539,7 @@ if __name__ == "__main__":
     store_dir = "/store/kruu/eye_tracking"
     data_dir = os.path.join(store_dir, "training_data")
     
-    save_model_path = "/home/kruu/git_folder/eye_tracking/trainings/logs/xgboost_hierarchical_v4"
+    save_model_path = "/home/kruu/git_folder/eye_tracking/trainings/logs/xgboost_hierarchical_v5"
     os.makedirs(save_model_path, exist_ok=True)
     
     split_names = ["train", "val", "test"]
@@ -370,7 +572,7 @@ if __name__ == "__main__":
                                                             task_margin_ms = 2000,
                                                             step_ms = 3000,
                                                             filter_outliers = True,
-                                                            # participants=["001", "002", "003", "004", "005"],
+                                                            # participants=["001", "002", "003"],
                                                             time_resampling=False)
     
     print("Number of total occurences per task for all data: ")
@@ -451,9 +653,9 @@ if __name__ == "__main__":
     
     xgboost_data = metrics_df.merge(tsfresh_data, on="id", how="inner")
     
-    # Redo Train/test/val split as JCAFNET not implemented yet:
-    train_df, val_df, test_df, parts = split_by_participant(xgboost_data, group_col="participant_id",
-                                                        test_size=0.2, val_size=0.1, random_state=42)
+    # Train/test split (no val needed) 
+    train_df, test_df, parts = split_by_participant(xgboost_data, group_col="participant_id",
+                                                        test_size=0.2, val_size=0.0, random_state=42)
     
     for d in save_split_dirs:
         os.makedirs(d, exist_ok=True)
@@ -461,7 +663,10 @@ if __name__ == "__main__":
     print("Saving XGboost train/test datasets")
     train_df.to_parquet(os.path.join(save_split_dirs[0], "train_xgboost.parquet"))
     test_df.to_parquet(os.path.join(save_split_dirs[2], "test_xgboost.parquet"))
-    val_df.to_parquet(os.path.join(save_split_dirs[1], "val_xgboost.parquet"))
+    
+    # print("Load XGboost train/test datasets for debug")
+    # train_df = pd.read_parquet(os.path.join(save_split_dirs[0], "train_xgboost.parquet"))
+    # test_df = pd.read_parquet(os.path.join(save_split_dirs[2], "test_xgboost.parquet"))
     
     # CROSS VALIDATION SPLIT BASED ON PARTICIPANT ID
     # columns that must not go into X
@@ -472,20 +677,15 @@ if __name__ == "__main__":
         "Scenario_id",      # metadata
         "Task_execution",   # metadata
     ]
-    X_train = train_df.drop(columns=[c for c in leaky if c in train_df.columns], errors="ignore")
-    X_train = X_train.apply(pd.to_numeric, errors="coerce")
-    X_train = sanitize_column_names(X_train).astype("float32")
-    
-    y_train_tasks = train_df["Task_id"].astype(int) # idle == -1
-    is_active = (y_train_tasks != -1).astype(int) 
-    groups_train = train_df["participant_id"].astype(str)
+    X_train, y_train_tasks, y_train_active, groups_train = build_xy(train_df, leaky)
+    X_test,  y_test_tasks,  y_test_active,  groups_test  = build_xy(test_df,  leaky)
 
     # Define Group K-Fold
     cv = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
     
     # ------------------------- 5. MODEL A: IDLE VS ACTIVE TASK -------------------------
     clf_A = make_xgb_binary(n_jobs=16)
-    w_A = class_weight_series(is_active, cap=6.0, gamma = 1)
+    w_A = class_weight_series(y_train_active, cap=6.0, gamma = 1)
     
     param_dist_A = {
         "n_estimators": randint(300, 900),      
@@ -499,56 +699,110 @@ if __name__ == "__main__":
         estimator=clf_A,
         param_distributions=param_dist_A,
         n_iter=100,                   
-        scoring="f1",                 
+        scoring="average_precision", # or "roc_auc"                 
         cv=cv,
         n_jobs=-1,
-        verbose=2,
+        verbose=1,
         random_state=42,
         return_train_score=False,
     )
     
-    gs_A.fit(X_train, is_active, groups=groups_train, sample_weight=w_A)
+    gs_A.fit(X_train, y_train_active, groups=groups_train, sample_weight=w_A)
     best_A = gs_A.best_estimator_
     pd.DataFrame(gs_A.cv_results_).to_csv(os.path.join(save_model_path, "cv_results_stageA.csv"), index=False)
-    joblib.dump(best_A, os.path.join(save_model_path, "best_model_stageA.pkl"))
     
     #### MODEL A REPORT ####
-    accs_A, f1s_A = [], []
-    yA_true_all, yA_pred_all = [], []
-    for tr, va in cv.split(X_train, is_active, groups_train):
-        m = clone(best_A)
-        m.fit(X_train.iloc[tr], is_active.iloc[tr], sample_weight=w_A[tr])
-        yhat = (m.predict_proba(X_train.iloc[va])[:,1] > 0.5).astype(int)
-        accs_A.append(accuracy_score(is_active.iloc[va], yhat))
-        f1s_A.append(f1_score(is_active.iloc[va], yhat))
-        yA_true_all.append(is_active.iloc[va])
-        yA_pred_all.append(pd.Series(yhat, index=is_active.iloc[va].index))
-    yA_true_all = pd.concat(yA_true_all).sort_index()
-    yA_pred_all = pd.concat(yA_pred_all).loc[yA_true_all.index]
-    rep_A = classification_report(yA_true_all, yA_pred_all, digits=3)
-    cm_A  = confusion_matrix(yA_true_all, yA_pred_all)
-    with open(os.path.join(save_model_path, "report_stageA.txt"), "w") as f:
-        f.write(rep_A)
-    pd.DataFrame(cm_A).to_csv(os.path.join(save_model_path, "cm_stageA.csv"))
     
-    print("\n=== Stage A CV (active detection) ===")
-    print(f"Accuracy:                 {np.mean(accs_A):.3f} ± {np.std(accs_A):.3f}")
-    print(f"F1-score :   {np.mean(f1s_A):.3f} ± {np.std(f1s_A):.3f}")
-    print("\nPer-class report:\n", rep_A)
+    # Compute probabilities for best model on out-of-fold points (For each CV set, we evaluate on the fold that was not used for training)
+    oof_proba_A = oof_pred_stageA(
+        estimator=best_A,
+        X=X_train,
+        y=y_train_active,
+        groups=groups_train,
+        sample_weight=w_A,
+        cv=cv
+    )
     
+    # Select best decision threshold best on F1-score
+    thr_A, oof_best_f1 = best_threshold_by_f1(y_train_active.values, oof_proba_A)
+    print(f"Chosen threshold (F1-opt): {thr_A:.3f}  | F1: {oof_best_f1:.3f}")
+    with open(os.path.join(save_model_path, "stageA_threshold.txt"), "w") as f:
+        f.write(f"{thr_A:.6f}\n")
+    
+    # Out-of-fold evaluation for the train set
+    oof_pred_A = (oof_proba_A >= thr_A).astype(int)
+    oof_metrics_A = metrics_block("Stage A OOF", y_train_active.values, oof_pred_A)
+    pd.DataFrame(oof_metrics_A["cm"]).to_csv(os.path.join(save_model_path, "cm_stageA_oof_thresholded.csv"), index=False)
+
+    # Fit FINAL model on full training data
+    final_A = clone(best_A)
+    final_A.fit(X_train, y_train_active, sample_weight=w_A)
+    bundle = {"model": final_A, "threshold": thr_A}
+    joblib.dump(bundle, os.path.join(save_model_path, "best_model_stageA.pkl"))
+    
+    # TEST metrics using same threshold
+    test_proba_A = final_A.predict_proba(X_test)[:, 1]
+    test_pred_A  = (test_proba_A >= thr_A).astype(int)
+    test_metrics_A = metrics_block("Stage A TEST (using OOF threshold)", y_test_active.values, test_pred_A)
+    
+    # Save TEST confusion matrix + predictions
+    pd.DataFrame(test_metrics_A["cm"]).to_csv(os.path.join(save_model_path, "cm_stageA_test.csv"), index=False)
+    pd.DataFrame({
+        "proba": test_proba_A,
+        "pred":  test_pred_A,
+        "true":  y_test_active.values
+    }).to_csv(os.path.join(save_model_path, "stageA_test_predictions.csv"), index=False)
+
+    # 6) Write a single report_stageA.txt containing threshold + both evals
+    report_lines = []
+    report_lines.append("MODEL: XGBoost Stage A (active detection)")
+    report_lines.append("")
+    report_lines.append(f"Selected threshold (max F1 on OOF): {thr_A:.6f}")
+    report_lines.append(f"OOF F1 at selected threshold:       {oof_best_f1:.3f}")
+    report_lines.append("")
+    report_lines.append(oof_metrics_A["text"])
+    report_lines.append(test_metrics_A["text"])
+
+    report_path = os.path.join(save_model_path, "report_stageA.txt")
+    with open(report_path, "w") as f:
+        f.write("\n".join(report_lines))
+
+    print(f"Saved: {report_path}")
+    print(f"Saved: {os.path.join(save_model_path, 'best_model_stageA.pkl')}")
+    print(f"Saved: {os.path.join(save_model_path, 'stageA_threshold.txt')}")
+    
+    print("\n=== Stage A (Active detection) ===")
+    print(
+        f"OOF  Acc: {oof_metrics_A['acc']:.3f} | "
+        f"F1: {oof_metrics_A['f1']:.3f} | "
+        f"Threshold: {thr_A:.3f}"
+    )
+    print(
+        f"TEST Acc: {test_metrics_A['acc']:.3f} | "
+        f"F1: {test_metrics_A['f1']:.3f}"
+    )
+    print(f"Saved: {report_path}")
     
     # ------------------------- 6. MODEL B: IF ACTIVE -> DETECT TASK -------------------------
     
-    mask_active_tr = (is_active == 1)
+    # Training data for Stage B
+    mask_active_tr = (y_train_active == 1) 
     X_train_B = X_train.loc[mask_active_tr]
     y_train_B = y_train_tasks.loc[mask_active_tr]
+    groups_train_B = groups_train.loc[mask_active_tr]
+    
+    # Test data for Stage B
+    mask_active_te = (y_test_active == 1) 
+    X_test_B = X_test.loc[mask_active_te]
+    y_test_B = y_test_tasks.loc[mask_active_te]
+    assert X_test_B.index.equals(y_test_B.index), "X_test_B and y_test_B indices do not match!"
 
+    # Model
     num_classes_B = y_train_B.nunique()
     clf_B = make_xgb_multi(num_class=num_classes_B, n_jobs=8)
     w_B = class_weight_series(y_train_B, cap=8.0, gamma= 1.2)
     
     # We need a CV that respects same groups but only for active rows:
-    groups_train_B = groups_train.loc[mask_active_tr]
     cv_B = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
     
     param_dist_B = {
@@ -567,7 +821,7 @@ if __name__ == "__main__":
         scoring="f1_macro",
         cv=cv_B,
         n_jobs=-1,
-        verbose=2,
+        verbose=1,
         random_state=42,
         return_train_score=False,
     )
@@ -576,156 +830,177 @@ if __name__ == "__main__":
 
     best_B = gs_B.best_estimator_
     pd.DataFrame(gs_B.cv_results_).to_csv(os.path.join(save_model_path, "cv_results_stageB.csv"), index=False)
-    joblib.dump(best_B, os.path.join(save_model_path, "best_model_stageB.pkl"))
     
     ### Reports Model B ###
-    accs_B, f1s_B = [], []
-    yB_true_all, yB_pred_all = [], []
-    for tr, va in cv_B.split(X_train_B, y_train_B, groups_train_B):
-        m = clone(best_B)
-        m.fit(X_train_B.iloc[tr], y_train_B.iloc[tr], sample_weight=w_B[tr])
-        yhat = m.predict(X_train_B.iloc[va])
-        accs_B.append(accuracy_score(y_train_B.iloc[va], yhat))
-        f1s_B.append(f1_score(y_train_B.iloc[va], yhat, average="macro"))
-        yB_true_all.append(y_train_B.iloc[va])
-        yB_pred_all.append(pd.Series(yhat, index=y_train_B.iloc[va].index))
-    yB_true_all = pd.concat(yB_true_all).sort_index()
-    yB_pred_all = pd.concat(yB_pred_all).loc[yB_true_all.index]
-    rep_B = classification_report(yB_true_all, yB_pred_all, digits=3)
-    cm_B  = confusion_matrix(yB_true_all, yB_pred_all)
+    
+    # CV evaluation
+    oof_pred_B = oof_pred_stageB(
+        estimator=best_B,
+        X=X_train_B,
+        y=y_train_B,
+        groups=groups_train_B,
+        sample_weight=w_B,
+        cv=cv_B
+    )
+    
+    oof_metrics_B = metrics_block("Stage B OOF (Active task recognition)", y_train_B, oof_pred_B)
+    pd.DataFrame(oof_metrics_B["cm"]).to_csv(os.path.join(save_model_path, "cm_stageB_oof.csv"), index=False)
+    
+    # Fit FINAL on full Stage B train
+    final_B = clone(best_B)
+    final_B.fit(X_train_B, y_train_B, sample_weight=w_B)
+    joblib.dump({"model": final_B},
+            os.path.join(save_model_path, "best_model_stageB.pkl"))
+    
+    # Evaluation on TEST
+    test_pred_B = pd.Series(final_B.predict(X_test_B).astype(int), index=y_test_B.index)
+    # print("NaNs in test_pred_B:", test_pred_B.isna().sum())
+    test_metrics_B = metrics_block("Stage B TEST (Active task recognition)", y_test_B, test_pred_B)
+    pd.DataFrame(test_metrics_B["cm"]).to_csv(os.path.join(save_model_path, "cm_stageB_test.csv"), index=False)
+
+    report_lines = []
+    report_lines.append("MODEL: XGBoost Stage B (task recognition | active only)")
+    report_lines.append("")
+    report_lines.append(oof_metrics_B["text"])
+    report_lines.append(test_metrics_B["text"])
+
     with open(os.path.join(save_model_path, "report_stageB.txt"), "w") as f:
-        f.write(rep_B)
-    pd.DataFrame(cm_B).to_csv(os.path.join(save_model_path, "cm_stageB.csv"))
+        f.write("\n".join(report_lines)) 
     
-    print("\n=== Stage B CV (Active Task recognition) ===")
-    print(f"Accuracy:                 {np.mean(accs_B):.3f} ± {np.std(accs_B):.3f}")
-    print(f"Macro-F1 :   {np.mean(f1s_B):.3f} ± {np.std(f1s_B):.3f}")
-    print("\nPer-class report:\n", rep_B)
-    
+    print("\n=== Stage B (Active task recognition) ===")
+    print(
+        f"OOF  Acc: {oof_metrics_B['acc']:.3f} | "
+        f"Macro-F1: {oof_metrics_B['f1']:.3f}"
+    )
+    print(
+        f"TEST Acc: {test_metrics_B['acc']:.3f} | "
+        f"Macro-F1: {test_metrics_B['f1']:.3f}"
+    )
+    print(f"Saved: {os.path.join(save_model_path, 'report_stageB.txt')}")
     # ------------------------- 7. COMBINED REPORTS -------------------------
     
     # Combined hierarchical CV
-    # Computes the true probability of each observation of being eahc task.
-    accs_comb, f1_macro_comb, f1_macro_active_comb = [], [], []
-    
-    all_classes = np.sort(y_train_tasks.unique())   
+    all_classes = np.sort(pd.unique(y_train_tasks))
     active_classes = all_classes[all_classes != IDLE]
-    
-    P_all_unsmoothed = []  # list of DataFrames of combined probabilities for each fold
-    Y_all = []  # true labels for each fold
-    
-    # Store stage A and stage B probabilities for each fold
-    pA_list = [] # P(active | x)
-    pB_list = [] # P(task = c | active, x) for active + 1 only
 
-    for tr, va in cv.split(X_train, is_active, groups_train):
+    P_oof_list, y_oof_list = [], []
+
+    for tr, va in cv.split(X_train, y_train_active, groups_train):
         X_tr, X_va = X_train.iloc[tr], X_train.iloc[va]
-        y_tasks_tr, y_tasks_va = y_train_tasks.iloc[tr], y_train_tasks.iloc[va]
-        wA_tr = w_A[tr]
+        yA_tr = y_train_active.iloc[tr]
+        yT_tr, yT_va = y_train_tasks.iloc[tr], y_train_tasks.iloc[va]
 
-        # --- Stage A ---
-        mA = clone(best_A).fit(X_tr, is_active.iloc[tr], sample_weight=wA_tr)
-        pA = pd.Series(mA.predict_proba(X_va)[:, 1], index=X_va.index)                                        
-        
-        # --- Stage B (train only on active rows in this fold) ---
-        tr_active_mask = (is_active.iloc[tr] == 1)
-        mB = clone(best_B).fit(
-            X_tr.loc[tr_active_mask],
-            y_tasks_tr.loc[tr_active_mask],
-            sample_weight=class_weight_series(
-                y_tasks_tr.loc[tr_active_mask], 
-                cap=8.0, 
-                gamma=1.2
-            )
+        # --- Stage A fit on fold-train ---
+        mA = clone(best_A)
+        mA.fit(X_tr, yA_tr, sample_weight=w_A[tr])
+
+        # --- Stage B fit on fold-train ACTIVE rows only ---
+        tr_active_mask = (yA_tr == 1)
+        X_tr_B = X_tr.loc[tr_active_mask]
+        y_tr_B = yT_tr.loc[tr_active_mask]
+
+        # compute weights for stage B on this fold's active subset
+        wB_tr = class_weight_series(y_tr_B, cap=8.0, gamma=1.2)
+
+        mB = clone(best_B)
+        mB.fit(X_tr_B, y_tr_B, sample_weight=wB_tr)
+
+        # --- Combine probabilities on fold-val ---
+        P_va = combined_probabilities_from_models(
+            X=X_va,
+            mA=mA,
+            mB=mB,
+            all_classes=all_classes,
+            active_classes=active_classes,
+            idle_label=IDLE
         )
-        
-        # Predict probabilities for all val rows for active classes (not only active)
-        prob_B_all = mB.predict_proba(X_va)      # shape [N_va, C_B]
-        classes_B = mB.classes_                 # labels corresponding to columns in prob_B_all
-        
-        # Build full conditional P(task = c | active, x) over all active classes
-        pB_fold = pd.DataFrame(
-            0.0,
-            index=X_va.index,
-            columns=active_classes
-        )
-        for j, c in enumerate(classes_B):
-            pB_fold[c] = prob_B_all[:, j]
 
-        # --- Combine ---
-        P_fold = pd.DataFrame(
-            0.0,
-            index=X_va.index,
-            columns=all_classes
-        )
-        
-        # Idle probability for each row
-        P_fold[IDLE] = 1.0 - pA
+        P_oof_list.append(P_va)
+        y_oof_list.append(yT_va)
 
-        # P(task=c | x) = P(active | x) * P(task=c | active, x) (stage B = marginalization over active r.v.)
-        for c in active_classes:
-            P_fold[c] = pA * pB_fold[c]
-            
-        # Numerical safety: renormalize so rows sum to 1
-        P_fold = P_fold.div(P_fold.sum(axis=1), axis=0)
-        
-        # Computing metrics per fold
-        yp_fold = P_fold.idxmax(axis=1)
-        yt_fold = y_tasks_va
-        accs_comb.append(accuracy_score(yt_fold, yp_fold))
-        f1_macro_comb.append(f1_score(yt_fold, yp_fold, average="macro"))
-        act_mask = (yt_fold != IDLE)
-        if act_mask.any():
-            f1_macro_active_comb.append(
-                f1_score(yt_fold[act_mask], yp_fold[act_mask], average="macro")
-            )
-            
+    # OOF combined probabilities + predictions
+    P_oof = pd.concat(P_oof_list).sort_index()
+    y_oof = pd.concat(y_oof_list).sort_index()
+    yhat_oof = P_oof.idxmax(axis=1).loc[y_oof.index]
 
-        P_all_unsmoothed.append(P_fold)
-        Y_all.append(yt_fold)
-        pA_list.append(pA)
-        pB_list.append(pB_fold)
-        
-    P_all_unsmoothed = pd.concat(P_all_unsmoothed).sort_index()
-    yt_all = pd.concat(Y_all).sort_index()
-    pA_all = pd.concat(pA_list).sort_index()
-    pB_all = pd.concat(pB_list).sort_index()
-    
-    # Global unsmoothed predictions
-    yp_all_unsmoothed = P_all_unsmoothed.idxmax(axis=1)
-    
-    rep_comb = classification_report(yt_all, yp_all_unsmoothed, digits=3)
-    cm_comb  = confusion_matrix(yt_all, yp_all_unsmoothed, labels=all_classes)
-    
-    print("\n=== Hierarchical CV (Combined unsmoothed) ===")
-    print("Final pred counts:", yp_all_unsmoothed.value_counts().sort_index())
-    print(f"Accuracy:                 {np.mean(accs_comb):.3f} ± {np.std(accs_comb):.3f}")
-    print(f"Macro-F1 (all classes):   {np.mean(f1_macro_comb):.3f} ± {np.std(f1_macro_comb):.3f}")
-    print(f"Macro-F1 (active only):   {np.mean(f1_macro_active_comb):.3f} ± {np.std(f1_macro_active_comb):.3f}")
-    print("\nPer-class report:\n", rep_comb)
+    oof_metrics_comb = metrics_block(
+        "Combined OOF (unsmoothed)",
+        y_oof,
+        yhat_oof,
+        labels=all_classes,
+        idle_label=IDLE,
+        compute_active_f1=True, 
+    )
 
-    with open(os.path.join(save_model_path, "report_combined_unsmoothed.txt"), "w") as f:
-        f.write(rep_comb)
-    pd.DataFrame(cm_comb).to_csv(os.path.join(save_model_path, "cm_combined_unsmoothed.csv"))
+    pd.DataFrame(oof_metrics_comb["cm"]).to_csv(
+        os.path.join(save_model_path, "cm_combined_oof_unsmoothed.csv"),
+        index=False
+    )
+
+    # ---- Final models trained on full train (for TEST evaluation) ----
+    # Stage A final
+    final_A = clone(best_A)
+    final_A.fit(X_train, y_train_active, sample_weight=w_A)
+
+    # Stage B final (train on all active rows)
+    mask_active_tr = (y_train_active == 1)
+    X_train_B = X_train.loc[mask_active_tr]
+    y_train_B = y_train_tasks.loc[mask_active_tr]
+    w_B = class_weight_series(y_train_B, cap=8.0, gamma=1.2)
+
+    final_B = clone(best_B)
+    final_B.fit(X_train_B, y_train_B, sample_weight=w_B)
+
+    # Combined TEST
+    P_test = combined_probabilities_from_models(
+        X=X_test,
+        mA=final_A,
+        mB=final_B,
+        all_classes=all_classes,
+        active_classes=active_classes,
+        idle_label=IDLE
+    )
+    yhat_test = P_test.idxmax(axis=1)
+    test_metrics_comb = metrics_block(
+        "Combined TEST (unsmoothed)",
+        y_test_tasks,
+        yhat_test,
+        labels=all_classes,
+        idle_label=IDLE,
+        compute_active_f1=True,
+    )
+
+    pd.DataFrame(test_metrics_comb["cm"]).to_csv(
+        os.path.join(save_model_path, "cm_combined_test_unsmoothed.csv"),
+        index=False
+    )
+
+    # ---- Write combined report file (same spirit as stage A/B) ----
+    report_lines = []
+    report_lines.append("MODEL: Hierarchical Combined (Stage A -> Stage B), unsmoothed")
+    report_lines.append("")
+    report_lines.append(f"IDLE label: {IDLE}")
+    report_lines.append(f"Classes (from TRAIN): {list(all_classes)}")
+    report_lines.append("")
+    report_lines.append(oof_metrics_comb["text"])
+    report_lines.append(test_metrics_comb["text"])
+
+    report_path = os.path.join(save_model_path, "report_combined_unsmoothed.txt")
+    with open(report_path, "w") as f:
+        f.write("\n".join(report_lines))
     
-    
-    # Confusion matrix
-    import matplotlib.pyplot as plt
-    labels_sorted = np.sort(np.unique(yt_all))
-    disp_labels   = ["idle" if c == -1 else str(c) for c in labels_sorted]
-    fig, ax = plt.subplots(figsize=(8, 6))
-    cm_norm = cm_comb / cm_comb.sum(axis=1, keepdims=True)
-    im = ax.imshow(cm_norm, interpolation="nearest")
-    ax.set_title("Normalized Confusion Matrix (Combined unsmothed)")
-    ax.set_xlabel("Predicted"); ax.set_ylabel("True")
-    ax.set_xticks(np.arange(len(labels_sorted)))
-    ax.set_xticklabels(disp_labels, rotation=45, ha="right")
-    ax.set_yticks(np.arange(len(labels_sorted)))
-    ax.set_yticklabels(disp_labels)
-    plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    plt.tight_layout()
-    fig.savefig(os.path.join(save_model_path, "confusion_matrix_combined_unsmoothed.png"), dpi=150)
-    plt.close(fig)
+    print("\n=== Combined (unsmoothed) ===")
+    print(
+        f"OOF  Accuracy: {oof_metrics_comb['acc']:.3f} | "
+        f"Macro-F1(all): {oof_metrics_comb['f1']:.3f} | "
+        f"Macro-F1(active): {oof_metrics_comb['f1_active']:.3f}"
+    )
+    print(
+        f"TEST Accuracy: {test_metrics_comb['acc']:.3f} | "
+        f"Macro-F1(all): {test_metrics_comb['f1']:.3f} | "
+        f"Macro-F1(active): {test_metrics_comb['f1_active']:.3f}"
+    )
+    print(f"Saved: {report_path}")
     
     # ------------------------- 8. TEMPORAL SMOOTHING APPLIED TO COMBINED PREDICTIONS ------------------------- 
     
@@ -736,64 +1011,160 @@ if __name__ == "__main__":
     #   - p(idle | x_t) = 1 - pA
     #   - p(task + c | x_t) = pA*pB_smooth  
     
-    alpha_B = 0.6 # smoothing factor for Stabe B only
-    
-    P_all_smooth = pd.DataFrame(
-        0.0,
-        index=yt_all.index,
-        columns=all_classes
-    )
-    
-    
-    for pid, idx in participant_sequences(train_df.loc[yt_all.index], sort_key="id"):
-        idx = idx.sort_values()
-        
-        pA_seq = pA_all.loc[idx].values          
-        pB_seq = pB_all.loc[idx].values 
-        
-        pB_seq_smooth = ema_probs(pB_seq, alpha=alpha_B)
-        
-        # Rebuild full probabilities for this participant
-        P_pid = pd.DataFrame(
-            0.0,
-            index=idx,
-            columns=all_classes
-        )
-        
-        P_pid[IDLE] = 1.0 - pA_seq
-        
-        for j, c in enumerate(active_classes):
-            P_pid[c] = pA_seq * pB_seq_smooth[:, j]
-        
-        # Renormalize (small numerical safety)
-        P_pid = P_pid.div(P_pid.sum(axis=1), axis=0)
-        
-        P_all_smooth.loc[idx] = P_pid
-        
-    yp_all_smooth = P_all_smooth.idxmax(axis=1)
+    alpha_B = 0.6  # smoothing factor for Stage B only
 
-    rep_smooth = classification_report(yt_all, yp_all_smooth, digits=3)
-    cm_smooth  = confusion_matrix(yt_all, yp_all_smooth, labels=all_classes)
+    all_classes = np.sort(pd.unique(y_train_tasks))
+    active_classes = all_classes[all_classes != IDLE]
+
+    # Meta needed for smoothing: participant + ordering key (id)
+    meta_train = train_df.loc[X_train.index, ["participant_id", "id"]].copy()
+    meta_train["participant_id"] = meta_train["participant_id"].astype(str)
+
+    meta_test = test_df.loc[X_test.index, ["participant_id", "id"]].copy()
+    meta_test["participant_id"] = meta_test["participant_id"].astype(str)
+
+    # ---- OOF collection: store pA and pB for each fold ----
+    pA_oof_list = []
+    pB_oof_list = []
+    y_oof_list  = []
+
+    for tr, va in cv.split(X_train, y_train_active, groups_train):
+        X_tr, X_va = X_train.iloc[tr], X_train.iloc[va]
+        yA_tr = y_train_active.iloc[tr]
+        yT_tr, yT_va = y_train_tasks.iloc[tr], y_train_tasks.iloc[va]
+
+        # Stage A fold model
+        mA = clone(best_A).fit(X_tr, yA_tr, sample_weight=w_A[tr])
+        pA_va = pd.Series(mA.predict_proba(X_va)[:, 1], index=X_va.index)
+
+        # Stage B fold model trained on ACTIVE rows only
+        tr_active_mask = (yA_tr == 1)
+        X_tr_B = X_tr.loc[tr_active_mask]
+        y_tr_B = yT_tr.loc[tr_active_mask]
+        wB_tr  = class_weight_series(y_tr_B, cap=8.0, gamma=1.2)
+
+        mB = clone(best_B).fit(X_tr_B, y_tr_B, sample_weight=wB_tr)
+
+        # Predict conditional probs for ALL val rows
+        prob_B_va = mB.predict_proba(X_va)
+        classes_B = mB.classes_
+
+        pB_va = pd.DataFrame(0.0, index=X_va.index, columns=active_classes)
+        for j, c in enumerate(classes_B):
+            if c in pB_va.columns:
+                pB_va[c] = prob_B_va[:, j]
+
+        pA_oof_list.append(pA_va)
+        pB_oof_list.append(pB_va)
+        y_oof_list.append(yT_va)
+
+    # Concatenate OOF
+    pA_oof = pd.concat(pA_oof_list).sort_index()
+    pB_oof = pd.concat(pB_oof_list).sort_index()
+    y_oof  = pd.concat(y_oof_list).sort_index()
+
+    # ---- Smooth OOF: Stage B only, per participant ----
+    P_oof_smooth = smooth_stageB_and_rebuild_P(
+        pA=pA_oof,
+        pB_df=pB_oof,
+        meta_df=meta_train,
+        all_classes=all_classes,
+        active_classes=active_classes,
+        idle_label=IDLE,
+        alpha_B=alpha_B,
+        sort_key="id"
+    )
+
+    yhat_oof_smooth = P_oof_smooth.idxmax(axis=1).loc[y_oof.index]
+
+    oof_metrics_smooth = metrics_block(
+        f"Combined OOF (smoothed, alpha_B={alpha_B})",
+        y_oof,
+        yhat_oof_smooth,
+        labels=all_classes,
+        idle_label=IDLE,
+        compute_active_f1=True,
+    )
+
+    pd.DataFrame(oof_metrics_smooth["cm"]).to_csv(
+        os.path.join(save_model_path, "cm_combined_oof_smoothed.csv"),
+        index=False
+    )
+
+    # ---- Final models (train full) for TEST ----
+    final_A = clone(best_A).fit(X_train, y_train_active, sample_weight=w_A)
+
+    mask_active_tr = (y_train_active == 1)
+    X_train_B = X_train.loc[mask_active_tr]
+    y_train_B = y_train_tasks.loc[mask_active_tr]
+    w_B = class_weight_series(y_train_B, cap=8.0, gamma=1.2)
+    final_B = clone(best_B).fit(X_train_B, y_train_B, sample_weight=w_B)
+
+    # ---- TEST pA + pB ----
+    pA_test = pd.Series(final_A.predict_proba(X_test)[:, 1], index=X_test.index)
+
+    prob_B_test = final_B.predict_proba(X_test)
+    classes_B   = final_B.classes_
+
+    pB_test = pd.DataFrame(0.0, index=X_test.index, columns=active_classes)
+    for j, c in enumerate(classes_B):
+        if c in pB_test.columns:
+            pB_test[c] = prob_B_test[:, j]
+
+    # ---- Smooth TEST Stage-B and rebuild combined probabilities ----
+    P_test_smooth = smooth_stageB_and_rebuild_P(
+        pA=pA_test,
+        pB_df=pB_test,
+        meta_df=meta_test,
+        all_classes=all_classes,
+        active_classes=active_classes,
+        idle_label=IDLE,
+        alpha_B=alpha_B,
+        sort_key="id"
+    )
+
+    yhat_test_smooth = P_test_smooth.idxmax(axis=1)
+
+    test_metrics_smooth = metrics_block(
+        f"Combined TEST (smoothed, alpha_B={alpha_B})",
+        y_test_tasks,
+        yhat_test_smooth,
+        labels=all_classes,
+        idle_label=IDLE,
+        compute_active_f1=True,
+    )
+
+    pd.DataFrame(test_metrics_smooth["cm"]).to_csv(
+        os.path.join(save_model_path, "cm_combined_test_smoothed.csv"),
+        index=False
+    )
+
+    # ---- Write report (same layout style) ----
+    report_lines = []
+    report_lines.append("MODEL: Hierarchical Combined (Stage A -> Stage B)")
+    report_lines.append("Variant: Stage B EMA smoothing only (Stage A not smoothed)")
+    report_lines.append("")
+    report_lines.append(f"alpha_B: {alpha_B}")
+    report_lines.append(f"IDLE label: {IDLE}")
+    report_lines.append(f"Classes (from TRAIN): {list(all_classes)}")
+    report_lines.append("")
+    report_lines.append(oof_metrics_smooth["text"])
+    report_lines.append(test_metrics_smooth["text"])
+
+    report_path = os.path.join(save_model_path, "report_combined_smoothed.txt")
+    with open(report_path, "w") as f:
+        f.write("\n".join(report_lines))  
     
-    labels_sorted = np.sort(np.unique(yt_all))
-    disp_labels   = ["idle" if c == -1 else str(c) for c in labels_sorted]
-    fig, ax = plt.subplots(figsize=(8, 6))
-    cm_norm = cm_smooth / cm_smooth.sum(axis=1, keepdims=True)
-    im = ax.imshow(cm_norm, interpolation="nearest")
-    ax.set_title("Normalized Confusion Matrix (smoothing)")
-    ax.set_xlabel("Predicted"); ax.set_ylabel("True")
-    ax.set_xticks(np.arange(len(labels_sorted)))
-    ax.set_xticklabels(disp_labels, rotation=45, ha="right")
-    ax.set_yticks(np.arange(len(labels_sorted)))
-    ax.set_yticklabels(disp_labels)
-    plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    plt.tight_layout()
-    fig.savefig(os.path.join(save_model_path, "confusion_matrix_smoothing.png"), dpi=150)
-    plt.close(fig)
-    
-    print("\n=== Combined + Temporal smoothing ===")
-    print(rep_smooth)
-    with open(os.path.join(save_model_path, "report_combined_smoothed.txt"), "w") as f:
-        f.write(rep_smooth)
-    pd.DataFrame(cm_smooth).to_csv(os.path.join(save_model_path, "cm_combined_smoothed.csv"))                            
+    print("\n=== Combined (smoothed) ===")
+    print(
+        f"OOF  Accuracy: {oof_metrics_smooth['acc']:.3f} | "
+        f"Macro-F1(all): {oof_metrics_smooth['f1']:.3f} | "
+        f"Macro-F1(active): {oof_metrics_smooth['f1_active']:.3f}"
+    )
+    print(
+        f"TEST Accuracy: {test_metrics_smooth['acc']:.3f} | "
+        f"Macro-F1(all): {test_metrics_smooth['f1']:.3f} | "
+        f"Macro-F1(active): {test_metrics_smooth['f1_active']:.3f}"
+    )
+    print(f"Saved: {report_path}")                     
                                                        
