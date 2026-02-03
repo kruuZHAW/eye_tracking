@@ -4,7 +4,13 @@
 This repository contains a data processing pipeline for task detection using eye-tracking data.
 The workflow consists of two main steps:
   1. Synchronizing and preparing the raw data locally
-  2. Running a machine-learning pipeline based on XGBoost for feature processing and real-time ATCO task type prediction 
+  2. Running a machine-learning pipeline based on XGBoost for feature processing and real-time ATCO task type prediction
+
+The repository can be cloned with:
+```
+git clone https://github.com/kruuZHAW/eye_tracking.git
+cd eye_tracking
+```
 
 ## Requirements
 The project uses `uv` as the Python package manager. All dependencies are defined in the `pyproject.toml` file.
@@ -24,8 +30,6 @@ uv sync
 This command will:
   - Create or update the virtual environment
   - Install all dependencies specified in `pyproject.toml`
-
-## Repository setup
 
 ## Step 1: Data Synchronisation
 
