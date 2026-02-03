@@ -31,7 +31,23 @@ This command will:
   - Create or update the virtual environment
   - Install all dependencies specified in `pyproject.toml`
 
-## Step 1: Data Synchronisation
+## Step 1: Data Synchronisation and raw input generation (`data_sync.sh`)
+
+### Run
+NB: This script needs an update to deal with the new data loction on `Toulouse`. The current `BASE_TREE_MODE = sync_from_remote` doesn't work. The easiest way is to copy the data onto the cluster, activating `BASE_TREE_MODE = use_local`, and use the copied local directory as `LOCAL_OLD_TREE`.
+Run:
+```
+sbatch data_sync.sh
+```
+This script prepares the local raw dataset in two phases:
+1. Rebuilds a local "work tree" of raw scenarios:
+It recreates `LOCAL_WORK_TREE` from a base source (`BASE_SRC`) by copying only the files needed by the pipeline (eye-tracking `.tsv`, polaris simulator `.db`/`.zip`, and required directory structure). This avoids syncing unnecessary subfolders (e.g. video recordings) and guqrantees a clean, reproductible directory tree.
+2. Syncs reviewed eye-tracking files (from September acquisition) and injects them imto the scenario tree.
+Reviewed eye-tracking TSV files are pulled via `rclone` from a remote location (`REMOTE_REVIEWED_PATH`) and stored locally in a flat folder (`LOCAL_REVIEWED_FLAT`). They are then materialized into the scenario tree so that downstream processing automatically prefers reviewed data when available.
+
+After syncing, the script triggers raw input generation (ET + ASD) for each scenario.
+
+### Configuration paths
 
 ## Step 2: Data Processing Pipeline
 
