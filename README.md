@@ -48,6 +48,26 @@ Reviewed eye-tracking TSV files are pulled via `rclone` from a remote location (
 After syncing, the script triggers raw input generation (ET + ASD) for each scenario.
 
 ### Configuration paths
+The script uses fixed paths (cluster/storage-specific):
+- LOCAL_WORK_TREE: the reconstructed training data tree (scenario structure)
+- LOCAL_REVIEWED_FLAT: local folder holding the flat reviewed TSVs (for September acquisition)
+- REMOTE_REVIEWED + REMOTE_REVIEWED_PATH: location of reviewed eye-tracking files (for September acquisition)
+- BASE_TREE_MODE: whether the base scenario tree is pulled from
+  - use_local (default): uses the existing local source tree
+  - sync_from_remote: uses a mounted remote share (e.g., Toulouse) as the base source (doesn't work directly on Toulouse)
+
+### 1) Materialized reviewed eye-tracking into tree
+Module: `utils.materialize_reviewed_et`
+Called by:
+```
+uv run -m utils.materialize_reviewed_et "${LOCAL_REVIEWED_FLAT}" "${LOCAL_WORK_TREE}" copy
+```
+Reviewed TSVs are provided in a flat structure with filenames like: `<pid>_scenario_<sid>_gaze_data_fusion.tsv`.
+The script parses participant (pid) and scenarios (sid) IDs from the filename and writes the file into the scenario tree:
+`<LOCAL_WORK_TREE>/<pid>/Scenario <sid>/ET/`.
+It outputs files named: `*_reviewed.tsv`. 
+Downstream processing automatically prefers `*_reviewed.tsv` over the original eye-tracking files.
+
 
 ## Step 2: Data Processing Pipeline
 
