@@ -58,6 +58,7 @@ The script uses fixed paths (cluster/storage-specific):
 
 ### 1) Materialized reviewed eye-tracking into tree
 Module: `utils.materialize_reviewed_et`
+
 Called by:
 ```
 uv run -m utils.materialize_reviewed_et "${LOCAL_REVIEWED_FLAT}" "${LOCAL_WORK_TREE}" copy
@@ -68,6 +69,41 @@ The script parses participant (pid) and scenarios (sid) IDs from the filename an
 It outputs files named: `*_reviewed.tsv`. 
 Downstream processing automatically prefers `*_reviewed.tsv` over the original eye-tracking files.
 
+### 2) Build raw input parquet files for ET and ASD
+Module: `utils.build_raw_inputs`
+
+Called by:
+```
+uv run -m utils.build_raw_inputs "${LOCAL_WORK_TREE}"
+```
+This step generates two files per scenario inside `<pid>/Scenario <sid>/taskRecognition/`:
+- `raw_et.parquet`
+- `raw_asd.parquet`
+
+#### ET processing (`raw_et.parquet`)
+- Loads the selected eye-tracking TSV
+  - Prefers `*_reviewed.tsv` if present
+  - Otherwise falls back to a gaze fusion TSV or any TSV available
+- Builds absolute EPOCH timestamps:
+  - Uses `Recording date` + `Recording start time` + `Recording timestamp [ms]`
+  - Produces a UTC-based millisecond timestamp (`epoch_ms_raw`)
+- Applies optional timestamp synchronization:
+  - Looks for sync points at: `/store/regd/sync_points/<pid>_scenario_<sid>_sync_points.json`
+  - If available, `epoch_ms_synced` is computed and used as the main timeline (`epoch_ms`)
+- Removes calibration/out-of-window rows:
+  - If present, data is sliced between `ScreenRecordingStart` and `ScreenRecordingEnd`
+- Writes the result to `raw_et.parquet`
+
+#### ASD processing (`raw_asd.parquet`)
+- Locates the simulator DB (`polaris-events-*.db`) under `simulator/`
+  - If only a ZIP is present, it extracts the newest `.db` from the ZIP
+- Builds an ASD event dataframe from the DB
+- Slices ASD events to the time range covered by the ET recording (from min to max ET `epoch_ms`)
+- Writes the result to `raw_asd.parquet` (warns if empty)
+
+### Notes
+- The bash script includes `#SBATCH` headers and is run as a Slurm job on the cluster.
+- Internally it uses `uv run -m ...` so the Python environment is taken from `pyproject.toml`.
 
 ## Step 2: Data Processing Pipeline
 
