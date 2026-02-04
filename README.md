@@ -155,8 +155,65 @@ The final processed training dataset (`metrics_df + tsfresh`) is split by partic
 - test: 20% participants saved to `<Training data root>/splits/test/test_xgboost.parquet`
 
 ### 6) Hierarchical modeling (two-stage classification)
+The system trains two XGBoost models:
 
-## Output
+Stage A (binary): idle VS active
+- label: `active - (Task_id != -1)`
+- model type: `XGBClassifier(objective="binary:logistic")`
+- hyperparameter optimization: `RandomizedSearchCV`
+- grouped cross-validation: `StratifiedGroupKFold` (where group = participant)
+
+Once the best hyperparameters found and the model fitted, the script selects a decision threshold by maximizing F1 score on out-of-fold probabilities (from cross-validation folds) and saves it alongside the model. 
+
+Stage B (multiclass): task class identification (on active samples only)
+- trained only on rows where Stage A label is active (`active == 1`)
+- model type: `XGBClassifier(objective="multi:softprob")`
+- hyperparameter optimization: `RandomizedSearchCV`
+- grouped cross-validation: `StratifiedGroupKFold` (where group = participant)
+- evaluated with macro-F1
+
+### 7) Combined prediction evaluation
+Once Stage A and Stage B trained, the script evaluates the hierarchical model as a combined system:
+- P(idle|x) = 1 - P(active|x) (given by Stage A)
+- P(task=c|x) = P(active|x)*P(task=c|active, x) (where the second term is given by Stage B)
+
+### 8) Temporal smoothing (Stage B only)
+To reduce prediction jitter across consecutive windows, Stage B probabilities are smoothed per participant with an exponential moving average. Therefore, prediction at time `t` depends on previously made predictions. 
+- `alpha_B = 0.6~ (exponential decay parameter)
+Stage A probabilities are not smoothed. Idle is dominant, and smoothing could suppress short active segments.
+
+## Outputs (models + reports)
+By default, outputes are saved to `./trainings/logs/xgboost_hierarchical_v<x>/`.
+
+The script writes:
+
+Stage A:
+- `best_model_stageA.pkl` (joblib bundle with model + threshold)
+- `stageA_threshold.txt`
+- `cv_results_stageA.csv`
+- confusion matrices and predictions:
+  - `cm_stageA_oof_thresholded.csv`
+  - `cm_stageA_test.csv`
+  - `stageA_test_predictions.csv`
+- `report_stageA.txt`
+
+Stage B:
+- `best_model_stageB.pkl`
+- `cv_results_stageB.csv`
+- confustion matrices:
+  - `cm_stageB_oof.csv`
+  - `cm_stageB_test.csv`
+- `report_stageB.txt`
+
+Combined evaluation:
+- `cm_combined_oof_unsmoothed.csv`
+- `cm_combined_test_unsmoothed.csv`
+- `report_combined_unsmoothed.txt`
+- `cm_combined_oof_smoothed.csv`
+- `cm_combined_test_smoothed.csv`
+- `report_combined_smoothed.txt`
 
 ## Notes and limitations
-
+- The script currently use fixed cluster paths. You can change them directly in section `0. PARAMETERS`.
+- `run_xgboost.sh` loads cluster modules (`mamba`, `interl-oneapi`). If running outside the cluster, you may need to remove these lines.
+- TSFresh is configured with high parallelism (`n_jobs=50`), and Stage A/B searches use multi-core execution. Run time depends strongly on CPU availability.
