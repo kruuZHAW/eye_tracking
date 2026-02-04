@@ -539,7 +539,7 @@ if __name__ == "__main__":
     store_dir = "/store/kruu/eye_tracking"
     data_dir = os.path.join(store_dir, "training_data")
     
-    save_model_path = "/home/kruu/git_folder/eye_tracking/trainings/logs/xgboost_hierarchical_v5"
+    save_model_path = "logs/xgboost_hierarchical_v5"
     os.makedirs(save_model_path, exist_ok=True)
     
     split_names = ["train", "val", "test"]
